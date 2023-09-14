@@ -5,9 +5,9 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"rahnit-rmm/connection"
+	"rahnit-rmm/rpc"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -35,24 +35,11 @@ to quickly create a Cobra application.`,
 			panic(err)
 		}
 
-		header := map[string]interface{}{
-			"type":      "ping",
-			"timestamp": time.Now().Unix(),
-		}
+		session := rpc.NewRpcSession(stream)
 
-		payload, err := json.Marshal(header)
-		if err != nil {
-			panic(err)
-		}
+		rpcCmd := &rpc.PingCmd{}
 
-		payload = append(payload, []byte("\n")...)
-
-		_, err = stream.Write(payload)
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Println("Payload sent, closing connection")
+		session.SendCommand(rpcCmd)
 
 		err = stream.Close()
 		if err != nil {

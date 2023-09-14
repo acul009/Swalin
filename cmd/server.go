@@ -45,6 +45,7 @@ to quickly create a Cobra application.`,
 			// ... error handling
 
 			commands := rpc.NewCommandCollection()
+			commands.Add(&rpc.PingCmd{})
 
 			go rpc.ServeSession(conn, commands)
 		}
