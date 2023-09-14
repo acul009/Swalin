@@ -50,7 +50,7 @@ to quickly create a Cobra application.`,
 			panic(err)
 		}
 
-		fmt.Printf("\nListening on localhost:%d", port)
+		fmt.Printf("\nListening on localhost:%d\n", port)
 
 		for {
 			conn, err := ln.Accept(context.Background())
@@ -60,7 +60,9 @@ to quickly create a Cobra application.`,
 			}
 			// ... error handling
 
-			go rpc.ServeSession(conn)
+			commands := rpc.NewCommandCollection()
+
+			go rpc.ServeSession(conn, commands)
 		}
 
 	},
