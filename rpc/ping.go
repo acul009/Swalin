@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+func PingHandler() *PingCmd {
+	return &PingCmd{}
+}
+
 type PingCmd struct {
 }
 
