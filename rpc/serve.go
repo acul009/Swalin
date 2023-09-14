@@ -10,6 +10,39 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
+type RpcServer struct {
+	listener        *quic.Listener
+	commands        *CommandCollection
+	registeredNodes map[string]*NodeConnection
+}
+
+func NewRpcServer(listener *quic.Listener, commands *CommandCollection) *RpcServer {
+	return &RpcServer{
+		listener:        listener,
+		commands:        commands,
+		registeredNodes: make(map[string]*NodeConnection),
+	}
+}
+
+type NodeConnection struct {
+	quic.Connection
+	server   *RpcServer
+	nodeName string
+}
+
+func NewNodeConnection(conn quic.Connection, server *RpcServer) *NodeConnection {
+	return &NodeConnection{
+		Connection: conn,
+		server:     server,
+		nodeName:   "",
+	}
+}
+
+func (n *NodeConnection) Close() {
+	delete(n.server.registeredNodes, n.nodeName)
+	n.Close()
+}
+
 type SessionRequestHeader struct {
 	Cmd       string                 `json:"cmd"`
 	Timestamp int64                  `json:"timestamp"`
@@ -22,7 +55,28 @@ type SessionResponseHeader struct {
 	Info interface{} `json:"info"`
 }
 
-func ServeSession(conn quic.Connection, commands *CommandCollection) {
+func (s *RpcServer) Accept() (*NodeConnection, error) {
+	conn, err := s.listener.Accept(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return NewNodeConnection(conn, s), nil
+}
+
+func (s *RpcServer) Run() error {
+	fmt.Println("Starting RPC server")
+	for {
+		conn, err := s.Accept()
+		if err != nil {
+			log.Printf("Error accepting QUIC connection: %v", err)
+			continue
+		}
+
+		go ServeConnection(conn, s.commands)
+	}
+}
+
+func ServeConnection(conn *NodeConnection, commands *CommandCollection) {
 	fmt.Println("Connection accepted, serving RPC")
 	for {
 		stream, err := conn.AcceptStream(context.Background())
@@ -30,7 +84,7 @@ func ServeSession(conn quic.Connection, commands *CommandCollection) {
 			log.Printf("Error accepting QUIC stream: %v", err)
 			return
 		}
-		go handleSession(NewRpcSession(stream), commands)
+		go handleSession(NewRpcSession(stream, conn), commands)
 	}
 
 }

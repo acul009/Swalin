@@ -9,15 +9,17 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
-func NewRpcSession(conn quic.Stream) *RpcSession {
+func NewRpcSession(stream quic.Stream, conn *NodeConnection) *RpcSession {
 	return &RpcSession{
-		Stream:     conn,
+		Stream:     stream,
 		ReadBuffer: make([]byte, 0, 1024),
+		Connection: conn,
 	}
 }
 
 type RpcSession struct {
 	quic.Stream
+	Connection *NodeConnection
 	ReadBuffer []byte
 }
 

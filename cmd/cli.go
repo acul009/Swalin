@@ -35,7 +35,7 @@ to quickly create a Cobra application.`,
 			panic(err)
 		}
 
-		session := rpc.NewRpcSession(stream)
+		session := rpc.NewRpcSession(stream, conn)
 
 		rpcCmd := &rpc.PingCmd{}
 
