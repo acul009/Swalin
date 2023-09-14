@@ -2,6 +2,8 @@ package rpc
 
 import "fmt"
 
+type RpcCommandHandler func() RpcCommand
+
 type RpcCommand interface {
 	GetKey() string
 	ExecuteServer(session *RpcSession) error
@@ -9,21 +11,21 @@ type RpcCommand interface {
 }
 
 type CommandCollection struct {
-	Commands map[string]RpcCommand
+	Commands map[string]RpcCommandHandler
 }
 
 func NewCommandCollection() *CommandCollection {
 	return &CommandCollection{
-		Commands: make(map[string]RpcCommand),
+		Commands: make(map[string]RpcCommandHandler),
 	}
 }
 
-func (c *CommandCollection) Add(cmd RpcCommand) {
-	c.Commands[cmd.GetKey()] = cmd
+func (c *CommandCollection) Add(cmdHandler RpcCommandHandler) {
+	c.Commands[cmdHandler().GetKey()] = cmdHandler
 }
 
 func (c *CommandCollection) handleRequest(header SessionRequestHeader, session *RpcSession) error {
-	command, ok := c.Commands[header.Cmd]
+	commandHandler, ok := c.Commands[header.Cmd]
 	if !ok {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 404,
@@ -32,6 +34,7 @@ func (c *CommandCollection) handleRequest(header SessionRequestHeader, session *
 		session.Close()
 		return fmt.Errorf("Unknown command: %v", header.Cmd)
 	}
+	command := commandHandler()
 	session.WriteResponseHeader(SessionResponseHeader{
 		Code: 200,
 		Msg:  "OK",
