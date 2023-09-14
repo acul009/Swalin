@@ -11,11 +11,12 @@ import (
 )
 
 func ServeSession(conn quic.Connection, commands *CommandCollection) {
+	fmt.Println("Connection accepted, serving RPC")
 	for {
 		stream, err := conn.AcceptStream(context.Background())
 		if err != nil {
 			log.Printf("Error accepting QUIC stream: %v", err)
-			continue
+			return
 		}
 		go handleSession(NewRpcSession(stream))
 	}

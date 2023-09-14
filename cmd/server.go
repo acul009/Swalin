@@ -5,15 +5,12 @@ package cmd
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"log"
-	"net"
+	"rahnit-rmm/connection"
 	"rahnit-rmm/rpc"
 
 	"github.com/spf13/cobra"
-
-	"github.com/quic-go/quic-go"
 )
 
 // serverCmd represents the server command
@@ -29,28 +26,15 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("server called")
 
-		port := 1234
+		addr := "localhost:1234"
 
-		udpConn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: port})
-		if err != nil {
-			panic(err)
-		}
-		// ... error handling
-		tr := quic.Transport{
-			Conn: udpConn,
-		}
-
-		tlsConf := &tls.Config{}
-
-		quicConf := &quic.Config{}
-
-		ln, err := tr.Listen(tlsConf, quicConf)
+		ln, err := connection.CreateServer(addr)
 
 		if err != nil {
 			panic(err)
 		}
 
-		fmt.Printf("\nListening on localhost:%d\n", port)
+		fmt.Printf("\nListening on localhost:%s\n", addr)
 
 		for {
 			conn, err := ln.Accept(context.Background())
