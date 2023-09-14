@@ -1,13 +1,19 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
+	"log"
+	"net"
+	"rahnit-rmm/rpc"
 
 	"github.com/spf13/cobra"
+
+	"github.com/quic-go/quic-go"
 )
 
 // serverCmd represents the server command
@@ -22,6 +28,41 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("server called")
+
+		port := 1234
+
+		udpConn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: port})
+		if err != nil {
+			panic(err)
+		}
+		// ... error handling
+		tr := quic.Transport{
+			Conn: udpConn,
+		}
+
+		tlsConf := &tls.Config{}
+
+		quicConf := &quic.Config{}
+
+		ln, err := tr.Listen(tlsConf, quicConf)
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("\nListening on localhost:%d", port)
+
+		for {
+			conn, err := ln.Accept(context.Background())
+			if err != nil {
+				log.Printf("Error accepting QUIC connection: %v", err)
+				continue
+			}
+			// ... error handling
+
+			go rpc.ServeSession(conn)
+		}
+
 	},
 }
 
