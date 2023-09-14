@@ -27,7 +27,7 @@ func (p *PingCmd) ExecuteClient(session *RpcSession) error {
 	}()
 
 	for errorOccured == nil {
-		data, err := session.ReadUntil([]byte("\n"), 1024, 65536)
+		data, err := session.ReadUntil([]byte("\n"), 17, 65536)
 		if err != nil {
 			errorOccured = err
 			return err
@@ -48,7 +48,7 @@ func (p *PingCmd) ExecuteClient(session *RpcSession) error {
 
 func (p *PingCmd) ExecuteServer(session *RpcSession) error {
 	for {
-		data, err := session.ReadUntil([]byte("\n"), 1024, 65536)
+		data, err := session.ReadUntil([]byte("\n"), 17, 65536)
 		if err != nil {
 			return err
 		}
