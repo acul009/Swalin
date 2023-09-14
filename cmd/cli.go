@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"rahnit-rmm/connection"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -35,7 +36,8 @@ to quickly create a Cobra application.`,
 		}
 
 		header := map[string]interface{}{
-			"type": "ping",
+			"type":      "ping",
+			"timestamp": time.Now().Unix(),
 		}
 
 		payload, err := json.Marshal(header)
@@ -56,6 +58,8 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			panic(err)
 		}
+
+		time.Sleep(time.Second)
 
 	},
 }

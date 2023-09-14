@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"strings"
 
@@ -58,61 +59,67 @@ func (s *RpcSession) Read(p []byte) (n int, err error) {
 	return readCounter, nil
 }
 
-func (s *RpcSession) Peek(p []byte) (n int, err error) {
+func (s *RpcSession) Peek(p []byte, offset int) (n int, err error) {
 	readRequestSize := len(p)
 
-	readCounter := 0
+	currentBufferSize := len(s.ReadBuffer)
 
-	if len(s.ReadBuffer) > 0 {
-		readCounter = copy(p, s.ReadBuffer)
-	}
-
-	readRequestSize -= readCounter
-
-	streamRead := make([]byte, readRequestSize)
-
-	if readRequestSize > 0 {
-		readFromStreamCount, err := s.Stream.Read(streamRead)
-		readCounter += readFromStreamCount
+	if currentBufferSize < offset+readRequestSize {
+		toRead := offset + readRequestSize - currentBufferSize
+		readBuffer := make([]byte, toRead)
+		n, err := s.Stream.Read(readBuffer)
+		s.ReadBuffer = append(s.ReadBuffer, readBuffer[:n]...)
 		if err != nil {
-			return readCounter, err
+			if err == io.EOF {
+
+			} else {
+				return n, err
+			}
 		}
-		s.ReadBuffer = append(s.ReadBuffer, streamRead...)
 	}
 
-	return readCounter, nil
+	n = copy(p, s.ReadBuffer[offset:offset+readRequestSize])
+
+	return n, nil
 }
 
-func (s *RpcSession) Seek(needle []byte, bufferSize int, limit int) (index int, err error) {
+func (s *RpcSession) Seek(needle []byte, bufferSize int, limit int) (offset int, err error) {
 	needleLength := len(needle)
 	readBuffer := make([]byte, bufferSize)
-	searchBuffer := make([]byte, 0, bufferSize)
 
-	i := 0
+	offset = 0
 
-	for i < limit {
-		n, err := s.Read(readBuffer)
+	closed := false
+
+	for offset+bufferSize < limit {
+		readOffset := offset - needleLength
+		if readOffset < 0 {
+			readOffset = 0
+		}
+
+		n, err := s.Peek(readBuffer, readOffset)
+
 		if err != nil {
-			return i, err
+			if err == io.EOF {
+				closed = true
+			} else {
+				return offset, fmt.Errorf("Error seeking needle: %v", err)
+			}
 		}
 
-		toKeep := len(searchBuffer) - needleLength
-		if toKeep < len(searchBuffer) {
-			toKeep = len(searchBuffer)
+		i := findSubSlice(readBuffer[:n], needle)
+		if i != -1 {
+			return offset + i, nil
 		}
 
-		// increment index base when moving the searchbuffer
-		i += len(searchBuffer) - toKeep
-
-		searchBuffer = append(searchBuffer[toKeep:], readBuffer[n:]...)
-
-		offset := findSubSlice(searchBuffer, needle)
-		if offset != -1 {
-			return i + offset, nil
+		if closed {
+			return i, fmt.Errorf("Error seeking needle, EOF reached")
 		}
+
+		offset += bufferSize
 	}
 
-	return i, fmt.Errorf("Error seeking needle, limit reached")
+	return offset, fmt.Errorf("Error seeking needle, limit reached")
 }
 
 func findSubSlice(bigSlice, subSlice []byte) int {
@@ -139,16 +146,17 @@ func bytesEqual(a, b []byte) bool {
 func handleSession(session *RpcSession) {
 	header, err := ReadHeader(session)
 	if err != nil {
-		log.Printf("Error reading header: %v", err)
+		log.Printf("Error reading header: %v\n", err)
 	}
 
 	debug, err := json.Marshal(header)
-	fmt.Printf("\nHeader\n%v\n", debug)
+	fmt.Printf("\nHeader\n%v\n", string(debug))
 }
 
 type SessionRequestHeader struct {
-	Type string                 `json:"type"`
-	Args map[string]interface{} `json:"args"`
+	Type      string                 `json:"type"`
+	Timestamp int64                  `json:"timestamp"`
+	Args      map[string]interface{} `json:"args"`
 }
 
 type SessionResponseHeader struct {
