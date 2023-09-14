@@ -63,6 +63,10 @@ func (s *RpcSession) Peek(p []byte, offset int) (n int, err error) {
 		}
 	}
 
+	if offset+readRequestSize > len(s.ReadBuffer) {
+		readRequestSize = len(s.ReadBuffer) - offset
+	}
+
 	n = copy(p, s.ReadBuffer[offset:offset+readRequestSize])
 
 	return n, nil
@@ -113,12 +117,12 @@ func (s *RpcSession) ReadUntil(delimiter []byte, bufferSize int, limit int) ([]b
 		return []byte{}, err
 	}
 
-	buffer := make([]byte, dataLength)
+	buffer := make([]byte, dataLength+len(delimiter))
 	_, err = s.Read(buffer)
 	if err != nil {
 		return buffer, err
 	}
-	return buffer, nil
+	return buffer[:dataLength], nil
 }
 
 func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) (n int, err error) {
@@ -140,7 +144,6 @@ func (s *RpcSession) writeRawHeader(header interface{}) (n int, err error) {
 }
 
 func (s *RpcSession) SendCommand(cmd RpcCommand) error {
-	fmt.Println("SendCommand")
 
 	args := make(map[string]interface{})
 	err := reEncode(cmd, &args)
@@ -156,8 +159,6 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("Reading response Header")
 
 	response, err := ReadResponseHeader(s)
 

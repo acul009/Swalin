@@ -39,7 +39,10 @@ to quickly create a Cobra application.`,
 
 		rpcCmd := &rpc.PingCmd{}
 
-		session.SendCommand(rpcCmd)
+		err = session.SendCommand(rpcCmd)
+		if err != nil {
+			panic(err)
+		}
 
 		err = stream.Close()
 		if err != nil {
