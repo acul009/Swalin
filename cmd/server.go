@@ -33,9 +33,9 @@ to quickly create a Cobra application.`,
 		}
 
 		fmt.Printf("\nListening on localhost:%s\n", addr)
-
+		
 		commands := rpc.NewCommandCollection()
-		commands.Add(&rpc.PingCmd{})
+		commands.Add(rpc.PingHandler)
 
 		server := rpc.NewRpcServer(ln, commands)
 		server.Run()

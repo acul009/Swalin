@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func PingHandler() *PingCmd {
+func PingHandler() RpcCommand {
 	return &PingCmd{}
 }
 
