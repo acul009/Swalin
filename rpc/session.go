@@ -19,8 +19,9 @@ func NewRpcSession(stream quic.Stream, conn *NodeConnection) *RpcSession {
 
 type RpcSession struct {
 	quic.Stream
-	Connection *NodeConnection
-	ReadBuffer []byte
+	Connection           *NodeConnection
+	ReadBuffer           []byte
+	HandshakeSuccessfull bool
 }
 
 func (s *RpcSession) Read(p []byte) (n int, err error) {

@@ -1,0 +1,9 @@
+Certificate structure:
+
+- Root
+  - User 1
+    - Machine 1
+    - Machone 2
+  - User 2
+    - Machine 3
+    - Machine 4
