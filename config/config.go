@@ -14,16 +14,19 @@ import (
 	"time"
 )
 
-func getConfigDir() []string {
+func getConfigDir() string {
 	if os.Getenv("OS") == "Windows_NT" {
-		return []string{os.Getenv("APPDATA"), "rahnit-rmm"}
+		return filepath.Join(os.Getenv("APPDATA"), "rahnit-rmm")
 	}
-	return []string{"/etc/rahnit-rmm"}
+	return "/etc/rahnit-rmm"
 }
 
 func getConfigFilePath(filePath ...string) string {
-	pathParts := append(getConfigDir(), filePath...)
-	return filepath.Join(pathParts...)
+	pathParts := make([]string, 1, len(filePath)+1)
+	pathParts[0] = getConfigDir()
+	pathParts = append(pathParts, filePath...)
+	fullPath := filepath.Join(pathParts...)
+	return fullPath
 }
 
 func GetCaCert() (*x509.Certificate, error) {
@@ -80,6 +83,9 @@ func GenerateRootCert() error {
 		IsCA:                  true,
 	}
 
+	// Create the config dir
+	os.MkdirAll(getConfigDir(), os.ModePerm)
+
 	// Create and save the self-signed CA certificate
 	caCertDER, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, &caPrivateKey.PublicKey, caPrivateKey)
 	if err != nil {
@@ -111,6 +117,8 @@ func GenerateRootCert() error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("CA certificate and private key saved to %v and %v\n", caCertFilePath, caKeyFilePath)
 
 	return nil
 }
