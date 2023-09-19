@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"rahnit-rmm/config"
+	"rahnit-rmm/util"
 
 	"github.com/spf13/cobra"
 )
@@ -27,7 +28,13 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			if os.IsNotExist(err) {
 				fmt.Println("No root certificate found, generating one")
-				err = config.GenerateRootCert()
+
+				encryptWith, err := util.AskForNewPassword("Enter password to encrypt the root certificate:")
+				if err != nil {
+					panic(err)
+				}
+
+				err = config.GenerateRootCert(encryptWith)
 				if err != nil {
 					fmt.Printf("Error generating root certificate: %v", err)
 				}

@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"rahnit-rmm/util"
 	"time"
 )
 
@@ -58,7 +59,7 @@ const (
 	validFor       = 10 * 365 * 24 * time.Hour
 )
 
-func GenerateRootCert() error {
+func GenerateRootCert(password []byte) error {
 	// check if the CA certificate already exists
 	_, err := GetCaCert()
 	if err == nil {
@@ -109,11 +110,24 @@ func GenerateRootCert() error {
 		return err
 	}
 	defer caKeyFile.Close()
+
 	caKeyBytes, err := x509.MarshalECPrivateKey(caPrivateKey)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal CA private key: %v", err)
 	}
-	err = pem.Encode(caKeyFile, &pem.Block{Type: "EC PRIVATE KEY", Bytes: caKeyBytes})
+
+	encryptedBytes, err := util.EncryptDataWithPassword(password, caKeyBytes)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt CA private key: %v", err)
+	}
+
+	err = pem.Encode(
+		caKeyFile,
+		&pem.Block{Type: "EC PRIVATE KEY",
+			Bytes:   encryptedBytes,
+			Headers: map[string]string{"Proc-Type": "4,ENCRYPTED", "DEK-Info": "AES-CFB"},
+		})
+
 	if err != nil {
 		return err
 	}
