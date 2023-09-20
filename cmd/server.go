@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"rahnit-rmm/config"
 	"rahnit-rmm/connection"
 	"rahnit-rmm/rpc"
 
@@ -33,9 +34,20 @@ to quickly create a Cobra application.`,
 		}
 
 		fmt.Printf("\nListening on localhost:%s\n", addr)
-		
+
 		commands := rpc.NewCommandCollection()
+
+		_, err = config.GetCaCert()
 		commands.Add(rpc.PingHandler)
+		commands.Add(rpc.UploadCaHandler)
+
+		if err == nil {
+			// Server has a CA certificate
+
+		} else {
+			// Server doesn't have a CA certificate yet
+			commands.Add(rpc.UploadCaHandler)
+		}
 
 		server := rpc.NewRpcServer(ln, commands)
 		server.Run()

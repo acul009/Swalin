@@ -51,6 +51,10 @@ func (p *PingCmd) ExecuteClient(session *RpcSession) error {
 }
 
 func (p *PingCmd) ExecuteServer(session *RpcSession) error {
+	session.WriteResponseHeader(SessionResponseHeader{
+		Code: 200,
+		Msg:  "OK",
+	})
 	for {
 		data, err := session.ReadUntil([]byte("\n"), 17, 65536)
 		if err != nil {

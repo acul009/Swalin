@@ -35,9 +35,6 @@ func (c *CommandCollection) handleRequest(header SessionRequestHeader, session *
 		return fmt.Errorf("Unknown command: %v", header.Cmd)
 	}
 	command := commandHandler()
-	session.WriteResponseHeader(SessionResponseHeader{
-		Code: 200,
-		Msg:  "OK",
-	})
+	session.ReadyToWrite = false
 	return command.ExecuteServer(session)
 }

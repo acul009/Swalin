@@ -4,9 +4,13 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
+	"errors"
 	"fmt"
-	"os"
+	"io/fs"
 	"rahnit-rmm/config"
+	"rahnit-rmm/connection"
+	"rahnit-rmm/rpc"
 	"rahnit-rmm/util"
 
 	"github.com/spf13/cobra"
@@ -26,21 +30,46 @@ to quickly create a Cobra application.`,
 		fmt.Println("init called")
 		_, err := config.GetCaCert()
 		if err != nil {
-			if os.IsNotExist(err) {
+			if errors.Is(err, fs.ErrNotExist) {
 				fmt.Println("No root certificate found, generating one")
 
-				encryptWith, err := util.AskForNewPassword("Enter password to encrypt the root certificate:")
+				rootPassword, err := util.AskForNewPassword("Enter password to encrypt the root certificate:")
 				if err != nil {
 					panic(err)
 				}
 
-				err = config.GenerateRootCert(encryptWith)
+				err = config.GenerateRootCert(rootPassword)
 				if err != nil {
 					fmt.Printf("Error generating root certificate: %v", err)
 				}
+			} else {
+				panic(err)
 			}
 		} else {
 			fmt.Println("Root certificate found, skipping CA generation")
+		}
+
+		addr := "localhost:1234"
+
+		conn, err := connection.CreateClient(context.Background(), addr)
+
+		stream, err := conn.OpenStreamSync(context.Background())
+		if err != nil {
+			panic(err)
+		}
+
+		session := rpc.NewRpcSession(stream, conn)
+
+		rpcCmd := &rpc.UploadCa{}
+
+		err = session.SendCommand(rpcCmd)
+		if err != nil {
+			panic(err)
+		}
+
+		err = stream.Close()
+		if err != nil {
+			panic(err)
 		}
 
 	},

@@ -6,7 +6,9 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"fmt"
+	"io/fs"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -41,10 +43,27 @@ func GetCa(password []byte) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	return caCert, caKey, nil
 }
 
+func SaveCaCert(caCert *x509.Certificate) error {
+	_, err := GetCaCert()
+	if err == nil {
+		return fmt.Errorf("CA certificate already exists")
+	}
+
+	if !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("failed to load CA certificate: %v", err)
+	}
+
+	err = util.SaveCert(getConfigFilePath("ca.crt"), caCert.Raw)
+	if err != nil {
+		return fmt.Errorf("failed to save CA certificate: %v", err)
+	}
+	return nil
+}
+
 func GetCaCert() (*x509.Certificate, error) {
 	caCert, err := util.LoadCert(getConfigFilePath("ca.crt"))
 	if err != nil {
-		return caCert, fmt.Errorf("failed to load CA certificate: %v", err)
+		return caCert, err
 	}
 	return caCert, nil
 }

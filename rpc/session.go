@@ -11,17 +11,25 @@ import (
 
 func NewRpcSession(stream quic.Stream, conn *NodeConnection) *RpcSession {
 	return &RpcSession{
-		Stream:     stream,
-		ReadBuffer: make([]byte, 0, 1024),
-		Connection: conn,
+		Stream:       stream,
+		ReadBuffer:   make([]byte, 0, 1024),
+		Connection:   conn,
+		ReadyToWrite: true,
 	}
 }
 
 type RpcSession struct {
 	quic.Stream
-	Connection           *NodeConnection
-	ReadBuffer           []byte
-	HandshakeSuccessfull bool
+	Connection   *NodeConnection
+	ReadBuffer   []byte
+	ReadyToWrite bool
+}
+
+func (s *RpcSession) Write(p []byte) (n int, err error) {
+	if !s.ReadyToWrite {
+		return 0, fmt.Errorf("Not ready to write")
+	}
+	return s.Stream.Write(p)
 }
 
 func (s *RpcSession) Read(p []byte) (n int, err error) {
@@ -133,6 +141,9 @@ func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) (n int, err
 }
 
 func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) (n int, err error) {
+	if header.Code == 200 {
+		s.ReadyToWrite = true
+	}
 	return s.writeRawHeader(header)
 }
 
