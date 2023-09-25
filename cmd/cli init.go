@@ -28,6 +28,8 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("init called")
+		config.SetSubdir("cli")
+
 		_, err := config.GetCaCert()
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
@@ -52,6 +54,9 @@ to quickly create a Cobra application.`,
 		addr := "localhost:1234"
 
 		conn, err := connection.CreateClient(context.Background(), addr)
+		if err != nil {
+			panic(err)
+		}
 
 		stream, err := conn.OpenStreamSync(context.Background())
 		if err != nil {

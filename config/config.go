@@ -16,11 +16,21 @@ import (
 	"time"
 )
 
+var subdir = "default"
+
+func SetSubdir(s string) {
+	subdir = s
+}
+
+func GetSubdir() string {
+	return subdir
+}
+
 func getConfigDir() string {
 	if os.Getenv("OS") == "Windows_NT" {
-		return filepath.Join(os.Getenv("APPDATA"), "rahnit-rmm")
+		return filepath.Join(os.Getenv("APPDATA"), "rahnit-rmm", GetSubdir())
 	}
-	return "/etc/rahnit-rmm"
+	return filepath.Join("/etc/rahnit-rmm", GetSubdir())
 }
 
 func getConfigFilePath(filePath ...string) string {

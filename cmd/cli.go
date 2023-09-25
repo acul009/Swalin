@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"rahnit-rmm/config"
 	"rahnit-rmm/connection"
 	"rahnit-rmm/rpc"
 	"time"
@@ -25,6 +26,7 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("cli called")
+		config.SetSubdir("cli")
 
 		addr := "localhost:1234"
 
