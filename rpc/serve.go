@@ -99,7 +99,15 @@ func handleSession(session *RpcSession, commands *CommandCollection) {
 	fmt.Printf("\nHeader\n%v\n", string(debug))
 	err = commands.handleRequest(header, session)
 	if err != nil {
-		log.Printf("Error handling request: %v\n", err)
+		newErr := fmt.Errorf("Error handling request: %v", err)
+		if !session.ReadyToWrite {
+			session.WriteResponseHeader(SessionResponseHeader{
+				Code: 500,
+				Msg:  newErr.Error(),
+			})
+			session.Close()
+		}
+		log.Printf("%v\n", newErr)
 	}
 }
 
