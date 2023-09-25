@@ -17,14 +17,20 @@ type UploadCa struct {
 	EncodedCa []byte
 }
 
-func (p *UploadCa) ExecuteClient(session *RpcSession) error {
+func UploadCaCmd() (*UploadCa, error) {
 	ca, err := config.GetCaCert()
 	if err != nil {
-		return fmt.Errorf("failed to load CA certificate: %v", err)
+		return nil, fmt.Errorf("failed to load CA certificate: %v", err)
 	}
 
-	//encode CA to command
-	p.EncodedCa = ca.Raw
+	fmt.Printf("CA certificate:\n%v\n", ca.Raw)
+
+	return &UploadCa{
+		EncodedCa: ca.Raw,
+	}, nil
+}
+
+func (p *UploadCa) ExecuteClient(session *RpcSession) error {
 	return nil
 }
 

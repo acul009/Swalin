@@ -65,7 +65,10 @@ to quickly create a Cobra application.`,
 
 		session := rpc.NewRpcSession(stream, conn)
 
-		rpcCmd := &rpc.UploadCa{}
+		rpcCmd, err := rpc.UploadCaCmd()
+		if err != nil {
+			panic(err)
+		}
 
 		err = session.SendCommand(rpcCmd)
 		if err != nil {

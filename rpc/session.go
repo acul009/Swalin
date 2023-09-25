@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -60,14 +61,16 @@ func (s *RpcSession) Peek(p []byte, offset int) (n int, err error) {
 
 	currentBufferSize := len(s.ReadBuffer)
 
+	var eof error = nil
+
 	if currentBufferSize < offset+readRequestSize {
 		toRead := offset + readRequestSize - currentBufferSize
 		readBuffer := make([]byte, toRead)
 		n, err := s.Stream.Read(readBuffer)
 		s.ReadBuffer = append(s.ReadBuffer, readBuffer[:n]...)
 		if err != nil {
-			if err == io.EOF {
-
+			if errors.Is(err, io.EOF) {
+				eof = err
 			} else {
 				return n, err
 			}
@@ -76,11 +79,14 @@ func (s *RpcSession) Peek(p []byte, offset int) (n int, err error) {
 
 	if offset+readRequestSize > len(s.ReadBuffer) {
 		readRequestSize = len(s.ReadBuffer) - offset
+		if readRequestSize < 0 {
+			return 0, eof
+		}
 	}
 
 	n = copy(p, s.ReadBuffer[offset:offset+readRequestSize])
 
-	return n, nil
+	return n, eof
 }
 
 func (s *RpcSession) Seek(needle []byte, bufferSize int, limit int) (offset int, err error) {
@@ -116,7 +122,7 @@ func (s *RpcSession) Seek(needle []byte, bufferSize int, limit int) (offset int,
 			return i, fmt.Errorf("Error seeking needle, EOF reached")
 		}
 
-		offset += bufferSize
+		offset += n
 	}
 
 	return offset, fmt.Errorf("Error seeking needle, limit reached")
@@ -150,10 +156,12 @@ func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) (n int, e
 func (s *RpcSession) writeRawHeader(header interface{}) (n int, err error) {
 	headerData, err := json.Marshal(header)
 	payload := append(headerData, headerStop...)
-	n, err = s.Write(payload)
+	n, err = s.Stream.Write(payload)
 	if err != nil {
+		fmt.Printf("Error writing header to stream: %v\n", err)
 		return n, fmt.Errorf("Error writing header to stream: %v", err)
 	}
+	fmt.Printf("Header written: %v\n", string(payload))
 	return n, nil
 }
 
@@ -162,7 +170,7 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 	args := make(map[string]interface{})
 	err := reEncode(cmd, &args)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error encoding command: %v", err)
 	}
 	header := SessionRequestHeader{
 		Cmd:       cmd.GetKey(),
@@ -171,7 +179,7 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 	}
 	_, err = s.WriteRequestHeader(header)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error writing header to stream: %v", err)
 	}
 
 	response, err := ReadResponseHeader(s)
@@ -179,7 +187,7 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 	fmt.Printf("Response Header:\n%v\n", response)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("Error reading response header: %v", err)
 	}
 
 	if response.Code != 200 {
