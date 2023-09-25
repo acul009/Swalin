@@ -25,8 +25,15 @@ func UploadCaCmd() (*UploadCa, error) {
 
 	fmt.Printf("CA certificate:\n%v\n", ca.Raw)
 
+	encodedToPem := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: ca.Raw,
+	})
+
+	fmt.Println(string(encodedToPem))
+
 	return &UploadCa{
-		EncodedCa: ca.Raw,
+		EncodedCa: encodedToPem,
 	}, nil
 }
 
@@ -56,7 +63,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 	if block == nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 422,
-			Msg:  "Failed to decode CA certificate",
+			Msg:  "failed to decode certificate PEM",
 		})
 		return fmt.Errorf("failed to decode certificate PEM")
 	}
