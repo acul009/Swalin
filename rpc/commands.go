@@ -32,7 +32,7 @@ func (c *CommandCollection) handleRequest(header SessionRequestHeader, session *
 			Msg:  "Command not Found",
 		})
 		session.Close()
-		return fmt.Errorf("Unknown command: %v", header.Cmd)
+		return fmt.Errorf("unknown command: %v", header.Cmd)
 	}
 	command := commandHandler()
 	reEncode(&header.Args, &command)

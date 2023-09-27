@@ -28,7 +28,7 @@ type RpcSession struct {
 
 func (s *RpcSession) Write(p []byte) (n int, err error) {
 	if !s.ReadyToWrite {
-		return 0, fmt.Errorf("Not ready to write")
+		return 0, fmt.Errorf("not ready to write")
 	}
 	return s.Stream.Write(p)
 }
@@ -109,7 +109,7 @@ func (s *RpcSession) Seek(needle []byte, bufferSize int, limit int) (offset int,
 			if err == io.EOF {
 				closed = true
 			} else {
-				return offset, fmt.Errorf("Error seeking needle: %v", err)
+				return offset, fmt.Errorf("error seeking needle: %v", err)
 			}
 		}
 
@@ -119,13 +119,13 @@ func (s *RpcSession) Seek(needle []byte, bufferSize int, limit int) (offset int,
 		}
 
 		if closed {
-			return i, fmt.Errorf("Error seeking needle, EOF reached")
+			return i, fmt.Errorf("error seeking needle, EOF reached")
 		}
 
 		offset += n
 	}
 
-	return offset, fmt.Errorf("Error seeking needle, limit reached")
+	return offset, fmt.Errorf("error seeking needle, limit reached")
 }
 
 func (s *RpcSession) ReadUntil(delimiter []byte, bufferSize int, limit int) ([]byte, error) {
@@ -158,8 +158,8 @@ func (s *RpcSession) writeRawHeader(header interface{}) (n int, err error) {
 	payload := append(headerData, headerStop...)
 	n, err = s.Stream.Write(payload)
 	if err != nil {
-		fmt.Printf("Error writing header to stream: %v\n", err)
-		return n, fmt.Errorf("Error writing header to stream: %v", err)
+		fmt.Printf("error writing header to stream: %v\n", err)
+		return n, fmt.Errorf("error writing header to stream: %v", err)
 	}
 	fmt.Printf("Header written: %v\n", string(payload))
 	return n, nil
@@ -170,7 +170,7 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 	args := make(map[string]interface{})
 	err := reEncode(cmd, &args)
 	if err != nil {
-		return fmt.Errorf("Error encoding command: %v", err)
+		return fmt.Errorf("error encoding command: %v", err)
 	}
 	header := SessionRequestHeader{
 		Cmd:       cmd.GetKey(),
@@ -179,7 +179,7 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 	}
 	_, err = s.WriteRequestHeader(header)
 	if err != nil {
-		return fmt.Errorf("Error writing header to stream: %v", err)
+		return fmt.Errorf("error writing header to stream: %v", err)
 	}
 
 	response, err := ReadResponseHeader(s)
@@ -187,11 +187,11 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 	fmt.Printf("Response Header:\n%v\n", response)
 
 	if err != nil {
-		return fmt.Errorf("Error reading response header: %v", err)
+		return fmt.Errorf("error reading response header: %v", err)
 	}
 
 	if response.Code != 200 {
-		return fmt.Errorf("Error sending command: %v", response.Msg)
+		return fmt.Errorf("error sending command: %v", response.Msg)
 	}
 
 	return cmd.ExecuteClient(s)

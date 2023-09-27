@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"rahnit-rmm/config"
+	"rahnit-rmm/pki"
 )
 
 func UploadCaHandler() RpcCommand {
@@ -18,7 +18,7 @@ type UploadCa struct {
 }
 
 func UploadCaCmd() (*UploadCa, error) {
-	ca, err := config.GetCaCert()
+	ca, err := pki.GetCaCert()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load CA certificate: %v", err)
 	}
@@ -42,7 +42,7 @@ func (p *UploadCa) ExecuteClient(session *RpcSession) error {
 }
 
 func (p *UploadCa) ExecuteServer(session *RpcSession) error {
-	_, err := config.GetCaCert()
+	_, err := pki.GetCaCert()
 	if err == nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 409,
@@ -78,7 +78,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("failed to parse CA certificate: %v", err)
 	}
 
-	err = config.SaveCaCert(cert)
+	err = pki.SaveCaCert(cert)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,

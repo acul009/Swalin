@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"rahnit-rmm/config"
 	"rahnit-rmm/connection"
+	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
 	"rahnit-rmm/util"
 
@@ -30,7 +31,7 @@ to quickly create a Cobra application.`,
 		fmt.Println("init called")
 		config.SetSubdir("cli")
 
-		_, err := config.GetCaCert()
+		_, err := pki.GetCaCert()
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
 				fmt.Println("No root certificate found, generating one")
@@ -40,9 +41,9 @@ to quickly create a Cobra application.`,
 					panic(err)
 				}
 
-				err = config.GenerateRootCert(rootPassword)
+				err = pki.GenerateRootCert(rootPassword)
 				if err != nil {
-					fmt.Printf("Error generating root certificate: %v", err)
+					fmt.Printf("error generating root certificate: %v", err)
 				}
 			} else {
 				panic(err)

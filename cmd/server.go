@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"rahnit-rmm/config"
 	"rahnit-rmm/connection"
+	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
 
 	"github.com/spf13/cobra"
@@ -38,7 +39,7 @@ to quickly create a Cobra application.`,
 
 		commands := rpc.NewCommandCollection()
 
-		_, err = config.GetCaCert()
+		_, err = pki.GetCaCert()
 		commands.Add(rpc.PingHandler)
 		commands.Add(rpc.UploadCaHandler)
 

@@ -40,7 +40,6 @@ func NewNodeConnection(conn quic.Connection, server *RpcServer) *NodeConnection 
 
 func (n *NodeConnection) Close() {
 	delete(n.server.registeredNodes, n.nodeName)
-	n.Close()
 }
 
 type SessionRequestHeader struct {
@@ -68,7 +67,7 @@ func (s *RpcServer) Run() error {
 	for {
 		conn, err := s.Accept()
 		if err != nil {
-			log.Printf("Error accepting QUIC connection: %v", err)
+			log.Printf("error accepting QUIC connection: %v", err)
 			continue
 		}
 
@@ -81,7 +80,7 @@ func ServeConnection(conn *NodeConnection, commands *CommandCollection) {
 	for {
 		stream, err := conn.AcceptStream(context.Background())
 		if err != nil {
-			log.Printf("Error accepting QUIC stream: %v", err)
+			log.Printf("error accepting QUIC stream: %v", err)
 			return
 		}
 		go handleSession(NewRpcSession(stream, conn), commands)
@@ -92,14 +91,18 @@ func ServeConnection(conn *NodeConnection, commands *CommandCollection) {
 func handleSession(session *RpcSession, commands *CommandCollection) {
 	header, err := ReadRequestHeader(session)
 	if err != nil {
-		log.Printf("Error reading header: %v\n", err)
+		log.Printf("error reading header: %v\n", err)
 	}
 
 	debug, err := json.Marshal(header)
+	if err != nil {
+		log.Printf("error marshalling header: %v\n", err)
+	}
+
 	fmt.Printf("\nHeader\n%v\n", string(debug))
 	err = commands.handleRequest(header, session)
 	if err != nil {
-		newErr := fmt.Errorf("Error handling request: %v", err)
+		newErr := fmt.Errorf("error handling request: %v", err)
 		log.Printf("%v\n", newErr)
 	}
 }

@@ -1,4 +1,4 @@
-package util
+package pki
 
 import (
 	"crypto/ecdsa"
@@ -6,20 +6,11 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
-	"path/filepath"
+	"rahnit-rmm/util"
 )
 
-func CreateParentDir(path string) error {
-	parentDirPath := filepath.Dir(path)
-	err := os.MkdirAll(parentDirPath, os.ModePerm)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func SaveCert(filepath string, cert []byte) error {
-	err := CreateParentDir(filepath)
+func SaveCertToFile(filepath string, cert []byte) error {
+	err := util.CreateParentDir(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to create parent directory: %v", err)
 	}
@@ -37,7 +28,7 @@ func SaveCert(filepath string, cert []byte) error {
 	return nil
 }
 
-func LoadCert(filepath string) (*x509.Certificate, error) {
+func LoadCertFromFile(filepath string) (*x509.Certificate, error) {
 	// Read the certificate file
 	certPEM, err := os.ReadFile(filepath)
 
@@ -60,8 +51,8 @@ func LoadCert(filepath string) (*x509.Certificate, error) {
 	return cert, nil
 }
 
-func SaveCertKey(filepath string, key *ecdsa.PrivateKey, password []byte) error {
-	err := CreateParentDir(filepath)
+func SaveCertKeyToFile(filepath string, key *ecdsa.PrivateKey, password []byte) error {
+	err := util.CreateParentDir(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to create parent directory: %v", err)
 	}
@@ -77,7 +68,7 @@ func SaveCertKey(filepath string, key *ecdsa.PrivateKey, password []byte) error 
 		return fmt.Errorf("failed to marshal CA private key: %v", err)
 	}
 
-	encryptedBytes, err := EncryptDataWithPassword(password, caKeyBytes)
+	encryptedBytes, err := util.EncryptDataWithPassword(password, caKeyBytes)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt CA private key: %v", err)
 	}
@@ -96,7 +87,7 @@ func SaveCertKey(filepath string, key *ecdsa.PrivateKey, password []byte) error 
 	return nil
 }
 
-func LoadCertKey(filepath string, password []byte) (*ecdsa.PrivateKey, error) {
+func LoadCertKeyFromFile(filepath string, password []byte) (*ecdsa.PrivateKey, error) {
 	caKeyPEM, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, err
@@ -108,7 +99,7 @@ func LoadCertKey(filepath string, password []byte) (*ecdsa.PrivateKey, error) {
 		return nil, fmt.Errorf("failed to decode CA private key PEM")
 	}
 
-	decryptedData, err := DecryptDataWithPassword(password, block.Bytes)
+	decryptedData, err := util.DecryptDataWithPassword(password, block.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt CA private key: %v", err)
 	}
