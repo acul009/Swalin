@@ -31,7 +31,7 @@ func SaveCaCert(caCert *x509.Certificate) error {
 		return fmt.Errorf("failed to load CA certificate: %v", err)
 	}
 
-	err = SaveCertToFile(config.GetFilePath("ca.crt"), caCert.Raw)
+	err = SaveCertToFile(config.GetFilePath(caCertFilePath), caCert.Raw)
 	if err != nil {
 		return fmt.Errorf("failed to save CA certificate: %v", err)
 	}
@@ -39,7 +39,7 @@ func SaveCaCert(caCert *x509.Certificate) error {
 }
 
 func GetCaCert() (*x509.Certificate, error) {
-	caCert, err := LoadCertFromFile(config.GetFilePath("ca.crt"))
+	caCert, err := LoadCertFromFile(config.GetFilePath(caCertFilePath))
 	if err != nil {
 		return caCert, err
 	}
@@ -47,7 +47,7 @@ func GetCaCert() (*x509.Certificate, error) {
 }
 
 func GetCaKey(password []byte) (*ecdsa.PrivateKey, error) {
-	caKey, err := LoadCertKeyFromFile(config.GetFilePath("ca.key"), password)
+	caKey, err := LoadCertKeyFromFile(config.GetFilePath(caKeyFilePath), password)
 	if err != nil {
 		return caKey, fmt.Errorf("failed to load CA certificate: %v", err)
 	}
