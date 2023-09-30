@@ -4,17 +4,22 @@ import (
 	"context"
 	"fmt"
 	"rahnit-rmm/connection"
+	"sync"
+
+	"github.com/quic-go/quic-go"
 )
 
 type RpcClientState int16
 
 const (
-	RpcClientCreated RpcClientState = iota
+	RpcClientRunning RpcClientState = iota
+	RpcClientClosed
 )
 
 type RpcClient struct {
 	conn  *RpcConnection
 	state RpcClientState
+	mutex sync.Mutex
 }
 
 func NewRpcClient(ctx context.Context, addr string) (*RpcClient, error) {
@@ -25,11 +30,17 @@ func NewRpcClient(ctx context.Context, addr string) (*RpcClient, error) {
 	rpcConn := NewRpcConnection(conn, nil)
 	return &RpcClient{
 		conn:  rpcConn,
-		state: RpcClientCreated,
+		state: RpcClientRunning,
 	}, nil
 }
 
 func (c *RpcClient) SendCommand(ctx context.Context, cmd RpcCommand) error {
+	c.mutex.Lock()
+	if c.state != RpcClientRunning {
+		c.mutex.Unlock()
+		return fmt.Errorf("RPC client not running anymore")
+	}
+	c.mutex.Unlock()
 	session, err := c.conn.OpenSession(ctx)
 	if err != nil {
 		return err
@@ -48,6 +59,18 @@ func (c *RpcClient) SendCommand(ctx context.Context, cmd RpcCommand) error {
 	return nil
 }
 
-func (c *RpcClient) Close() error {
+func (c *RpcClient) Close(code quic.ApplicationErrorCode, msg string) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	if c.state != RpcClientRunning {
+		return fmt.Errorf("RPC client not running anymore")
+	}
 
+	c.state = RpcClientClosed
+
+	err := c.conn.Close(code, msg)
+	if err != nil {
+		return fmt.Errorf("error closing connection: %v", err)
+	}
+	return nil
 }

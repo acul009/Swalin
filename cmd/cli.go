@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"rahnit-rmm/config"
-	"rahnit-rmm/connection"
 	"rahnit-rmm/rpc"
 	"time"
 
@@ -30,23 +29,16 @@ to quickly create a Cobra application.`,
 
 		addr := "localhost:1234"
 
-		conn, err := connection.CreateClient(context.Background(), addr)
-
-		stream, err := conn.OpenStreamSync(context.Background())
-		if err != nil {
-			panic(err)
-		}
-
-		session := rpc.NewRpcSession(stream, conn)
+		client, err := rpc.NewRpcClient(context.Background(), addr)
 
 		rpcCmd := &rpc.PingCmd{}
 
-		err = session.SendCommand(rpcCmd)
+		err = client.SendCommand(context.Background(), rpcCmd)
 		if err != nil {
 			panic(err)
 		}
 
-		err = stream.Close()
+		err = client.Close(200, "OK")
 		if err != nil {
 			panic(err)
 		}
