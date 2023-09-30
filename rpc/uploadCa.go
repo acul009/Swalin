@@ -5,7 +5,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/fs"
 	"rahnit-rmm/pki"
 )
 
@@ -50,7 +49,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 		})
 		return nil
 	}
-	if !errors.Is(err, fs.ErrNotExist) {
+	if !errors.Is(err, pki.ErrMissingCaCert) {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,
 			Msg:  "Failed to load CA certificate",
