@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"rahnit-rmm/config"
-	"rahnit-rmm/connection"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
 	"rahnit-rmm/util"
@@ -32,7 +31,7 @@ to quickly create a Cobra application.`,
 
 		_, err := pki.GetCaCert()
 		if err != nil {
-			if errors.Is(err, pki.ErrMissingCaCert) {
+			if errors.Is(err, pki.ErrNoCaCert) {
 				fmt.Println("No root certificate found, generating one")
 
 				rootPassword, err := util.AskForNewPassword("Enter password to encrypt the root certificate:")
@@ -53,10 +52,7 @@ to quickly create a Cobra application.`,
 
 		addr := "localhost:1234"
 
-		conn, err := connection.CreateClient(context.Background(), addr)
-		if err != nil {
-			panic(err)
-		}
+		conn, err := rpc.NewRpcClient(context.Background(), addr)
 
 		stream, err := conn.OpenStreamSync(context.Background())
 		if err != nil {

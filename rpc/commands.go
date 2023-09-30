@@ -37,5 +37,7 @@ func (c *CommandCollection) handleRequest(header SessionRequestHeader, session *
 	command := commandHandler()
 	reEncode(&header.Args, &command)
 	session.ReadyToWrite = false
-	return command.ExecuteServer(session)
+	err := command.ExecuteServer(session)
+	session.Close()
+	return err
 }

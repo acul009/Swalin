@@ -7,20 +7,22 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"math/big"
-	"rahnit-rmm/rpc"
 
 	"github.com/quic-go/quic-go"
 )
 
-func CreateClient(ctx context.Context, addr string) (*rpc.NodeConnection, error) {
+func CreateClient(ctx context.Context, addr string) (quic.Connection, error) {
 	tlsConfig := generateClientTLSConfig()
 	quicConfig := generateQuicConfig()
 	conn, err := quic.DialAddr(ctx, addr, tlsConfig, quicConfig)
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating QUIC client: %v", err)
 	}
-	return rpc.NewNodeConnection(conn, nil), nil
+
+	return conn, nil
 }
 
 func CreateServer(addr string) (*quic.Listener, error) {

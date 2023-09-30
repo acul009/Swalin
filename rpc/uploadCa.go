@@ -49,7 +49,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 		})
 		return nil
 	}
-	if !errors.Is(err, pki.ErrMissingCaCert) {
+	if !errors.Is(err, pki.ErrNoCaCert) {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,
 			Msg:  "Failed to load CA certificate",

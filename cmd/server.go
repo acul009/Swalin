@@ -4,9 +4,9 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"rahnit-rmm/config"
-	"rahnit-rmm/connection"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
 
@@ -29,29 +29,28 @@ to quickly create a Cobra application.`,
 
 		addr := "localhost:1234"
 
-		ln, err := connection.CreateServer(addr)
-
-		if err != nil {
-			panic(err)
-		}
-
 		fmt.Printf("\nListening on localhost:%s\n", addr)
 
 		commands := rpc.NewCommandCollection()
 
-		_, err = pki.GetCaCert()
-		commands.Add(rpc.PingHandler)
-		commands.Add(rpc.UploadCaHandler)
+		_, err := pki.GetCaCert()
 
 		if err == nil {
 			// Server has a CA certificate
 
 		} else {
-			// Server doesn't have a CA certificate yet
-			commands.Add(rpc.UploadCaHandler)
+			if errors.Is(err, pki.ErrNoCaCert) {
+				// Server doesn't have a CA certificate yet
+				commands.Add(rpc.UploadCaHandler)
+			} else {
+				panic(err)
+			}
 		}
 
-		server := rpc.NewRpcServer(ln, commands)
+		server, err := rpc.NewRpcServer(addr, commands)
+		if err != nil {
+			panic(err)
+		}
 		server.Run()
 
 	},

@@ -5,12 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/quic-go/quic-go"
 )
 
-func NewRpcSession(stream quic.Stream, conn *NodeConnection) *RpcSession {
+type RpcSession struct {
+	quic.Stream
+	Connection   *RpcConnection
+	ReadBuffer   []byte
+	Uuid         uuid.UUID
+	ReadyToWrite bool
+}
+
+func NewRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 	return &RpcSession{
 		Stream:       stream,
 		ReadBuffer:   make([]byte, 0, 1024),
@@ -19,11 +30,23 @@ func NewRpcSession(stream quic.Stream, conn *NodeConnection) *RpcSession {
 	}
 }
 
-type RpcSession struct {
-	quic.Stream
-	Connection   *NodeConnection
-	ReadBuffer   []byte
-	ReadyToWrite bool
+func handleSession(session *RpcSession, commands *CommandCollection) {
+	header, err := ReadRequestHeader(session)
+	if err != nil {
+		log.Printf("error reading header: %v\n", err)
+	}
+
+	debug, err := json.Marshal(header)
+	if err != nil {
+		log.Printf("error marshalling header: %v\n", err)
+	}
+
+	fmt.Printf("\nHeader\n%v\n", string(debug))
+	err = commands.handleRequest(header, session)
+	if err != nil {
+		newErr := fmt.Errorf("error handling request: %v", err)
+		log.Printf("%v\n", newErr)
+	}
 }
 
 func (s *RpcSession) Write(p []byte) (n int, err error) {
@@ -195,6 +218,64 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 	}
 
 	return cmd.ExecuteClient(s)
+}
+
+func (s *RpcSession) Close() error {
+	err := s.Stream.Close()
+	return err
+}
+
+var headerStop = []byte("\n")
+var headerDelimiter = "|"
+
+type SessionRequestHeader struct {
+	Cmd       string                 `json:"cmd"`
+	Timestamp int64                  `json:"timestamp"`
+	Args      map[string]interface{} `json:"args"`
+}
+
+type SessionResponseHeader struct {
+	Code int         `json:"code"`
+	Msg  string      `json:"msg"`
+	Info interface{} `json:"info"`
+}
+
+func ReadRequestHeader(session *RpcSession) (SessionRequestHeader, error) {
+	headerData, err := session.ReadUntil(headerStop, 1024, 65536)
+	if err != nil {
+		return SessionRequestHeader{}, err
+	}
+
+	header := string(headerData)
+
+	headerParts := strings.Split(header, headerDelimiter)
+
+	decodedHeader := SessionRequestHeader{}
+	err = json.Unmarshal([]byte(headerParts[0]), &decodedHeader)
+	if err != nil {
+		return SessionRequestHeader{}, err
+	}
+
+	return decodedHeader, nil
+}
+
+func ReadResponseHeader(session *RpcSession) (SessionResponseHeader, error) {
+	headerData, err := session.ReadUntil(headerStop, 1024, 65536)
+	if err != nil {
+		return SessionResponseHeader{}, err
+	}
+
+	header := string(headerData)
+
+	headerParts := strings.Split(header, headerDelimiter)
+
+	decodedHeader := SessionResponseHeader{}
+	err = json.Unmarshal([]byte(headerParts[0]), &decodedHeader)
+	if err != nil {
+		return SessionResponseHeader{}, err
+	}
+
+	return decodedHeader, nil
 }
 
 func findSubSlice(bigSlice, subSlice []byte) int {

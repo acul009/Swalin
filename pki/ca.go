@@ -10,22 +10,22 @@ import (
 )
 
 // Custom go error to indicate that the CA certificate is missing
-type missingCaCertError struct {
+type noCaCertError struct {
 	cause error
 }
 
-func (e missingCaCertError) Error() string {
+func (e noCaCertError) Error() string {
 	return fmt.Errorf("CA certificate not found: %w", e.cause).Error()
 }
 
-func (e missingCaCertError) Unwrap() error {
+func (e noCaCertError) Unwrap() error {
 	return e.cause
 }
 
-var ErrMissingCaCert = missingCaCertError{}
+var ErrNoCaCert = noCaCertError{}
 
-func (e missingCaCertError) Is(target error) bool {
-	_, ok := target.(missingCaCertError)
+func (e noCaCertError) Is(target error) bool {
+	_, ok := target.(noCaCertError)
 	return ok
 }
 
@@ -52,7 +52,7 @@ func SaveCaCert(caCert *x509.Certificate) error {
 		return fmt.Errorf("CA certificate already exists")
 	}
 
-	if !errors.Is(err, ErrMissingCaCert) {
+	if !errors.Is(err, ErrNoCaCert) {
 		return fmt.Errorf("failed to load existing CA certificate: %v", err)
 	}
 
@@ -67,7 +67,7 @@ func GetCaCert() (*x509.Certificate, error) {
 	caCert, err := LoadCertFromFile(config.GetFilePath(caCertFilePath))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return caCert, missingCaCertError{cause: err}
+			return caCert, noCaCertError{cause: err}
 		}
 		return caCert, err
 	}
@@ -85,7 +85,7 @@ func GetCaKey(password []byte) (*ecdsa.PrivateKey, error) {
 func InitCa(password []byte) error {
 	if _, err := GetCaCert(); err == nil {
 		return fmt.Errorf("CA certificate already exists")
-	} else if !errors.Is(err, ErrMissingCaCert) {
+	} else if !errors.Is(err, ErrNoCaCert) {
 		return fmt.Errorf("failed to load existing CA certificate: %v", err)
 	}
 
