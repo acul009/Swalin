@@ -7,31 +7,52 @@ import (
 	"io"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/quic-go/quic-go"
 )
 
+type RpcSessionState int16
+
+const (
+	RpcSessionCreated RpcSessionState = iota
+	RpcSessionRequested
+	RpcSessionOpen
+	RpcSessionClosed
+)
+
 type RpcSession struct {
 	quic.Stream
-	Connection   *RpcConnection
-	ReadBuffer   []byte
-	Uuid         uuid.UUID
-	ReadyToWrite bool
+	Connection *RpcConnection
+	ReadBuffer []byte
+	Uuid       uuid.UUID
+	state      RpcSessionState
+	mutex      sync.Mutex
 }
 
 func NewRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 	return &RpcSession{
-		Stream:       stream,
-		ReadBuffer:   make([]byte, 0, 1024),
-		Connection:   conn,
-		ReadyToWrite: true,
+		Stream:     stream,
+		ReadBuffer: make([]byte, 0, 1024),
+		Connection: conn,
+		Uuid:       uuid.New(),
+		state:      RpcSessionCreated,
 	}
 }
 
-func handleSession(session *RpcSession, commands *CommandCollection) {
-	header, err := ReadRequestHeader(session)
+func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
+
+	s.mutex.Lock()
+	if s.state != RpcSessionCreated {
+		s.mutex.Unlock()
+		return fmt.Errorf("RPC session not created")
+	}
+	s.state = RpcSessionOpen
+	s.mutex.Unlock()
+
+	header, err := s.ReadRequestHeader()
 	if err != nil {
 		log.Printf("error reading header: %v\n", err)
 	}
@@ -42,17 +63,43 @@ func handleSession(session *RpcSession, commands *CommandCollection) {
 	}
 
 	fmt.Printf("\nHeader\n%v\n", string(debug))
-	err = commands.handleRequest(header, session)
-	if err != nil {
-		newErr := fmt.Errorf("error handling request: %v", err)
-		log.Printf("%v\n", newErr)
+
+	handler, ok := commands.Get(header.Cmd)
+	if !ok {
+		s.WriteResponseHeader(SessionResponseHeader{
+			Code: 404,
+			Msg:  "command not found",
+		})
+		return fmt.Errorf("unknown command: %s", header.Cmd)
 	}
+
+	cmd := handler()
+
+	err = reEncode(header.Args, cmd)
+	if err != nil {
+		s.WriteResponseHeader(SessionResponseHeader{
+			Code: 422,
+			Msg:  "error unmarshalling command",
+		})
+		return fmt.Errorf("error unmarshalling command: %v", err)
+	}
+
+	err = cmd.ExecuteServer(s)
+
+	if err != nil {
+
+	}
+
+	return nil
 }
 
 func (s *RpcSession) Write(p []byte) (n int, err error) {
-	if !s.ReadyToWrite {
-		return 0, fmt.Errorf("not ready to write")
+	s.mutex.Lock()
+	if s.state != RpcSessionOpen {
+		s.mutex.Unlock()
+		return 0, fmt.Errorf("RPC session not open")
 	}
+	s.mutex.Unlock()
 	return s.Stream.Write(p)
 }
 
@@ -169,11 +216,20 @@ func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) (n int, err
 	return s.writeRawHeader(header)
 }
 
-func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) (n int, err error) {
-	if header.Code == 200 {
-		s.ReadyToWrite = true
+func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) (int, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if s.state != RpcSessionOpen {
+		return 0, fmt.Errorf("RPC connection not open")
 	}
-	return s.writeRawHeader(header)
+
+	n, err := s.writeRawHeader(header)
+	s.state = RpcSessionClosed
+	if err != nil {
+		return n, fmt.Errorf("error writing header to stream: %v", err)
+	}
+
+	return n, nil
 }
 
 func (s *RpcSession) writeRawHeader(header interface{}) (n int, err error) {
@@ -205,7 +261,7 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 		return fmt.Errorf("error writing header to stream: %v", err)
 	}
 
-	response, err := ReadResponseHeader(s)
+	response, err := s.readResponseHeader()
 
 	fmt.Printf("Response Header:\n%v\n", response)
 
@@ -240,8 +296,8 @@ type SessionResponseHeader struct {
 	Info interface{} `json:"info"`
 }
 
-func ReadRequestHeader(session *RpcSession) (SessionRequestHeader, error) {
-	headerData, err := session.ReadUntil(headerStop, 1024, 65536)
+func (s *RpcSession) ReadRequestHeader() (SessionRequestHeader, error) {
+	headerData, err := s.ReadUntil(headerStop, 1024, 65536)
 	if err != nil {
 		return SessionRequestHeader{}, err
 	}
@@ -259,8 +315,16 @@ func ReadRequestHeader(session *RpcSession) (SessionRequestHeader, error) {
 	return decodedHeader, nil
 }
 
-func ReadResponseHeader(session *RpcSession) (SessionResponseHeader, error) {
-	headerData, err := session.ReadUntil(headerStop, 1024, 65536)
+func (s *RpcSession) readResponseHeader() (SessionResponseHeader, error) {
+
+	s.mutex.Lock()
+	if s.state != RpcSessionRequested {
+		s.mutex.Unlock()
+		return SessionResponseHeader{}, fmt.Errorf("RPC connection yet requested")
+	}
+	s.mutex.Unlock()
+
+	headerData, err := s.ReadUntil(headerStop, 1024, 65536)
 	if err != nil {
 		return SessionResponseHeader{}, err
 	}
@@ -274,6 +338,14 @@ func ReadResponseHeader(session *RpcSession) (SessionResponseHeader, error) {
 	if err != nil {
 		return SessionResponseHeader{}, err
 	}
+
+	s.mutex.Lock()
+	if decodedHeader.Code >= 200 || decodedHeader.Code <= 299 {
+		s.state = RpcSessionOpen
+	} else {
+		s.state = RpcSessionClosed
+	}
+	s.mutex.Unlock()
 
 	return decodedHeader, nil
 }

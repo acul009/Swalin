@@ -58,7 +58,7 @@ func (conn *RpcConnection) serve(commands *CommandCollection) error {
 			log.Printf("error accepting QUIC stream: %v", err)
 		}
 
-		go handleSession(session, commands)
+		go session.handleIncoming(commands)
 	}
 
 }

@@ -1,7 +1,5 @@
 package rpc
 
-import "fmt"
-
 type RpcCommandHandler func() RpcCommand
 
 type RpcCommand interface {
@@ -24,20 +22,7 @@ func (c *CommandCollection) Add(cmdHandler RpcCommandHandler) {
 	c.Commands[cmdHandler().GetKey()] = cmdHandler
 }
 
-func (c *CommandCollection) handleRequest(header SessionRequestHeader, session *RpcSession) error {
-	commandHandler, ok := c.Commands[header.Cmd]
-	if !ok {
-		session.WriteResponseHeader(SessionResponseHeader{
-			Code: 404,
-			Msg:  "Command not Found",
-		})
-		session.Close()
-		return fmt.Errorf("unknown command: %v", header.Cmd)
-	}
-	command := commandHandler()
-	reEncode(&header.Args, &command)
-	session.ReadyToWrite = false
-	err := command.ExecuteServer(session)
-	session.Close()
-	return err
+func (c *CommandCollection) Get(cmd string) (RpcCommandHandler, bool) {
+	commandHandler, ok := c.Commands[cmd]
+	return commandHandler, ok
 }
