@@ -213,6 +213,13 @@ func (s *RpcSession) ReadUntil(delimiter []byte, bufferSize int, limit int) ([]b
 }
 
 func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) (n int, err error) {
+	s.mutex.Lock()
+	if s.state != RpcSessionCreated {
+		s.mutex.Unlock()
+		return 0, fmt.Errorf("RPC session not already in use")
+	}
+	s.state = RpcSessionRequested
+	s.mutex.Unlock()
 	return s.writeRawHeader(header)
 }
 
@@ -234,6 +241,9 @@ func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) (int, err
 
 func (s *RpcSession) writeRawHeader(header interface{}) (n int, err error) {
 	headerData, err := json.Marshal(header)
+	if err != nil {
+		return n, fmt.Errorf("error marshalling header: %v", err)
+	}
 	payload := append(headerData, headerStop...)
 	n, err = s.Stream.Write(payload)
 	if err != nil {
@@ -320,7 +330,7 @@ func (s *RpcSession) readResponseHeader() (SessionResponseHeader, error) {
 	s.mutex.Lock()
 	if s.state != RpcSessionRequested {
 		s.mutex.Unlock()
-		return SessionResponseHeader{}, fmt.Errorf("RPC connection yet requested")
+		return SessionResponseHeader{}, fmt.Errorf("RPC connection not yet requested")
 	}
 	s.mutex.Unlock()
 
