@@ -13,11 +13,11 @@ import (
 )
 
 type RpcServer struct {
-	listener        *quic.Listener
-	commands        *CommandCollection
-	state           RpcServerState
-	openConnections map[uuid.UUID]*RpcConnection
-	mutex           sync.Mutex
+	listener          *quic.Listener
+	commands          *CommandCollection
+	state             RpcServerState
+	activeConnections map[uuid.UUID]*RpcConnection
+	mutex             sync.Mutex
 }
 
 type RpcServerState int16
@@ -35,11 +35,11 @@ func NewRpcServer(addr string, commands *CommandCollection) (*RpcServer, error) 
 	}
 
 	return &RpcServer{
-		listener:        listener,
-		commands:        commands,
-		state:           RpcServerCreated,
-		openConnections: make(map[uuid.UUID]*RpcConnection),
-		mutex:           sync.Mutex{},
+		listener:          listener,
+		commands:          commands,
+		state:             RpcServerCreated,
+		activeConnections: make(map[uuid.UUID]*RpcConnection),
+		mutex:             sync.Mutex{},
 	}, nil
 }
 
@@ -49,11 +49,13 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 		return nil, err
 	}
 	var connection *RpcConnection
+
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	for i := 0; i < 10; i++ {
 		newConnection := NewRpcConnection(conn, s)
-		if _, ok := s.openConnections[newConnection.Uuid]; !ok {
+		if _, ok := s.activeConnections[newConnection.Uuid]; !ok {
 			connection = newConnection
 			break
 		}
@@ -61,14 +63,14 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 	if connection == nil {
 		return nil, fmt.Errorf("Multiple UUID collisions, this should mathematically be impossible")
 	}
-	s.openConnections[connection.Uuid] = connection
+	s.activeConnections[connection.Uuid] = connection
 	return connection, nil
 }
 
 func (s *RpcServer) removeConnection(uuid uuid.UUID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	delete(s.openConnections, uuid)
+	delete(s.activeConnections, uuid)
 }
 
 func (s *RpcServer) Run() error {
@@ -103,10 +105,13 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 
 	// lock server before closing
 	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	if s.state != RpcServerRunning {
+		s.mutex.Unlock()
 		return fmt.Errorf("RPC server not running")
 	}
+	s.state = RpcServerStopped
+	connectionsToClose := s.activeConnections
+	s.mutex.Unlock()
 
 	// tell all connections to close
 	errChan := make(chan error)
@@ -114,14 +119,14 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 
 	errorList := make([]error, 0)
 
-	for _, connection := range s.openConnections {
+	for _, connection := range connectionsToClose {
 		wg.Add(1)
 		go func(connection *RpcConnection) {
-			defer wg.Done()
 			err := connection.Close(code, msg)
 			if err != nil {
 				errChan <- err
 			}
+			wg.Done()
 		}(connection)
 	}
 
@@ -138,9 +143,6 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 	if len(errorList) > 0 {
 		err = fmt.Errorf("error closing connections: %w", errors.Join(errorList...))
 	}
-
-	// actually close listener
-	s.state = RpcServerStopped
 
 	s.listener.Close()
 

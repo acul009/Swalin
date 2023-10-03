@@ -287,6 +287,16 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 }
 
 func (s *RpcSession) Close() error {
+	s.mutex.Lock()
+	if s.state != RpcSessionOpen {
+		s.mutex.Unlock()
+		return fmt.Errorf("RPC session not open")
+	}
+	s.state = RpcSessionClosed
+	s.mutex.Unlock()
+
+	s.Connection.removeSession(s.Uuid)
+
 	err := s.Stream.Close()
 	return err
 }
