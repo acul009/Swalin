@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"rahnit-rmm/ent/predicate"
+	"rahnit-rmm/ent/user"
 	"sync"
 
 	"entgo.io/ent"
@@ -28,13 +29,17 @@ const (
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*User, error)
-	predicates    []predicate.User
+	op                     Op
+	typ                    string
+	id                     *int
+	username               *string
+	password_double_hashed *string
+	certificate            *string
+	encrypted_private_key  *string
+	clearedFields          map[string]struct{}
+	done                   bool
+	oldValue               func(context.Context) (*User, error)
+	predicates             []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -135,6 +140,150 @@ func (m *UserMutation) IDs(ctx context.Context) ([]int, error) {
 	}
 }
 
+// SetUsername sets the "username" field.
+func (m *UserMutation) SetUsername(s string) {
+	m.username = &s
+}
+
+// Username returns the value of the "username" field in the mutation.
+func (m *UserMutation) Username() (r string, exists bool) {
+	v := m.username
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUsername returns the old "username" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldUsername(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUsername is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUsername requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUsername: %w", err)
+	}
+	return oldValue.Username, nil
+}
+
+// ResetUsername resets all changes to the "username" field.
+func (m *UserMutation) ResetUsername() {
+	m.username = nil
+}
+
+// SetPasswordDoubleHashed sets the "password_double_hashed" field.
+func (m *UserMutation) SetPasswordDoubleHashed(s string) {
+	m.password_double_hashed = &s
+}
+
+// PasswordDoubleHashed returns the value of the "password_double_hashed" field in the mutation.
+func (m *UserMutation) PasswordDoubleHashed() (r string, exists bool) {
+	v := m.password_double_hashed
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPasswordDoubleHashed returns the old "password_double_hashed" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldPasswordDoubleHashed(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPasswordDoubleHashed is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPasswordDoubleHashed requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPasswordDoubleHashed: %w", err)
+	}
+	return oldValue.PasswordDoubleHashed, nil
+}
+
+// ResetPasswordDoubleHashed resets all changes to the "password_double_hashed" field.
+func (m *UserMutation) ResetPasswordDoubleHashed() {
+	m.password_double_hashed = nil
+}
+
+// SetCertificate sets the "certificate" field.
+func (m *UserMutation) SetCertificate(s string) {
+	m.certificate = &s
+}
+
+// Certificate returns the value of the "certificate" field in the mutation.
+func (m *UserMutation) Certificate() (r string, exists bool) {
+	v := m.certificate
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCertificate returns the old "certificate" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldCertificate(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCertificate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCertificate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCertificate: %w", err)
+	}
+	return oldValue.Certificate, nil
+}
+
+// ResetCertificate resets all changes to the "certificate" field.
+func (m *UserMutation) ResetCertificate() {
+	m.certificate = nil
+}
+
+// SetEncryptedPrivateKey sets the "encrypted_private_key" field.
+func (m *UserMutation) SetEncryptedPrivateKey(s string) {
+	m.encrypted_private_key = &s
+}
+
+// EncryptedPrivateKey returns the value of the "encrypted_private_key" field in the mutation.
+func (m *UserMutation) EncryptedPrivateKey() (r string, exists bool) {
+	v := m.encrypted_private_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEncryptedPrivateKey returns the old "encrypted_private_key" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldEncryptedPrivateKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEncryptedPrivateKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEncryptedPrivateKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEncryptedPrivateKey: %w", err)
+	}
+	return oldValue.EncryptedPrivateKey, nil
+}
+
+// ResetEncryptedPrivateKey resets all changes to the "encrypted_private_key" field.
+func (m *UserMutation) ResetEncryptedPrivateKey() {
+	m.encrypted_private_key = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -169,7 +318,19 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 0)
+	fields := make([]string, 0, 4)
+	if m.username != nil {
+		fields = append(fields, user.FieldUsername)
+	}
+	if m.password_double_hashed != nil {
+		fields = append(fields, user.FieldPasswordDoubleHashed)
+	}
+	if m.certificate != nil {
+		fields = append(fields, user.FieldCertificate)
+	}
+	if m.encrypted_private_key != nil {
+		fields = append(fields, user.FieldEncryptedPrivateKey)
+	}
 	return fields
 }
 
@@ -177,6 +338,16 @@ func (m *UserMutation) Fields() []string {
 // return value indicates that this field was not set, or was not defined in the
 // schema.
 func (m *UserMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case user.FieldUsername:
+		return m.Username()
+	case user.FieldPasswordDoubleHashed:
+		return m.PasswordDoubleHashed()
+	case user.FieldCertificate:
+		return m.Certificate()
+	case user.FieldEncryptedPrivateKey:
+		return m.EncryptedPrivateKey()
+	}
 	return nil, false
 }
 
@@ -184,6 +355,16 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 // returned if the mutation operation is not UpdateOne, or the query to the
 // database failed.
 func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case user.FieldUsername:
+		return m.OldUsername(ctx)
+	case user.FieldPasswordDoubleHashed:
+		return m.OldPasswordDoubleHashed(ctx)
+	case user.FieldCertificate:
+		return m.OldCertificate(ctx)
+	case user.FieldEncryptedPrivateKey:
+		return m.OldEncryptedPrivateKey(ctx)
+	}
 	return nil, fmt.Errorf("unknown User field %s", name)
 }
 
@@ -192,6 +373,34 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 // type.
 func (m *UserMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case user.FieldUsername:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUsername(v)
+		return nil
+	case user.FieldPasswordDoubleHashed:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPasswordDoubleHashed(v)
+		return nil
+	case user.FieldCertificate:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCertificate(v)
+		return nil
+	case user.FieldEncryptedPrivateKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEncryptedPrivateKey(v)
+		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)
 }
@@ -213,6 +422,8 @@ func (m *UserMutation) AddedField(name string) (ent.Value, bool) {
 // the field is not defined in the schema, or if the type mismatched the field
 // type.
 func (m *UserMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown User numeric field %s", name)
 }
 
@@ -238,6 +449,20 @@ func (m *UserMutation) ClearField(name string) error {
 // ResetField resets all changes in the mutation for the field with the given name.
 // It returns an error if the field is not defined in the schema.
 func (m *UserMutation) ResetField(name string) error {
+	switch name {
+	case user.FieldUsername:
+		m.ResetUsername()
+		return nil
+	case user.FieldPasswordDoubleHashed:
+		m.ResetPasswordDoubleHashed()
+		return nil
+	case user.FieldCertificate:
+		m.ResetCertificate()
+		return nil
+	case user.FieldEncryptedPrivateKey:
+		m.ResetEncryptedPrivateKey()
+		return nil
+	}
 	return fmt.Errorf("unknown User field %s", name)
 }
 

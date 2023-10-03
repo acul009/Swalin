@@ -87,7 +87,8 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 	err = cmd.ExecuteServer(s)
 
 	if err != nil {
-
+		log.Printf("error executing command: %v", err)
+		return fmt.Errorf("error executing command: %v", err)
 	}
 
 	return nil

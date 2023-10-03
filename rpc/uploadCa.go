@@ -1,11 +1,14 @@
 package rpc
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
+	"sync"
 )
 
 func UploadCaHandler() RpcCommand {
@@ -36,11 +39,17 @@ func UploadCaCmd() (*UploadCa, error) {
 	}, nil
 }
 
+var caMutex sync.Mutex = sync.Mutex{}
+
 func (p *UploadCa) ExecuteClient(session *RpcSession) error {
 	return nil
 }
 
 func (p *UploadCa) ExecuteServer(session *RpcSession) error {
+
+	caMutex.Lock()
+	defer caMutex.Unlock()
+
 	_, err := pki.GetCaCert()
 	if err == nil {
 		session.WriteResponseHeader(SessionResponseHeader{
@@ -77,6 +86,57 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("failed to parse CA certificate: %v", err)
 	}
 
+	// everything seems to be alright, we can save the CA certificate
+
+	// create root user
+	if session.Connection.role == RpcRoleServer {
+		db, err := config.DB().Tx(context.Background())
+
+		if err != nil {
+			session.WriteResponseHeader(SessionResponseHeader{
+				Code: 500,
+				Msg:  "Failed to connect to database",
+			})
+			return fmt.Errorf("failed to connect to database: %v", err)
+		}
+
+		users, err := db.User.Query().All(context.Background())
+		if err != nil {
+			session.WriteResponseHeader(SessionResponseHeader{
+				Code: 500,
+				Msg:  "Failed to load users",
+			})
+			return fmt.Errorf("failed to load users: %v", err)
+		}
+		if len(users) > 0 {
+			session.WriteResponseHeader(SessionResponseHeader{
+				Code: 409,
+				Msg:  "found already existing users",
+			})
+			return fmt.Errorf("found already existing users")
+		}
+
+		_, err = db.User.Create().SetCertificate(string(p.EncodedCa)).SetUsername("root").SetEncryptedPrivateKey("").SetPasswordDoubleHashed("").Save(context.Background())
+		if err != nil {
+			session.WriteResponseHeader(SessionResponseHeader{
+				Code: 500,
+				Msg:  "Failed to create root user",
+			})
+			return fmt.Errorf("failed to create root user: %v", err)
+		}
+
+		err = db.Commit()
+		if err != nil {
+			session.WriteResponseHeader(SessionResponseHeader{
+				Code: 500,
+				Msg:  "Failed to commit changes",
+			})
+			return fmt.Errorf("failed to commit changes: %v", err)
+		}
+
+	}
+
+	// actually save the CA certificate
 	err = pki.SaveCaCert(cert)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{

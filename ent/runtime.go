@@ -2,8 +2,23 @@
 
 package ent
 
+import (
+	"rahnit-rmm/ent/schema"
+	"rahnit-rmm/ent/user"
+)
+
 // The init function reads all schema descriptors with runtime code
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	userFields := schema.User{}.Fields()
+	_ = userFields
+	// userDescUsername is the schema descriptor for username field.
+	userDescUsername := userFields[0].Descriptor()
+	// user.UsernameValidator is a validator for the "username" field. It is called by the builders before save.
+	user.UsernameValidator = userDescUsername.Validators[0].(func(string) error)
+	// userDescCertificate is the schema descriptor for certificate field.
+	userDescCertificate := userFields[2].Descriptor()
+	// user.CertificateValidator is a validator for the "certificate" field. It is called by the builders before save.
+	user.CertificateValidator = userDescCertificate.Validators[0].(func(string) error)
 }

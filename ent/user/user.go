@@ -11,6 +11,14 @@ const (
 	Label = "user"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldUsername holds the string denoting the username field in the database.
+	FieldUsername = "username"
+	// FieldPasswordDoubleHashed holds the string denoting the password_double_hashed field in the database.
+	FieldPasswordDoubleHashed = "password_double_hashed"
+	// FieldCertificate holds the string denoting the certificate field in the database.
+	FieldCertificate = "certificate"
+	// FieldEncryptedPrivateKey holds the string denoting the encrypted_private_key field in the database.
+	FieldEncryptedPrivateKey = "encrypted_private_key"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 )
@@ -18,6 +26,10 @@ const (
 // Columns holds all SQL columns for user fields.
 var Columns = []string{
 	FieldID,
+	FieldUsername,
+	FieldPasswordDoubleHashed,
+	FieldCertificate,
+	FieldEncryptedPrivateKey,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -30,10 +42,37 @@ func ValidColumn(column string) bool {
 	return false
 }
 
+var (
+	// UsernameValidator is a validator for the "username" field. It is called by the builders before save.
+	UsernameValidator func(string) error
+	// CertificateValidator is a validator for the "certificate" field. It is called by the builders before save.
+	CertificateValidator func(string) error
+)
+
 // OrderOption defines the ordering options for the User queries.
 type OrderOption func(*sql.Selector)
 
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByUsername orders the results by the username field.
+func ByUsername(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUsername, opts...).ToFunc()
+}
+
+// ByPasswordDoubleHashed orders the results by the password_double_hashed field.
+func ByPasswordDoubleHashed(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPasswordDoubleHashed, opts...).ToFunc()
+}
+
+// ByCertificate orders the results by the certificate field.
+func ByCertificate(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCertificate, opts...).ToFunc()
+}
+
+// ByEncryptedPrivateKey orders the results by the encrypted_private_key field.
+func ByEncryptedPrivateKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEncryptedPrivateKey, opts...).ToFunc()
 }

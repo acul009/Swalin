@@ -31,6 +31,10 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("server called")
 		config.SetSubdir("server")
+		err := config.InitDB()
+		if err != nil {
+			panic(err)
+		}
 
 		addr := "localhost:1234"
 
@@ -38,7 +42,7 @@ to quickly create a Cobra application.`,
 
 		commands := rpc.NewCommandCollection()
 
-		_, err := pki.GetCaCert()
+		_, err = pki.GetCaCert()
 
 		if err == nil {
 			// Server has a CA certificate

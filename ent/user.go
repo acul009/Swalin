@@ -13,10 +13,18 @@ import (
 
 // User is the model entity for the User schema.
 type User struct {
-	config
+	config `json:"-"`
 	// ID of the ent.
-	ID           int `json:"id,omitempty"`
-	selectValues sql.SelectValues
+	ID int `json:"id,omitempty"`
+	// Username holds the value of the "username" field.
+	Username string `json:"username,omitempty"`
+	// PasswordDoubleHashed holds the value of the "password_double_hashed" field.
+	PasswordDoubleHashed string `json:"password_double_hashed,omitempty"`
+	// Certificate holds the value of the "certificate" field.
+	Certificate string `json:"certificate,omitempty"`
+	// EncryptedPrivateKey holds the value of the "encrypted_private_key" field.
+	EncryptedPrivateKey string `json:"encrypted_private_key,omitempty"`
+	selectValues        sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -26,6 +34,8 @@ func (*User) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
+		case user.FieldUsername, user.FieldPasswordDoubleHashed, user.FieldCertificate, user.FieldEncryptedPrivateKey:
+			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -47,6 +57,30 @@ func (u *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			u.ID = int(value.Int64)
+		case user.FieldUsername:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field username", values[i])
+			} else if value.Valid {
+				u.Username = value.String
+			}
+		case user.FieldPasswordDoubleHashed:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field password_double_hashed", values[i])
+			} else if value.Valid {
+				u.PasswordDoubleHashed = value.String
+			}
+		case user.FieldCertificate:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field certificate", values[i])
+			} else if value.Valid {
+				u.Certificate = value.String
+			}
+		case user.FieldEncryptedPrivateKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field encrypted_private_key", values[i])
+			} else if value.Valid {
+				u.EncryptedPrivateKey = value.String
+			}
 		default:
 			u.selectValues.Set(columns[i], values[i])
 		}
@@ -82,7 +116,18 @@ func (u *User) Unwrap() *User {
 func (u *User) String() string {
 	var builder strings.Builder
 	builder.WriteString("User(")
-	builder.WriteString(fmt.Sprintf("id=%v", u.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", u.ID))
+	builder.WriteString("username=")
+	builder.WriteString(u.Username)
+	builder.WriteString(", ")
+	builder.WriteString("password_double_hashed=")
+	builder.WriteString(u.PasswordDoubleHashed)
+	builder.WriteString(", ")
+	builder.WriteString("certificate=")
+	builder.WriteString(u.Certificate)
+	builder.WriteString(", ")
+	builder.WriteString("encrypted_private_key=")
+	builder.WriteString(u.EncryptedPrivateKey)
 	builder.WriteByte(')')
 	return builder.String()
 }

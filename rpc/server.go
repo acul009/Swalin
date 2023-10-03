@@ -68,7 +68,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 	defer s.mutex.Unlock()
 
 	for i := 0; i < 10; i++ {
-		newConnection := NewRpcConnection(conn, s)
+		newConnection := NewRpcConnection(conn, s, RpcRoleServer)
 		if _, ok := s.activeConnections[newConnection.Uuid]; !ok {
 			connection = newConnection
 			break

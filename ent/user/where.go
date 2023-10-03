@@ -53,6 +53,286 @@ func IDLTE(id int) predicate.User {
 	return predicate.User(sql.FieldLTE(FieldID, id))
 }
 
+// Username applies equality check predicate on the "username" field. It's identical to UsernameEQ.
+func Username(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldUsername, v))
+}
+
+// PasswordDoubleHashed applies equality check predicate on the "password_double_hashed" field. It's identical to PasswordDoubleHashedEQ.
+func PasswordDoubleHashed(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldPasswordDoubleHashed, v))
+}
+
+// Certificate applies equality check predicate on the "certificate" field. It's identical to CertificateEQ.
+func Certificate(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldCertificate, v))
+}
+
+// EncryptedPrivateKey applies equality check predicate on the "encrypted_private_key" field. It's identical to EncryptedPrivateKeyEQ.
+func EncryptedPrivateKey(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldEncryptedPrivateKey, v))
+}
+
+// UsernameEQ applies the EQ predicate on the "username" field.
+func UsernameEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldUsername, v))
+}
+
+// UsernameNEQ applies the NEQ predicate on the "username" field.
+func UsernameNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldUsername, v))
+}
+
+// UsernameIn applies the In predicate on the "username" field.
+func UsernameIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldUsername, vs...))
+}
+
+// UsernameNotIn applies the NotIn predicate on the "username" field.
+func UsernameNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldUsername, vs...))
+}
+
+// UsernameGT applies the GT predicate on the "username" field.
+func UsernameGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldUsername, v))
+}
+
+// UsernameGTE applies the GTE predicate on the "username" field.
+func UsernameGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldUsername, v))
+}
+
+// UsernameLT applies the LT predicate on the "username" field.
+func UsernameLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldUsername, v))
+}
+
+// UsernameLTE applies the LTE predicate on the "username" field.
+func UsernameLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldUsername, v))
+}
+
+// UsernameContains applies the Contains predicate on the "username" field.
+func UsernameContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldUsername, v))
+}
+
+// UsernameHasPrefix applies the HasPrefix predicate on the "username" field.
+func UsernameHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldUsername, v))
+}
+
+// UsernameHasSuffix applies the HasSuffix predicate on the "username" field.
+func UsernameHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldUsername, v))
+}
+
+// UsernameEqualFold applies the EqualFold predicate on the "username" field.
+func UsernameEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldUsername, v))
+}
+
+// UsernameContainsFold applies the ContainsFold predicate on the "username" field.
+func UsernameContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldUsername, v))
+}
+
+// PasswordDoubleHashedEQ applies the EQ predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldPasswordDoubleHashed, v))
+}
+
+// PasswordDoubleHashedNEQ applies the NEQ predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldPasswordDoubleHashed, v))
+}
+
+// PasswordDoubleHashedIn applies the In predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldPasswordDoubleHashed, vs...))
+}
+
+// PasswordDoubleHashedNotIn applies the NotIn predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldPasswordDoubleHashed, vs...))
+}
+
+// PasswordDoubleHashedGT applies the GT predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldPasswordDoubleHashed, v))
+}
+
+// PasswordDoubleHashedGTE applies the GTE predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldPasswordDoubleHashed, v))
+}
+
+// PasswordDoubleHashedLT applies the LT predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldPasswordDoubleHashed, v))
+}
+
+// PasswordDoubleHashedLTE applies the LTE predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldPasswordDoubleHashed, v))
+}
+
+// PasswordDoubleHashedContains applies the Contains predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldPasswordDoubleHashed, v))
+}
+
+// PasswordDoubleHashedHasPrefix applies the HasPrefix predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldPasswordDoubleHashed, v))
+}
+
+// PasswordDoubleHashedHasSuffix applies the HasSuffix predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldPasswordDoubleHashed, v))
+}
+
+// PasswordDoubleHashedEqualFold applies the EqualFold predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldPasswordDoubleHashed, v))
+}
+
+// PasswordDoubleHashedContainsFold applies the ContainsFold predicate on the "password_double_hashed" field.
+func PasswordDoubleHashedContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldPasswordDoubleHashed, v))
+}
+
+// CertificateEQ applies the EQ predicate on the "certificate" field.
+func CertificateEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldCertificate, v))
+}
+
+// CertificateNEQ applies the NEQ predicate on the "certificate" field.
+func CertificateNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldCertificate, v))
+}
+
+// CertificateIn applies the In predicate on the "certificate" field.
+func CertificateIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldCertificate, vs...))
+}
+
+// CertificateNotIn applies the NotIn predicate on the "certificate" field.
+func CertificateNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldCertificate, vs...))
+}
+
+// CertificateGT applies the GT predicate on the "certificate" field.
+func CertificateGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldCertificate, v))
+}
+
+// CertificateGTE applies the GTE predicate on the "certificate" field.
+func CertificateGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldCertificate, v))
+}
+
+// CertificateLT applies the LT predicate on the "certificate" field.
+func CertificateLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldCertificate, v))
+}
+
+// CertificateLTE applies the LTE predicate on the "certificate" field.
+func CertificateLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldCertificate, v))
+}
+
+// CertificateContains applies the Contains predicate on the "certificate" field.
+func CertificateContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldCertificate, v))
+}
+
+// CertificateHasPrefix applies the HasPrefix predicate on the "certificate" field.
+func CertificateHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldCertificate, v))
+}
+
+// CertificateHasSuffix applies the HasSuffix predicate on the "certificate" field.
+func CertificateHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldCertificate, v))
+}
+
+// CertificateEqualFold applies the EqualFold predicate on the "certificate" field.
+func CertificateEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldCertificate, v))
+}
+
+// CertificateContainsFold applies the ContainsFold predicate on the "certificate" field.
+func CertificateContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldCertificate, v))
+}
+
+// EncryptedPrivateKeyEQ applies the EQ predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldEncryptedPrivateKey, v))
+}
+
+// EncryptedPrivateKeyNEQ applies the NEQ predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldEncryptedPrivateKey, v))
+}
+
+// EncryptedPrivateKeyIn applies the In predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldEncryptedPrivateKey, vs...))
+}
+
+// EncryptedPrivateKeyNotIn applies the NotIn predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldEncryptedPrivateKey, vs...))
+}
+
+// EncryptedPrivateKeyGT applies the GT predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldEncryptedPrivateKey, v))
+}
+
+// EncryptedPrivateKeyGTE applies the GTE predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldEncryptedPrivateKey, v))
+}
+
+// EncryptedPrivateKeyLT applies the LT predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldEncryptedPrivateKey, v))
+}
+
+// EncryptedPrivateKeyLTE applies the LTE predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldEncryptedPrivateKey, v))
+}
+
+// EncryptedPrivateKeyContains applies the Contains predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldEncryptedPrivateKey, v))
+}
+
+// EncryptedPrivateKeyHasPrefix applies the HasPrefix predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldEncryptedPrivateKey, v))
+}
+
+// EncryptedPrivateKeyHasSuffix applies the HasSuffix predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldEncryptedPrivateKey, v))
+}
+
+// EncryptedPrivateKeyEqualFold applies the EqualFold predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldEncryptedPrivateKey, v))
+}
+
+// EncryptedPrivateKeyContainsFold applies the ContainsFold predicate on the "encrypted_private_key" field.
+func EncryptedPrivateKeyContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldEncryptedPrivateKey, v))
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.User) predicate.User {
 	return predicate.User(sql.AndPredicates(predicates...))

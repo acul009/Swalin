@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"rahnit-rmm/ent/user"
 
@@ -16,6 +17,30 @@ type UserCreate struct {
 	config
 	mutation *UserMutation
 	hooks    []Hook
+}
+
+// SetUsername sets the "username" field.
+func (uc *UserCreate) SetUsername(s string) *UserCreate {
+	uc.mutation.SetUsername(s)
+	return uc
+}
+
+// SetPasswordDoubleHashed sets the "password_double_hashed" field.
+func (uc *UserCreate) SetPasswordDoubleHashed(s string) *UserCreate {
+	uc.mutation.SetPasswordDoubleHashed(s)
+	return uc
+}
+
+// SetCertificate sets the "certificate" field.
+func (uc *UserCreate) SetCertificate(s string) *UserCreate {
+	uc.mutation.SetCertificate(s)
+	return uc
+}
+
+// SetEncryptedPrivateKey sets the "encrypted_private_key" field.
+func (uc *UserCreate) SetEncryptedPrivateKey(s string) *UserCreate {
+	uc.mutation.SetEncryptedPrivateKey(s)
+	return uc
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -52,6 +77,28 @@ func (uc *UserCreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (uc *UserCreate) check() error {
+	if _, ok := uc.mutation.Username(); !ok {
+		return &ValidationError{Name: "username", err: errors.New(`ent: missing required field "User.username"`)}
+	}
+	if v, ok := uc.mutation.Username(); ok {
+		if err := user.UsernameValidator(v); err != nil {
+			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "User.username": %w`, err)}
+		}
+	}
+	if _, ok := uc.mutation.PasswordDoubleHashed(); !ok {
+		return &ValidationError{Name: "password_double_hashed", err: errors.New(`ent: missing required field "User.password_double_hashed"`)}
+	}
+	if _, ok := uc.mutation.Certificate(); !ok {
+		return &ValidationError{Name: "certificate", err: errors.New(`ent: missing required field "User.certificate"`)}
+	}
+	if v, ok := uc.mutation.Certificate(); ok {
+		if err := user.CertificateValidator(v); err != nil {
+			return &ValidationError{Name: "certificate", err: fmt.Errorf(`ent: validator failed for field "User.certificate": %w`, err)}
+		}
+	}
+	if _, ok := uc.mutation.EncryptedPrivateKey(); !ok {
+		return &ValidationError{Name: "encrypted_private_key", err: errors.New(`ent: missing required field "User.encrypted_private_key"`)}
+	}
 	return nil
 }
 
@@ -78,6 +125,22 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_node = &User{config: uc.config}
 		_spec = sqlgraph.NewCreateSpec(user.Table, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt))
 	)
+	if value, ok := uc.mutation.Username(); ok {
+		_spec.SetField(user.FieldUsername, field.TypeString, value)
+		_node.Username = value
+	}
+	if value, ok := uc.mutation.PasswordDoubleHashed(); ok {
+		_spec.SetField(user.FieldPasswordDoubleHashed, field.TypeString, value)
+		_node.PasswordDoubleHashed = value
+	}
+	if value, ok := uc.mutation.Certificate(); ok {
+		_spec.SetField(user.FieldCertificate, field.TypeString, value)
+		_node.Certificate = value
+	}
+	if value, ok := uc.mutation.EncryptedPrivateKey(); ok {
+		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeString, value)
+		_node.EncryptedPrivateKey = value
+	}
 	return _node, _spec
 }
 

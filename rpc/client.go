@@ -27,10 +27,11 @@ func NewRpcClient(ctx context.Context, addr string) (*RpcClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating QUIC client: %v", err)
 	}
-	rpcConn := NewRpcConnection(conn, nil)
+	rpcConn := NewRpcConnection(conn, nil, RpcRoleClient)
 	return &RpcClient{
 		conn:  rpcConn,
 		state: RpcClientRunning,
+		mutex: sync.Mutex{},
 	}, nil
 }
 

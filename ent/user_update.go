@@ -27,6 +27,24 @@ func (uu *UserUpdate) Where(ps ...predicate.User) *UserUpdate {
 	return uu
 }
 
+// SetUsername sets the "username" field.
+func (uu *UserUpdate) SetUsername(s string) *UserUpdate {
+	uu.mutation.SetUsername(s)
+	return uu
+}
+
+// SetPasswordDoubleHashed sets the "password_double_hashed" field.
+func (uu *UserUpdate) SetPasswordDoubleHashed(s string) *UserUpdate {
+	uu.mutation.SetPasswordDoubleHashed(s)
+	return uu
+}
+
+// SetEncryptedPrivateKey sets the "encrypted_private_key" field.
+func (uu *UserUpdate) SetEncryptedPrivateKey(s string) *UserUpdate {
+	uu.mutation.SetEncryptedPrivateKey(s)
+	return uu
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uu *UserUpdate) Mutation() *UserMutation {
 	return uu.mutation
@@ -59,7 +77,20 @@ func (uu *UserUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (uu *UserUpdate) check() error {
+	if v, ok := uu.mutation.Username(); ok {
+		if err := user.UsernameValidator(v); err != nil {
+			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "User.username": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
+	if err := uu.check(); err != nil {
+		return n, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt))
 	if ps := uu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -67,6 +98,15 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := uu.mutation.Username(); ok {
+		_spec.SetField(user.FieldUsername, field.TypeString, value)
+	}
+	if value, ok := uu.mutation.PasswordDoubleHashed(); ok {
+		_spec.SetField(user.FieldPasswordDoubleHashed, field.TypeString, value)
+	}
+	if value, ok := uu.mutation.EncryptedPrivateKey(); ok {
+		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeString, value)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -86,6 +126,24 @@ type UserUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *UserMutation
+}
+
+// SetUsername sets the "username" field.
+func (uuo *UserUpdateOne) SetUsername(s string) *UserUpdateOne {
+	uuo.mutation.SetUsername(s)
+	return uuo
+}
+
+// SetPasswordDoubleHashed sets the "password_double_hashed" field.
+func (uuo *UserUpdateOne) SetPasswordDoubleHashed(s string) *UserUpdateOne {
+	uuo.mutation.SetPasswordDoubleHashed(s)
+	return uuo
+}
+
+// SetEncryptedPrivateKey sets the "encrypted_private_key" field.
+func (uuo *UserUpdateOne) SetEncryptedPrivateKey(s string) *UserUpdateOne {
+	uuo.mutation.SetEncryptedPrivateKey(s)
+	return uuo
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -133,7 +191,20 @@ func (uuo *UserUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (uuo *UserUpdateOne) check() error {
+	if v, ok := uuo.mutation.Username(); ok {
+		if err := user.UsernameValidator(v); err != nil {
+			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "User.username": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
+	if err := uuo.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt))
 	id, ok := uuo.mutation.ID()
 	if !ok {
@@ -158,6 +229,15 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := uuo.mutation.Username(); ok {
+		_spec.SetField(user.FieldUsername, field.TypeString, value)
+	}
+	if value, ok := uuo.mutation.PasswordDoubleHashed(); ok {
+		_spec.SetField(user.FieldPasswordDoubleHashed, field.TypeString, value)
+	}
+	if value, ok := uuo.mutation.EncryptedPrivateKey(); ok {
+		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeString, value)
 	}
 	_node = &User{config: uuo.config}
 	_spec.Assign = _node.assignValues

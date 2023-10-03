@@ -18,22 +18,32 @@ const (
 	RpcConnectionStopped
 )
 
+type RpcConnectionRole int16
+
+const (
+	RpcRoleAgent RpcConnectionRole = iota
+	RpcRoleServer
+	RpcRoleClient
+)
+
 type RpcConnection struct {
 	quic.Connection
 	server         *RpcServer
 	Uuid           uuid.UUID
 	state          RpcConnectionState
+	role           RpcConnectionRole
 	activeSessions map[uuid.UUID]*RpcSession
 	mutex          sync.Mutex
 }
 
-func NewRpcConnection(conn quic.Connection, server *RpcServer) *RpcConnection {
+func NewRpcConnection(conn quic.Connection, server *RpcServer, role RpcConnectionRole) *RpcConnection {
 	return &RpcConnection{
 		Connection:     conn,
 		server:         server,
-		state:          RpcConnectionOpen,
-		activeSessions: make(map[uuid.UUID]*RpcSession),
 		Uuid:           uuid.New(),
+		state:          RpcConnectionOpen,
+		role:           role,
+		activeSessions: make(map[uuid.UUID]*RpcSession),
 	}
 }
 
@@ -58,6 +68,9 @@ func (conn *RpcConnection) serve(commands *CommandCollection) error {
 
 		if err != nil {
 			log.Printf("error accepting QUIC stream: %v", err)
+			if errors.Is(err, &quic.ApplicationError{}) {
+				return err
+			}
 		}
 
 		go session.handleIncoming(commands)
