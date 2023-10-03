@@ -12,6 +12,20 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
+type rpcNotRunningError struct {
+}
+
+func (e rpcNotRunningError) Error() string {
+	return fmt.Errorf("Rpc not running anymore").Error()
+}
+
+var ErrRpcNotRunning = rpcNotRunningError{}
+
+func (e rpcNotRunningError) Is(target error) bool {
+	_, ok := target.(rpcNotRunningError)
+	return ok
+}
+
 type RpcServer struct {
 	listener          *quic.Listener
 	commands          *CommandCollection
@@ -88,7 +102,7 @@ func (s *RpcServer) Run() error {
 		s.mutex.Lock()
 		if s.state != RpcServerRunning {
 			s.mutex.Unlock()
-			return fmt.Errorf("RPC server not running anymore")
+			return rpcNotRunningError{}
 		}
 		s.mutex.Unlock()
 

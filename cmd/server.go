@@ -6,9 +6,14 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"log"
+	"os"
+	"os/signal"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
+	"sync"
+	"syscall"
 
 	"github.com/spf13/cobra"
 )
@@ -51,7 +56,40 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			panic(err)
 		}
-		server.Run()
+
+		wg := sync.WaitGroup{}
+
+		wg.Add(1)
+		go func() {
+			err := server.Run()
+			if err != nil {
+				if errors.Is(rpc.ErrRpcNotRunning, err) {
+					log.Printf("Server was stopped")
+				} else {
+					logErr := fmt.Errorf("error running server: %v", err)
+					log.Println(logErr)
+				}
+			}
+			wg.Done()
+		}()
+
+		interrupt := make(chan os.Signal, 1)
+		signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+
+		wg.Add(1)
+		go func() {
+			<-interrupt
+			err := server.Close(200, "OK")
+			if err != nil {
+				err := fmt.Errorf("error shutting down program: error closing server: %v", err)
+				log.Println(err)
+			} else {
+				log.Println("Server closed without errors")
+			}
+			wg.Done()
+		}()
+
+		wg.Wait()
 
 	},
 }
