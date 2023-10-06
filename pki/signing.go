@@ -66,8 +66,6 @@ func MarshalAndSign(v any, key *ecdsa.PrivateKey, pub *ecdsa.PublicKey) ([]byte,
 	msg = append(msg, jsonDelimiter...)
 	msg = append(msg, bpub...)
 
-	fmt.Printf("marshalled: %s\n", msg)
-
 	return msg, nil
 }
 
@@ -111,7 +109,6 @@ func UnmarshalAndVerify(signedData []byte, v any) (*ecdsa.PublicKey, error) {
 	}
 
 	json.Unmarshal(msg, v)
-	fmt.Printf("unmarshalled: %v\n", v)
 
 	return pub, nil
 }
