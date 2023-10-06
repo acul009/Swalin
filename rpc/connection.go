@@ -34,9 +34,10 @@ type RpcConnection struct {
 	role           RpcConnectionRole
 	activeSessions map[uuid.UUID]*RpcSession
 	mutex          sync.Mutex
+	nonceStorage   *nonceStorage
 }
 
-func NewRpcConnection(conn quic.Connection, server *RpcServer, role RpcConnectionRole) *RpcConnection {
+func NewRpcConnection(conn quic.Connection, server *RpcServer, role RpcConnectionRole, nonceStorage *nonceStorage) *RpcConnection {
 	return &RpcConnection{
 		Connection:     conn,
 		server:         server,
@@ -44,6 +45,8 @@ func NewRpcConnection(conn quic.Connection, server *RpcServer, role RpcConnectio
 		state:          RpcConnectionOpen,
 		role:           role,
 		activeSessions: make(map[uuid.UUID]*RpcSession),
+		mutex:          sync.Mutex{},
+		nonceStorage:   nonceStorage,
 	}
 }
 

@@ -215,20 +215,26 @@ func (s *RpcSession) ReadUntil(delimiter []byte, bufferSize int, limit int) ([]b
 }
 
 func ReadMessage[P any](s *RpcSession, payload P) error {
-	msg, err := s.ReadUntil([]byte("\n"), 1024, 1024)
+	msgData, err := s.ReadUntil([]byte("\n"), 1024, 1024)
 	if err != nil {
 		return err
 	}
 
-	receiver, err := pki.UnmarshalAndVerify(msg, payload)
+	message := rpcMessage[P]{}
+
+	sender, err := pki.UnmarshalAndVerify(msgData, message)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling message: %v", err)
+	}
 
 	myPub, err := pki.GetCurrentPublicKey()
 	if err != nil {
 		return fmt.Errorf("error getting current key: %v", err)
 	}
 
-	if !myPub.Equal(receiver) {
-		return fmt.Errorf("Wrong recipient public key")
+	err = message.Verify(s.Connection.nonceStorage, myPub)
+	if err != nil {
+		return fmt.Errorf("error verifying message: %v", err)
 	}
 
 	if err != nil {

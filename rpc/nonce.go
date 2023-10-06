@@ -54,7 +54,7 @@ func (s *nonceStorage) Cleanup() {
 	defer s.mutex.Unlock()
 
 	for key, timestamp := range s.nonceMap {
-		if timestamp < time.Now().Unix()-60 {
+		if timestamp < time.Now().Unix()-messageExpiration*2 {
 			delete(s.nonceMap, key)
 		}
 	}

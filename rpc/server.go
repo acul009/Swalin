@@ -32,6 +32,7 @@ type RpcServer struct {
 	state             RpcServerState
 	activeConnections map[uuid.UUID]*RpcConnection
 	mutex             sync.Mutex
+	nonceStorage      *nonceStorage
 }
 
 type RpcServerState int16
@@ -54,6 +55,7 @@ func NewRpcServer(addr string, commands *CommandCollection) (*RpcServer, error) 
 		state:             RpcServerCreated,
 		activeConnections: make(map[uuid.UUID]*RpcConnection),
 		mutex:             sync.Mutex{},
+		nonceStorage:      NewNonceStorage(),
 	}, nil
 }
 
@@ -68,7 +70,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 	defer s.mutex.Unlock()
 
 	for i := 0; i < 10; i++ {
-		newConnection := NewRpcConnection(conn, s, RpcRoleServer)
+		newConnection := NewRpcConnection(conn, s, RpcRoleServer, s.nonceStorage)
 		if _, ok := s.activeConnections[newConnection.Uuid]; !ok {
 			connection = newConnection
 			break
