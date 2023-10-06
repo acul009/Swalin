@@ -16,6 +16,8 @@ var ErrSignatureInvalid = SignatureVerificationError{
 	PublicKey: nil,
 }
 
+var ErrNotSigned = NotSignedError{}
+
 type SignatureVerificationError struct {
 	Signature []byte
 	PublicKey *ecdsa.PublicKey
@@ -27,6 +29,18 @@ func (e SignatureVerificationError) Error() string {
 
 func (e SignatureVerificationError) Is(target error) bool {
 	_, ok := target.(SignatureVerificationError)
+	return ok
+}
+
+type NotSignedError struct {
+}
+
+func (e NotSignedError) Error() string {
+	return "data is not signed"
+}
+
+func (e NotSignedError) Is(target error) bool {
+	_, ok := target.(NotSignedError)
 	return ok
 }
 
@@ -75,6 +89,10 @@ func UnmarshalAndVerify(signedData []byte, v any) (*ecdsa.PublicKey, error) {
 	}
 
 	split := bytes.SplitN(signedData, jsonDelimiter, 3)
+
+	if len(split) == 1 {
+		return nil, NotSignedError{}
+	}
 	if len(split) != 3 {
 		return nil, fmt.Errorf("invalid signed data")
 	}

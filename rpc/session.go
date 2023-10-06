@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"rahnit-rmm/pki"
 	"strings"
 	"sync"
 	"time"
@@ -213,6 +214,30 @@ func (s *RpcSession) ReadUntil(delimiter []byte, bufferSize int, limit int) ([]b
 	return buffer[:dataLength], nil
 }
 
+func ReadMessage[P any](s *RpcSession, payload P) error {
+	msg, err := s.ReadUntil([]byte("\n"), 1024, 1024)
+	if err != nil {
+		return err
+	}
+
+	receiver, err := pki.UnmarshalAndVerify(msg, payload)
+
+	myPub, err := pki.GetCurrentPublicKey()
+	if err != nil {
+		return fmt.Errorf("error getting current key: %v", err)
+	}
+
+	if !myPub.Equal(receiver) {
+		return fmt.Errorf("Wrong recipient public key")
+	}
+
+	if err != nil {
+		return fmt.Errorf("error reading message: %v", err)
+	}
+
+	return nil
+}
+
 func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) (n int, err error) {
 	s.mutex.Lock()
 	if s.state != RpcSessionCreated {
@@ -245,7 +270,7 @@ func (s *RpcSession) writeRawHeader(header interface{}) (n int, err error) {
 	if err != nil {
 		return n, fmt.Errorf("error marshalling header: %v", err)
 	}
-	payload := append(headerData, headerStop...)
+	payload := append(headerData, messageStop...)
 	n, err = s.Stream.Write(payload)
 	if err != nil {
 		fmt.Printf("error writing header to stream: %v\n", err)
@@ -302,7 +327,7 @@ func (s *RpcSession) Close() error {
 	return err
 }
 
-var headerStop = []byte("\n")
+var messageStop = []byte("\n")
 var headerDelimiter = "|"
 
 type SessionRequestHeader struct {
@@ -318,7 +343,7 @@ type SessionResponseHeader struct {
 }
 
 func (s *RpcSession) ReadRequestHeader() (SessionRequestHeader, error) {
-	headerData, err := s.ReadUntil(headerStop, 1024, 65536)
+	headerData, err := s.ReadUntil(messageStop, 1024, 65536)
 	if err != nil {
 		return SessionRequestHeader{}, err
 	}
@@ -345,7 +370,7 @@ func (s *RpcSession) readResponseHeader() (SessionResponseHeader, error) {
 	}
 	s.mutex.Unlock()
 
-	headerData, err := s.ReadUntil(headerStop, 1024, 65536)
+	headerData, err := s.ReadUntil(messageStop, 1024, 65536)
 	if err != nil {
 		return SessionResponseHeader{}, err
 	}
