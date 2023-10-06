@@ -6,9 +6,9 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"rahnit-rmm/util"
 )
 
 var ErrSignatureInvalid = SignatureVerificationError{
@@ -52,13 +52,13 @@ func MarshalAndSign(v any, key *ecdsa.PrivateKey, pub *ecdsa.PublicKey) ([]byte,
 		return nil, fmt.Errorf("failed to sign data: %v", err)
 	}
 
-	bsig := Base64Encode(signature)
+	bsig := util.Base64Encode(signature)
 
 	ecdsaPublicKeyBytes, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal public key: %v", err)
 	}
-	bpub := Base64Encode(ecdsaPublicKeyBytes)
+	bpub := util.Base64Encode(ecdsaPublicKeyBytes)
 
 	msg := json
 	msg = append(msg, jsonDelimiter...)
@@ -83,7 +83,7 @@ func UnmarshalAndVerify(signedData []byte, v any) (*ecdsa.PublicKey, error) {
 	bsig := split[1]
 	bpub := split[2]
 
-	ecdsaPublicKeyBytes, err := Base64Decode(bpub)
+	ecdsaPublicKeyBytes, err := util.Base64Decode(bpub)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode public key: %v", err)
 	}
@@ -93,7 +93,7 @@ func UnmarshalAndVerify(signedData []byte, v any) (*ecdsa.PublicKey, error) {
 		return nil, fmt.Errorf("failed to parse public key: %v", err)
 	}
 
-	signature, err := Base64Decode(bsig)
+	signature, err := util.Base64Decode(bsig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode signature: %v", err)
 	}
@@ -111,14 +111,6 @@ func UnmarshalAndVerify(signedData []byte, v any) (*ecdsa.PublicKey, error) {
 	json.Unmarshal(msg, v)
 
 	return pub, nil
-}
-
-func Base64Encode(data []byte) []byte {
-	return []byte(base64.StdEncoding.EncodeToString(data))
-}
-
-func Base64Decode(data []byte) ([]byte, error) {
-	return base64.StdEncoding.DecodeString(string(data))
 }
 
 func SignBytes(data []byte, key *ecdsa.PrivateKey) ([]byte, error) {
