@@ -11,16 +11,22 @@ import (
 	"fmt"
 )
 
-type VerificationError struct {
-	signature []byte
+var ErrSignatureInvalid = SignatureVerificationError{
+	Signature: []byte{},
+	PublicKey: nil,
 }
 
-func (e VerificationError) Error() string {
+type SignatureVerificationError struct {
+	Signature []byte
+	PublicKey *ecdsa.PublicKey
+}
+
+func (e SignatureVerificationError) Error() string {
 	return "failed to verify signature"
 }
 
-func (e VerificationError) Is(target error) bool {
-	_, ok := target.(VerificationError)
+func (e SignatureVerificationError) Is(target error) bool {
+	_, ok := target.(SignatureVerificationError)
 	return ok
 }
 
@@ -146,8 +152,9 @@ func VerifyBytes(data []byte, signature []byte, pub *ecdsa.PublicKey) error {
 	ok := ecdsa.VerifyASN1(pub, hash, signature)
 
 	if !ok {
-		return VerificationError{
-			signature: signature,
+		return SignatureVerificationError{
+			Signature: signature,
+			PublicKey: pub,
 		}
 	}
 
