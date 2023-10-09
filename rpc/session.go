@@ -69,6 +69,8 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 		return fmt.Errorf("permission denied: %v", err)
 	}
 
+	s.partner = sender
+
 	debug, err := json.Marshal(header)
 	if err != nil {
 		log.Printf("error marshalling header: %v\n", err)
@@ -282,46 +284,94 @@ func ReadMessage[P any](s *RpcSession, payload P, expectedSender *ecdsa.PublicKe
 	return nil
 }
 
-func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) (n int, err error) {
+func WriteMessage[P any](s *RpcSession, payload P) error {
+	if err := s.EnsureState(RpcSessionOpen); err != nil {
+		return fmt.Errorf("error ensuring state: %v", err)
+	}
+
+	pub, err := pki.GetCurrentPublicKey()
+	if err != nil {
+		return fmt.Errorf("error getting current key: %v", err)
+	}
+
+	key, err := pki.GetCurrentKey()
+	if err != nil {
+		return fmt.Errorf("error getting current key: %v", err)
+	}
+
+	if err != nil {
+		return fmt.Errorf("error getting current key: %v", err)
+	}
+
+	data, err := pki.MarshalAndSign(payload, key, pub)
+	if err != nil {
+		return fmt.Errorf("error marshalling message: %v", err)
+	}
+
+	toWrite := append(data, messageStop...)
+
+	_, err = s.Write(toWrite)
+	if err != nil {
+		return fmt.Errorf("error writing message: %v", err)
+	}
+
+	return nil
+}
+
+func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) error {
+	err := s.MutateState(RpcSessionCreated, RpcSessionOpen)
+	if err != nil {
+		return fmt.Errorf("error mutating state: %v", err)
+	}
+
+	err = WriteMessage[SessionRequestHeader](s, header)
+	if err != nil {
+		s.MutateState(RpcSessionOpen, RpcSessionClosed)
+		return fmt.Errorf("error writing request header: %v", err)
+	}
+
+	err = s.MutateState(RpcSessionOpen, RpcSessionRequested)
+	if err != nil {
+		return fmt.Errorf("error mutating state: %v", err)
+	}
+
+	return nil
+}
+
+func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) error {
+	err := s.MutateState(RpcSessionRequested, RpcSessionOpen)
+	if err != nil {
+		return fmt.Errorf("error mutating state: %v", err)
+	}
+
+	err = WriteMessage[SessionResponseHeader](s, header)
+	if err != nil {
+		s.MutateState(s.state, RpcSessionClosed)
+		return fmt.Errorf("error writing response header: %v", err)
+	}
+
+	return nil
+}
+
+func (s *RpcSession) MutateState(from RpcSessionState, to RpcSessionState) error {
 	s.mutex.Lock()
-	if s.state != RpcSessionCreated {
+	if s.state != from {
 		s.mutex.Unlock()
-		return 0, fmt.Errorf("RPC session not already in use")
+		return fmt.Errorf("RPC session not in state %v", from)
 	}
-	s.state = RpcSessionRequested
+	s.state = to
 	s.mutex.Unlock()
-	return s.writeRawHeader(header)
+	return nil
 }
 
-func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) (int, error) {
+func (s *RpcSession) EnsureState(state RpcSessionState) error {
 	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	if s.state != RpcSessionOpen {
-		return 0, fmt.Errorf("RPC connection not open")
+	if s.state != state {
+		s.mutex.Unlock()
+		return fmt.Errorf("RPC session not in state %v", state)
 	}
-
-	n, err := s.writeRawHeader(header)
-	s.state = RpcSessionClosed
-	if err != nil {
-		return n, fmt.Errorf("error writing header to stream: %v", err)
-	}
-
-	return n, nil
-}
-
-func (s *RpcSession) writeRawHeader(header interface{}) (n int, err error) {
-	headerData, err := json.Marshal(header)
-	if err != nil {
-		return n, fmt.Errorf("error marshalling header: %v", err)
-	}
-	payload := append(headerData, messageStop...)
-	n, err = s.Stream.Write(payload)
-	if err != nil {
-		fmt.Printf("error writing header to stream: %v\n", err)
-		return n, fmt.Errorf("error writing header to stream: %v", err)
-	}
-	fmt.Printf("Header written: %v\n", string(payload))
-	return n, nil
+	s.mutex.Unlock()
+	return nil
 }
 
 func (s *RpcSession) SendCommand(cmd RpcCommand) error {
@@ -331,12 +381,14 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 	if err != nil {
 		return fmt.Errorf("error encoding command: %v", err)
 	}
+
 	header := SessionRequestHeader{
 		Cmd:       cmd.GetKey(),
 		Timestamp: time.Now().UnixMicro(),
 		Args:      args,
 	}
-	_, err = s.WriteRequestHeader(header)
+
+	err = s.WriteRequestHeader(header)
 	if err != nil {
 		return fmt.Errorf("error writing header to stream: %v", err)
 	}
