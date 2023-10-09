@@ -29,6 +29,8 @@ to quickly create a Cobra application.`,
 		fmt.Println("init called")
 		config.SetSubdir("cli")
 
+		var rootPassword byte[]
+
 		_, err := pki.GetCaCert()
 		if err != nil {
 			if errors.Is(err, pki.ErrNoCaCert) {
@@ -48,6 +50,10 @@ to quickly create a Cobra application.`,
 			}
 		} else {
 			fmt.Println("Root certificate found, skipping CA generation")
+			rootPassword, err = util.AskForPassword("Enter password to decrypt the root certificate:")
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		addr := "localhost:1234"

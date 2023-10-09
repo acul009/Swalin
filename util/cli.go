@@ -43,3 +43,13 @@ func AskForNewPassword(message string) ([]byte, error) {
 		}
 	}
 }
+
+func AskForPassword(message string) ([]byte, error) {
+	fmt.Println(message)
+	text, err := term.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return nil, fmt.Errorf("error reading password: %v", err)
+	}
+
+	return text, nil
+}
