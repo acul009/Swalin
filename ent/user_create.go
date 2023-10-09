@@ -37,6 +37,12 @@ func (uc *UserCreate) SetCertificate(s string) *UserCreate {
 	return uc
 }
 
+// SetPublicKey sets the "public_key" field.
+func (uc *UserCreate) SetPublicKey(s string) *UserCreate {
+	uc.mutation.SetPublicKey(s)
+	return uc
+}
+
 // SetEncryptedPrivateKey sets the "encrypted_private_key" field.
 func (uc *UserCreate) SetEncryptedPrivateKey(s string) *UserCreate {
 	uc.mutation.SetEncryptedPrivateKey(s)
@@ -96,6 +102,14 @@ func (uc *UserCreate) check() error {
 			return &ValidationError{Name: "certificate", err: fmt.Errorf(`ent: validator failed for field "User.certificate": %w`, err)}
 		}
 	}
+	if _, ok := uc.mutation.PublicKey(); !ok {
+		return &ValidationError{Name: "public_key", err: errors.New(`ent: missing required field "User.public_key"`)}
+	}
+	if v, ok := uc.mutation.PublicKey(); ok {
+		if err := user.PublicKeyValidator(v); err != nil {
+			return &ValidationError{Name: "public_key", err: fmt.Errorf(`ent: validator failed for field "User.public_key": %w`, err)}
+		}
+	}
 	if _, ok := uc.mutation.EncryptedPrivateKey(); !ok {
 		return &ValidationError{Name: "encrypted_private_key", err: errors.New(`ent: missing required field "User.encrypted_private_key"`)}
 	}
@@ -136,6 +150,10 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := uc.mutation.Certificate(); ok {
 		_spec.SetField(user.FieldCertificate, field.TypeString, value)
 		_node.Certificate = value
+	}
+	if value, ok := uc.mutation.PublicKey(); ok {
+		_spec.SetField(user.FieldPublicKey, field.TypeString, value)
+		_node.PublicKey = value
 	}
 	if value, ok := uc.mutation.EncryptedPrivateKey(); ok {
 		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeString, value)

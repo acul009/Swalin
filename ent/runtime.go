@@ -21,4 +21,8 @@ func init() {
 	userDescCertificate := userFields[2].Descriptor()
 	// user.CertificateValidator is a validator for the "certificate" field. It is called by the builders before save.
 	user.CertificateValidator = userDescCertificate.Validators[0].(func(string) error)
+	// userDescPublicKey is the schema descriptor for public_key field.
+	userDescPublicKey := userFields[3].Descriptor()
+	// user.PublicKeyValidator is a validator for the "public_key" field. It is called by the builders before save.
+	user.PublicKeyValidator = userDescPublicKey.Validators[0].(func(string) error)
 }

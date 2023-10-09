@@ -17,6 +17,8 @@ const (
 	FieldPasswordDoubleHashed = "password_double_hashed"
 	// FieldCertificate holds the string denoting the certificate field in the database.
 	FieldCertificate = "certificate"
+	// FieldPublicKey holds the string denoting the public_key field in the database.
+	FieldPublicKey = "public_key"
 	// FieldEncryptedPrivateKey holds the string denoting the encrypted_private_key field in the database.
 	FieldEncryptedPrivateKey = "encrypted_private_key"
 	// Table holds the table name of the user in the database.
@@ -29,6 +31,7 @@ var Columns = []string{
 	FieldUsername,
 	FieldPasswordDoubleHashed,
 	FieldCertificate,
+	FieldPublicKey,
 	FieldEncryptedPrivateKey,
 }
 
@@ -47,6 +50,8 @@ var (
 	UsernameValidator func(string) error
 	// CertificateValidator is a validator for the "certificate" field. It is called by the builders before save.
 	CertificateValidator func(string) error
+	// PublicKeyValidator is a validator for the "public_key" field. It is called by the builders before save.
+	PublicKeyValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the User queries.
@@ -70,6 +75,11 @@ func ByPasswordDoubleHashed(opts ...sql.OrderTermOption) OrderOption {
 // ByCertificate orders the results by the certificate field.
 func ByCertificate(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCertificate, opts...).ToFunc()
+}
+
+// ByPublicKey orders the results by the public_key field.
+func ByPublicKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPublicKey, opts...).ToFunc()
 }
 
 // ByEncryptedPrivateKey orders the results by the encrypted_private_key field.

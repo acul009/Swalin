@@ -68,6 +68,11 @@ func Certificate(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldCertificate, v))
 }
 
+// PublicKey applies equality check predicate on the "public_key" field. It's identical to PublicKeyEQ.
+func PublicKey(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldPublicKey, v))
+}
+
 // EncryptedPrivateKey applies equality check predicate on the "encrypted_private_key" field. It's identical to EncryptedPrivateKeyEQ.
 func EncryptedPrivateKey(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldEncryptedPrivateKey, v))
@@ -266,6 +271,71 @@ func CertificateEqualFold(v string) predicate.User {
 // CertificateContainsFold applies the ContainsFold predicate on the "certificate" field.
 func CertificateContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldCertificate, v))
+}
+
+// PublicKeyEQ applies the EQ predicate on the "public_key" field.
+func PublicKeyEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldPublicKey, v))
+}
+
+// PublicKeyNEQ applies the NEQ predicate on the "public_key" field.
+func PublicKeyNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldPublicKey, v))
+}
+
+// PublicKeyIn applies the In predicate on the "public_key" field.
+func PublicKeyIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldPublicKey, vs...))
+}
+
+// PublicKeyNotIn applies the NotIn predicate on the "public_key" field.
+func PublicKeyNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldPublicKey, vs...))
+}
+
+// PublicKeyGT applies the GT predicate on the "public_key" field.
+func PublicKeyGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldPublicKey, v))
+}
+
+// PublicKeyGTE applies the GTE predicate on the "public_key" field.
+func PublicKeyGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldPublicKey, v))
+}
+
+// PublicKeyLT applies the LT predicate on the "public_key" field.
+func PublicKeyLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldPublicKey, v))
+}
+
+// PublicKeyLTE applies the LTE predicate on the "public_key" field.
+func PublicKeyLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldPublicKey, v))
+}
+
+// PublicKeyContains applies the Contains predicate on the "public_key" field.
+func PublicKeyContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldPublicKey, v))
+}
+
+// PublicKeyHasPrefix applies the HasPrefix predicate on the "public_key" field.
+func PublicKeyHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldPublicKey, v))
+}
+
+// PublicKeyHasSuffix applies the HasSuffix predicate on the "public_key" field.
+func PublicKeyHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldPublicKey, v))
+}
+
+// PublicKeyEqualFold applies the EqualFold predicate on the "public_key" field.
+func PublicKeyEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldPublicKey, v))
+}
+
+// PublicKeyContainsFold applies the ContainsFold predicate on the "public_key" field.
+func PublicKeyContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldPublicKey, v))
 }
 
 // EncryptedPrivateKeyEQ applies the EQ predicate on the "encrypted_private_key" field.

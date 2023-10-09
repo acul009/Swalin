@@ -5,7 +5,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"rahnit-rmm/util"
@@ -68,11 +67,10 @@ func MarshalAndSign(v any, key *ecdsa.PrivateKey, pub *ecdsa.PublicKey) ([]byte,
 
 	bsig := util.Base64Encode(signature)
 
-	ecdsaPublicKeyBytes, err := x509.MarshalPKIXPublicKey(pub)
+	bpub, err := EncodePubToString(pub)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal public key: %v", err)
+		return nil, fmt.Errorf("failed to encode public key: %v", err)
 	}
-	bpub := util.Base64Encode(ecdsaPublicKeyBytes)
 
 	msg := json
 	msg = append(msg, jsonDelimiter...)
@@ -101,24 +99,14 @@ func UnmarshalAndVerify(signedData []byte, v any) (*ecdsa.PublicKey, error) {
 	bsig := split[1]
 	bpub := split[2]
 
-	ecdsaPublicKeyBytes, err := util.Base64Decode(bpub)
+	pub, err := DecodePubFromString(string(bpub))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode public key: %v", err)
-	}
-
-	ecdsaPublicKey, err := x509.ParsePKIXPublicKey(ecdsaPublicKeyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse public key: %v", err)
 	}
 
 	signature, err := util.Base64Decode(bsig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode signature: %v", err)
-	}
-
-	pub, ok := ecdsaPublicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("failed to parse public key: invalid type")
 	}
 
 	err = VerifyBytes(msg, signature, pub)

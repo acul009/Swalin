@@ -22,6 +22,8 @@ type User struct {
 	PasswordDoubleHashed string `json:"password_double_hashed,omitempty"`
 	// Certificate holds the value of the "certificate" field.
 	Certificate string `json:"certificate,omitempty"`
+	// PublicKey holds the value of the "public_key" field.
+	PublicKey string `json:"public_key,omitempty"`
 	// EncryptedPrivateKey holds the value of the "encrypted_private_key" field.
 	EncryptedPrivateKey string `json:"encrypted_private_key,omitempty"`
 	selectValues        sql.SelectValues
@@ -34,7 +36,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldUsername, user.FieldPasswordDoubleHashed, user.FieldCertificate, user.FieldEncryptedPrivateKey:
+		case user.FieldUsername, user.FieldPasswordDoubleHashed, user.FieldCertificate, user.FieldPublicKey, user.FieldEncryptedPrivateKey:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -74,6 +76,12 @@ func (u *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field certificate", values[i])
 			} else if value.Valid {
 				u.Certificate = value.String
+			}
+		case user.FieldPublicKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field public_key", values[i])
+			} else if value.Valid {
+				u.PublicKey = value.String
 			}
 		case user.FieldEncryptedPrivateKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -125,6 +133,9 @@ func (u *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("certificate=")
 	builder.WriteString(u.Certificate)
+	builder.WriteString(", ")
+	builder.WriteString("public_key=")
+	builder.WriteString(u.PublicKey)
 	builder.WriteString(", ")
 	builder.WriteString("encrypted_private_key=")
 	builder.WriteString(u.EncryptedPrivateKey)

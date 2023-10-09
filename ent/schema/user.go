@@ -17,6 +17,7 @@ func (User) Fields() []ent.Field {
 		field.String("username").Unique().NotEmpty(),
 		field.String("password_double_hashed"),
 		field.String("certificate").NotEmpty().Unique().Immutable(),
+		field.String("public_key").NotEmpty().Unique().Immutable(),
 		field.String("encrypted_private_key"),
 	}
 }
@@ -30,6 +31,6 @@ func (User) Edges() []ent.Edge {
 func (User) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("username"),
-		index.Fields("certificate"),
+		index.Fields("public_key"),
 	}
 }

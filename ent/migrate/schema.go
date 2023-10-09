@@ -14,6 +14,7 @@ var (
 		{Name: "username", Type: field.TypeString, Unique: true},
 		{Name: "password_double_hashed", Type: field.TypeString},
 		{Name: "certificate", Type: field.TypeString, Unique: true},
+		{Name: "public_key", Type: field.TypeString, Unique: true},
 		{Name: "encrypted_private_key", Type: field.TypeString},
 	}
 	// UsersTable holds the schema information for the "users" table.
@@ -28,9 +29,9 @@ var (
 				Columns: []*schema.Column{UsersColumns[1]},
 			},
 			{
-				Name:    "user_certificate",
+				Name:    "user_public_key",
 				Unique:  false,
-				Columns: []*schema.Column{UsersColumns[3]},
+				Columns: []*schema.Column{UsersColumns[4]},
 			},
 		},
 	}

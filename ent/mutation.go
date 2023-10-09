@@ -35,6 +35,7 @@ type UserMutation struct {
 	username               *string
 	password_double_hashed *string
 	certificate            *string
+	public_key             *string
 	encrypted_private_key  *string
 	clearedFields          map[string]struct{}
 	done                   bool
@@ -248,6 +249,42 @@ func (m *UserMutation) ResetCertificate() {
 	m.certificate = nil
 }
 
+// SetPublicKey sets the "public_key" field.
+func (m *UserMutation) SetPublicKey(s string) {
+	m.public_key = &s
+}
+
+// PublicKey returns the value of the "public_key" field in the mutation.
+func (m *UserMutation) PublicKey() (r string, exists bool) {
+	v := m.public_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublicKey returns the old "public_key" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldPublicKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublicKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublicKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublicKey: %w", err)
+	}
+	return oldValue.PublicKey, nil
+}
+
+// ResetPublicKey resets all changes to the "public_key" field.
+func (m *UserMutation) ResetPublicKey() {
+	m.public_key = nil
+}
+
 // SetEncryptedPrivateKey sets the "encrypted_private_key" field.
 func (m *UserMutation) SetEncryptedPrivateKey(s string) {
 	m.encrypted_private_key = &s
@@ -318,7 +355,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 5)
 	if m.username != nil {
 		fields = append(fields, user.FieldUsername)
 	}
@@ -327,6 +364,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.certificate != nil {
 		fields = append(fields, user.FieldCertificate)
+	}
+	if m.public_key != nil {
+		fields = append(fields, user.FieldPublicKey)
 	}
 	if m.encrypted_private_key != nil {
 		fields = append(fields, user.FieldEncryptedPrivateKey)
@@ -345,6 +385,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.PasswordDoubleHashed()
 	case user.FieldCertificate:
 		return m.Certificate()
+	case user.FieldPublicKey:
+		return m.PublicKey()
 	case user.FieldEncryptedPrivateKey:
 		return m.EncryptedPrivateKey()
 	}
@@ -362,6 +404,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldPasswordDoubleHashed(ctx)
 	case user.FieldCertificate:
 		return m.OldCertificate(ctx)
+	case user.FieldPublicKey:
+		return m.OldPublicKey(ctx)
 	case user.FieldEncryptedPrivateKey:
 		return m.OldEncryptedPrivateKey(ctx)
 	}
@@ -393,6 +437,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCertificate(v)
+		return nil
+	case user.FieldPublicKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublicKey(v)
 		return nil
 	case user.FieldEncryptedPrivateKey:
 		v, ok := value.(string)
@@ -458,6 +509,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldCertificate:
 		m.ResetCertificate()
+		return nil
+	case user.FieldPublicKey:
+		m.ResetPublicKey()
 		return nil
 	case user.FieldEncryptedPrivateKey:
 		m.ResetEncryptedPrivateKey()
