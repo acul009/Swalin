@@ -9,7 +9,7 @@ import (
 	"rahnit-rmm/util"
 )
 
-func SaveCertToFile(filepath string, cert []byte) error {
+func SaveCertToFile(filepath string, cert *x509.Certificate) error {
 	err := util.CreateParentDir(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to create parent directory: %v", err)
@@ -21,7 +21,7 @@ func SaveCertToFile(filepath string, cert []byte) error {
 	}
 
 	defer certFile.Close()
-	err = pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert})
+	err = pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 	if err != nil {
 		return fmt.Errorf("failed to encode certificate: %v", err)
 	}

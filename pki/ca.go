@@ -56,10 +56,13 @@ func SaveCaCert(caCert *x509.Certificate) error {
 		return fmt.Errorf("failed to load existing CA certificate: %v", err)
 	}
 
-	err = SaveCertToFile(config.GetFilePath(caCertFilePath), caCert.Raw)
+	err = SaveCertToFile(config.GetFilePath(caCertFilePath), caCert)
 	if err != nil {
 		return fmt.Errorf("failed to save CA certificate: %v", err)
 	}
+
+	updateRootPool()
+
 	return nil
 }
 
@@ -82,19 +85,38 @@ func GetCaKey(password []byte) (*ecdsa.PrivateKey, error) {
 	return caKey, nil
 }
 
-func InitCa(password []byte) error {
+func IsCaPublicKey(pub *ecdsa.PublicKey) (bool, error) {
+	caCert, err := GetCaCert()
+	if err != nil {
+		return false, fmt.Errorf("failed to load CA certificate: %v", err)
+	}
+
+	caPub, err := GetEncodedPublicKey(caCert)
+	if err != nil {
+		return false, fmt.Errorf("failed to get CA public key: %v", err)
+	}
+
+	targetPub, err := EncodePubToString(pub)
+	if err != nil {
+		return false, fmt.Errorf("failed to encode public key: %v", err)
+	}
+
+	return caPub == targetPub, nil
+}
+
+func InitCa(rootName string, password []byte) error {
 	if _, err := GetCaCert(); err == nil {
 		return fmt.Errorf("CA certificate already exists")
 	} else if !errors.Is(err, ErrNoCaCert) {
 		return fmt.Errorf("failed to load existing CA certificate: %v", err)
 	}
 
-	caCert, caKey, err := generateRootCert()
+	caCert, caKey, err := generateRootCert(rootName)
 	if err != nil {
 		return fmt.Errorf("failed to generate CA certificate: %v", err)
 	}
 
-	err = SaveCertToFile(config.GetFilePath(caCertFilePath), caCert.Raw)
+	err = SaveCertToFile(config.GetFilePath(caCertFilePath), caCert)
 	if err != nil {
 		return fmt.Errorf("failed to save CA certificate: %v", err)
 	}

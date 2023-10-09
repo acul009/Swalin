@@ -27,6 +27,15 @@ func (e PermissionDeniedError) Is(target error) bool {
 }
 
 func MayStartCommand(sender *ecdsa.PublicKey, command string) error {
+	isRoot, err := pki.IsCaPublicKey(sender)
+	if err != nil {
+		return fmt.Errorf("failed to check if public key is CA: %v", err)
+	}
+
+	if isRoot {
+		return nil
+	}
+
 	db := config.DB()
 
 	encoded, err := pki.EncodePubToString(sender)

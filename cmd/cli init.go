@@ -29,19 +29,24 @@ to quickly create a Cobra application.`,
 		fmt.Println("init called")
 		config.SetSubdir("cli")
 
-		var rootPassword byte[]
+		var rootPassword []byte
 
 		_, err := pki.GetCaCert()
 		if err != nil {
 			if errors.Is(err, pki.ErrNoCaCert) {
 				fmt.Println("No root certificate found, generating one")
 
+				rootUser, err := util.AskForString("Enter username for root:")
+				if err != nil {
+					panic(err)
+				}
+
 				rootPassword, err := util.AskForNewPassword("Enter password to encrypt the root certificate:")
 				if err != nil {
 					panic(err)
 				}
 
-				err = pki.InitCa(rootPassword)
+				err = pki.InitCa(rootUser, rootPassword)
 				if err != nil {
 					fmt.Printf("error generating root certificate: %v", err)
 				}
@@ -56,9 +61,14 @@ to quickly create a Cobra application.`,
 			}
 		}
 
+		pki.UnlockAsRoot(rootPassword)
+
 		addr := "localhost:1234"
 
 		client, err := rpc.NewRpcClient(context.Background(), addr)
+		if err != nil {
+			panic(err)
+		}
 
 		rpcCmd, err := rpc.UploadCaCmd()
 		if err != nil {
@@ -71,6 +81,25 @@ to quickly create a Cobra application.`,
 		}
 
 		err = client.Close(200, "OK")
+		if err != nil {
+			panic(err)
+		}
+
+		newUser, err := util.AskForString("Enter username for new user:")
+		if err != nil {
+			panic(err)
+		}
+
+		newPassword, err := util.AskForNewPassword("Enter password to encrypt the user certificate:")
+		if err != nil {
+			panic(err)
+		}
+
+		err = pki.CreateAndApplyCurrentUserCert(newUser, newPassword, rootPassword)
+		if err != nil {
+			panic(err)
+		}
+		pki.Unlock(newPassword)
 		if err != nil {
 			panic(err)
 		}

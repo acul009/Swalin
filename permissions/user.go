@@ -53,4 +53,6 @@ func GetUserFromPublicKey(pub *ecdsa.PublicKey) (*ent.User, error) {
 		return nil, fmt.Errorf("failed to decode certificate: %v", err)
 	}
 
+	fmt.Println(cert)
+	return nil, fmt.Errorf("not implemented")
 }

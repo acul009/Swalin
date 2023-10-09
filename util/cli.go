@@ -1,7 +1,9 @@
 package util
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"syscall"
 
 	"golang.org/x/term"
@@ -52,4 +54,16 @@ func AskForPassword(message string) ([]byte, error) {
 	}
 
 	return text, nil
+}
+
+var reader = bufio.NewReader(os.Stdin)
+
+// Asks for a string on the terminal which is not censored
+func AskForString(message string) (string, error) {
+	fmt.Println(message)
+	text, err := reader.ReadString('\n')
+	if err != nil {
+		return "", fmt.Errorf("error reading string: %v", err)
+	}
+	return text[:len(text)-1], nil
 }

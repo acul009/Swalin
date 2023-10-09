@@ -9,17 +9,16 @@ type CertPool struct {
 	x509.CertPool
 }
 
-var rootPool *x509.CertPool = createRootPool()
+var rootPool *x509.CertPool = nil
 
-func createRootPool() *x509.CertPool {
-	pool := x509.NewCertPool()
-	caCer, err := GetCaCert()
+func updateRootPool() {
+	rootPool = x509.NewCertPool()
+	caCert, err := GetCaCert()
 	if err != nil {
-		panic(err)
+		return
 	}
 
-	pool.AddCert(caCer)
-	return pool
+	rootPool.AddCert(caCert)
 }
 
 func CreateCertPool() *CertPool {
@@ -52,4 +51,8 @@ func (c *CertPool) AddCert(cert *x509.Certificate) error {
 
 	c.CertPool.AddCert(cert)
 	return nil
+}
+
+func init() {
+	updateRootPool()
 }
