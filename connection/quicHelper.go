@@ -51,6 +51,8 @@ func generateServerTLSConfig() *tls.Config {
 	return &tls.Config{
 		Certificates: []tls.Certificate{tlsCert},
 		NextProtos:   []string{"quic-echo-example"},
+		ClientAuth:   tls.VerifyClientCertIfGiven,
+		RootCAs:      x509.NewCertPool(),
 	}
 }
 
@@ -58,6 +60,7 @@ func generateClientTLSConfig() *tls.Config {
 	return &tls.Config{
 		InsecureSkipVerify: true,
 		NextProtos:         []string{"quic-echo-example"},
+		ClientAuth:         tls.VerifyClientCertIfGiven,
 	}
 }
 

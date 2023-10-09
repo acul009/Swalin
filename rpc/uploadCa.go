@@ -25,8 +25,6 @@ func UploadCaCmd() (*UploadCa, error) {
 		return nil, fmt.Errorf("failed to load CA certificate: %v", err)
 	}
 
-	fmt.Printf("CA certificate:\n%v\n", ca.Raw)
-
 	encodedToPem := pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: ca.Raw,

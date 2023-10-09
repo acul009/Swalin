@@ -45,20 +45,26 @@ func NewRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 	}
 }
 
-func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
-
-	s.mutex.Lock()
-	if s.state != RpcSessionCreated {
-		s.mutex.Unlock()
-		return fmt.Errorf("RPC session not created")
+func (s *RpcSession) handleIncoming(commands *CommandCollection) {
+	err := s.MutateState(RpcSessionCreated, RpcSessionOpen)
+	if err != nil {
+		log.Printf("session already open: %v", err)
+		return
 	}
-	s.state = RpcSessionOpen
-	s.mutex.Unlock()
+
+	log.Printf("Session opened, reading request header...")
 
 	header, sender, err := s.ReadRequestHeader()
 	if err != nil {
-		log.Printf("error reading header: %v\n", err)
+		s.WriteResponseHeader(SessionResponseHeader{
+			Code: 500,
+			Msg:  "error reading request header",
+		})
+		log.Printf("error reading header: %v", err)
+		return
 	}
+
+	log.Printf("Header: %v", header)
 
 	err = permissions.MayStartCommand(sender, header.Cmd)
 	if err != nil {
@@ -66,7 +72,8 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 			Code: 403,
 			Msg:  "permission denied",
 		})
-		return fmt.Errorf("permission denied: %v", err)
+		log.Printf("permission denied: %v", err)
+		return
 	}
 
 	s.partner = sender
@@ -84,7 +91,8 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 			Code: 404,
 			Msg:  "command not found",
 		})
-		return fmt.Errorf("unknown command: %s", header.Cmd)
+		log.Printf("unknown command: %s", header.Cmd)
+		return
 	}
 
 	cmd := handler()
@@ -95,17 +103,17 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 			Code: 422,
 			Msg:  "error unmarshalling command",
 		})
-		return fmt.Errorf("error unmarshalling command: %v", err)
+		log.Printf("error unmarshalling command: %v", err)
+		return
 	}
 
 	err = cmd.ExecuteServer(s)
 
 	if err != nil {
 		log.Printf("error executing command: %v", err)
-		return fmt.Errorf("error executing command: %v", err)
+		return
 	}
 
-	return nil
 }
 
 func (s *RpcSession) Write(p []byte) (n int, err error) {
@@ -153,6 +161,7 @@ func (s *RpcSession) Peek(p []byte, offset int) (n int, err error) {
 		readBuffer := make([]byte, toRead)
 		n, err := s.Stream.Read(readBuffer)
 		s.ReadBuffer = append(s.ReadBuffer, readBuffer[:n]...)
+		log.Printf("buffer: %s", string(s.ReadBuffer))
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				eof = err
@@ -228,12 +237,17 @@ func (s *RpcSession) ReadUntil(delimiter []byte, bufferSize int, limit int) ([]b
 }
 
 func readMessageFromUnknown[P any](s *RpcSession, payload P) (*ecdsa.PublicKey, error) {
-	msgData, err := s.ReadUntil([]byte("\n"), 1024, 1024)
+	log.Printf("Reading message from unknown sender")
+
+	msgData, err := s.ReadUntil(messageStop, 1024, 1024*1024)
 	if err != nil {
 		return nil, fmt.Errorf("error reading message: %v", err)
 	}
 
-	message := rpcMessage[P]{}
+	msgString := string(msgData)
+	log.Printf("Received message: %s", msgString)
+
+	message := RpcMessage[P]{}
 
 	sender, err := pki.UnmarshalAndVerify(msgData, message)
 	if err != nil {
@@ -248,10 +262,6 @@ func readMessageFromUnknown[P any](s *RpcSession, payload P) (*ecdsa.PublicKey, 
 	err = message.Verify(s.Connection.nonceStorage, myPub)
 	if err != nil {
 		return nil, fmt.Errorf("error verifying message: %v", err)
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("error reading message: %v", err)
 	}
 
 	return sender, nil
@@ -303,12 +313,19 @@ func WriteMessage[P any](s *RpcSession, payload P) error {
 		return fmt.Errorf("error getting current key: %v", err)
 	}
 
-	data, err := pki.MarshalAndSign(payload, key, pub)
+	message, err := newRpcMessage[P](pub, payload)
+	if err != nil {
+		return fmt.Errorf("error creating message: %v", err)
+	}
+
+	data, err := pki.MarshalAndSign(message, key, pub)
 	if err != nil {
 		return fmt.Errorf("error marshalling message: %v", err)
 	}
 
 	toWrite := append(data, messageStop...)
+
+	fmt.Printf("Sending message: %s", string(toWrite))
 
 	_, err = s.Write(toWrite)
 	if err != nil {
@@ -395,11 +412,11 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 
 	response, err := s.readResponseHeader(s.partner)
 
-	fmt.Printf("Response Header:\n%v\n", response)
-
 	if err != nil {
 		return fmt.Errorf("error reading response header: %v", err)
 	}
+
+	fmt.Printf("Response Header:\n%v\n", response)
 
 	if response.Code != 200 {
 		return fmt.Errorf("error sending command: %v", response.Msg)
@@ -424,7 +441,6 @@ func (s *RpcSession) Close() error {
 }
 
 var messageStop = []byte("\n")
-var headerDelimiter = "|"
 
 type SessionRequestHeader struct {
 	Cmd       string                 `json:"cmd"`

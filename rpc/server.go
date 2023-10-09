@@ -16,7 +16,7 @@ type rpcNotRunningError struct {
 }
 
 func (e rpcNotRunningError) Error() string {
-	return fmt.Errorf("Rpc not running anymore").Error()
+	return fmt.Errorf("rpc not running anymore").Error()
 }
 
 var ErrRpcNotRunning = rpcNotRunningError{}
@@ -28,7 +28,8 @@ func (e rpcNotRunningError) Is(target error) bool {
 
 type RpcServer struct {
 	listener          *quic.Listener
-	commands          *CommandCollection
+	unsecureCommands  *CommandCollection
+	tlsCommands       *CommandCollection
 	state             RpcServerState
 	activeConnections map[uuid.UUID]*RpcConnection
 	mutex             sync.Mutex
@@ -43,7 +44,7 @@ const (
 	RpcServerStopped
 )
 
-func NewRpcServer(addr string, commands *CommandCollection) (*RpcServer, error) {
+func NewRpcServer(addr string, unsecureCommands *CommandCollection, tlsCommands *CommandCollection) (*RpcServer, error) {
 	listener, err := connection.CreateServer(addr)
 	if err != nil {
 		return nil, fmt.Errorf("error creating QUIC server: %v", err)
@@ -51,7 +52,8 @@ func NewRpcServer(addr string, commands *CommandCollection) (*RpcServer, error) 
 
 	return &RpcServer{
 		listener:          listener,
-		commands:          commands,
+		unsecureCommands:  unsecureCommands,
+		tlsCommands:       tlsCommands,
 		state:             RpcServerCreated,
 		activeConnections: make(map[uuid.UUID]*RpcConnection),
 		mutex:             sync.Mutex{},
@@ -77,7 +79,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 		}
 	}
 	if connection == nil {
-		return nil, fmt.Errorf("Multiple UUID collisions, this should mathematically be impossible")
+		return nil, fmt.Errorf("multiple uuid collisions, this should mathematically be impossible")
 	}
 	s.activeConnections[connection.Uuid] = connection
 	return connection, nil
@@ -113,7 +115,20 @@ func (s *RpcServer) Run() error {
 			continue
 		}
 
-		go conn.serve(s.commands)
+		chains := conn.ConnectionState().TLS.VerifiedChains
+		if len(chains) > 0 {
+			log.Printf("new connection using mTLS")
+			go conn.serve(s.tlsCommands)
+		} else {
+			certs := conn.ConnectionState().TLS.PeerCertificates
+			if len(certs) > 0 {
+				log.Printf("Could not verify client certificate")
+			} else {
+				log.Printf("new unverified connection")
+				go conn.serve(s.unsecureCommands)
+			}
+		}
+
 	}
 }
 

@@ -44,7 +44,7 @@ func (c *RpcClient) SendCommand(ctx context.Context, cmd RpcCommand) error {
 	c.mutex.Unlock()
 	session, err := c.conn.OpenSession(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("error opening session: %v", err)
 	}
 
 	err = session.SendCommand(cmd)

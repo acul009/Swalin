@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
@@ -41,7 +42,7 @@ to quickly create a Cobra application.`,
 					panic(err)
 				}
 
-				rootPassword, err := util.AskForNewPassword("Enter password to encrypt the root certificate:")
+				rootPassword, err = util.AskForNewPassword("Enter password to encrypt the root certificate:")
 				if err != nil {
 					panic(err)
 				}
@@ -70,15 +71,21 @@ to quickly create a Cobra application.`,
 			panic(err)
 		}
 
+		log.Println("Established client connection")
+
 		rpcCmd, err := rpc.UploadCaCmd()
 		if err != nil {
 			panic(err)
 		}
 
+		log.Println("Preparing CA for Upload")
+
 		err = client.SendCommand(context.Background(), rpcCmd)
 		if err != nil {
 			panic(err)
 		}
+
+		log.Println("CA Upload successful")
 
 		err = client.Close(200, "OK")
 		if err != nil {

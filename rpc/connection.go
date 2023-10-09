@@ -51,23 +51,27 @@ func NewRpcConnection(conn quic.Connection, server *RpcServer, role RpcConnectio
 }
 
 func (conn *RpcConnection) serve(commands *CommandCollection) error {
-	conn.mutex.Lock()
-	if conn.state != RpcConnectionOpen {
-		conn.mutex.Unlock()
-		return fmt.Errorf("RPC connection not open")
+	err := conn.EnsureState(RpcConnectionOpen)
+	if err != nil {
+		return fmt.Errorf("error ensuring RPC connection is open: %v", err)
 	}
-	conn.mutex.Unlock()
 
-	fmt.Println("Connection accepted, serving RPC")
+	log.Printf("Connection accepted, serving RPC")
 	for {
+		log.Printf("Waiting for incoming QUIC stream...")
+
 		session, err := conn.AcceptSession(context.Background())
 
-		conn.mutex.Lock()
-		if conn.state != RpcConnectionOpen {
-			conn.mutex.Unlock()
+		log.Printf("Session requested")
+		if err != nil {
+			log.Printf("error accepting QUIC stream: %v\n", err)
+		}
+
+		stateErr := conn.EnsureState(RpcConnectionOpen)
+		if stateErr != nil {
+			log.Printf("error ensuring RPC connection is open: %v", stateErr)
 			return fmt.Errorf("RPC connection not open anymore")
 		}
-		conn.mutex.Unlock()
 
 		if err != nil {
 			log.Printf("error accepting QUIC stream: %v", err)
@@ -76,6 +80,7 @@ func (conn *RpcConnection) serve(commands *CommandCollection) error {
 			}
 		}
 
+		log.Printf("RPC session opened, handling incoming commands")
 		go session.handleIncoming(commands)
 	}
 
@@ -100,7 +105,7 @@ func (conn *RpcConnection) AcceptSession(context.Context) (*RpcSession, error) {
 	}
 
 	if session == nil {
-		return nil, fmt.Errorf("Multiple UUID collisions, this should mathematically be impossible")
+		return nil, fmt.Errorf("multiple uuid collisions, this should mathematically be impossible")
 	}
 
 	conn.activeSessions[session.Uuid] = session
@@ -109,12 +114,10 @@ func (conn *RpcConnection) AcceptSession(context.Context) (*RpcSession, error) {
 }
 
 func (conn *RpcConnection) OpenSession(ctx context.Context) (*RpcSession, error) {
-	conn.mutex.Lock()
-	if conn.state != RpcConnectionOpen {
-		conn.mutex.Unlock()
-		return nil, fmt.Errorf("RPC connection not open anymore")
+	err := conn.EnsureState(RpcConnectionOpen)
+	if err != nil {
+		return nil, fmt.Errorf("error ensuring RPC connection is open: %v", err)
 	}
-	conn.mutex.Unlock()
 
 	stream, err := conn.OpenStreamSync(ctx)
 	if err != nil {
@@ -124,6 +127,27 @@ func (conn *RpcConnection) OpenSession(ctx context.Context) (*RpcSession, error)
 	return NewRpcSession(stream, conn), nil
 }
 
+func (conn *RpcConnection) MutateState(from RpcConnectionState, to RpcConnectionState) error {
+	conn.mutex.Lock()
+	if conn.state != from {
+		conn.mutex.Unlock()
+		return fmt.Errorf("RPC session not in state %v", from)
+	}
+	conn.state = to
+	conn.mutex.Unlock()
+	return nil
+}
+
+func (conn *RpcConnection) EnsureState(state RpcConnectionState) error {
+	conn.mutex.Lock()
+	if conn.state != state {
+		conn.mutex.Unlock()
+		return fmt.Errorf("RPC session not in state %v", state)
+	}
+	conn.mutex.Unlock()
+	return nil
+}
+
 func (conn *RpcConnection) removeSession(uuid uuid.UUID) {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
@@ -131,12 +155,12 @@ func (conn *RpcConnection) removeSession(uuid uuid.UUID) {
 }
 
 func (conn *RpcConnection) Close(code quic.ApplicationErrorCode, msg string) error {
-	conn.mutex.Lock()
-	if conn.state != RpcConnectionOpen {
-		conn.mutex.Unlock()
-		return fmt.Errorf("RPC connection not open anymore")
+
+	if err := conn.MutateState(RpcConnectionOpen, RpcConnectionStopped); err != nil {
+		return fmt.Errorf("error closing connection: %v", err)
 	}
-	conn.state = RpcConnectionStopped
+
+	conn.mutex.Lock()
 	sessionsToClose := conn.activeSessions
 	conn.mutex.Unlock()
 

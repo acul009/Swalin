@@ -40,7 +40,8 @@ to quickly create a Cobra application.`,
 
 		fmt.Printf("\nListening on localhost:%s\n", addr)
 
-		commands := rpc.NewCommandCollection()
+		insecureCommands := rpc.NewCommandCollection()
+		tlsCommands := rpc.NewCommandCollection()
 
 		_, err = pki.GetCaCert()
 
@@ -50,13 +51,13 @@ to quickly create a Cobra application.`,
 		} else {
 			if errors.Is(err, pki.ErrNoCaCert) {
 				// Server doesn't have a CA certificate yet
-				commands.Add(rpc.UploadCaHandler)
+				insecureCommands.Add(rpc.UploadCaHandler)
 			} else {
 				panic(err)
 			}
 		}
 
-		server, err := rpc.NewRpcServer(addr, commands)
+		server, err := rpc.NewRpcServer(addr, insecureCommands, tlsCommands)
 		if err != nil {
 			panic(err)
 		}

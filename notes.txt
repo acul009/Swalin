@@ -7,3 +7,17 @@ Certificate structure:
   - User 2
     - Machine 3
     - Machine 4
+
+
+Security Layers:
+
+1) mTLS - verify certificate chain up to root
+2.1) Signed rpc requests - verify certificate chain up to root
+2.2) Signed rpc responses - verify certificate chain up to root
+3) check permissions of certificate/actor (root is always allowed)
+4) EC-DH encrypted tunnel
+
+
+To initiate:
+1) create root certificicate 
+2) upload root certificate (needs to bypass 1 and 2 - message should be verified against provided root later)
