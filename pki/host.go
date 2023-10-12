@@ -44,4 +44,10 @@ func UnlockHost() error {
 		SaveCurrentKeyPair(key, &key.PublicKey, password)
 	}
 
+	err = Unlock(password)
+	if err != nil {
+		return fmt.Errorf("failed to unlock: %v", err)
+	}
+
+	return nil
 }
