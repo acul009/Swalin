@@ -18,6 +18,12 @@ Security Layers:
 4) EC-DH encrypted tunnel
 
 
+Initialization possibilities:
+- Client from user
+- Server from client (server setup)
+- Client from Server (login)
+- Agent from Server
+
 To initiate:
 1) create root certificicate 
 2) upload root certificate (needs to bypass 1 and 2 - message should be verified against provided root later)

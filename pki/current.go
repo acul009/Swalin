@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/x509"
 	"fmt"
+	"os"
 	"rahnit-rmm/config"
 )
 
@@ -24,6 +25,32 @@ var currentCert *x509.Certificate = nil
 
 const currentKeyFilePath = "current.key"
 const currentCertFilePath = "current.cert"
+
+func CurrentAvailable() (bool, error) {
+	_, err := os.Stat(config.GetFilePath(currentCertFilePath))
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to check if current cert exists: %v", err)
+	}
+	return true, nil
+}
+
+func CurrentAvailableUser() (string, error) {
+	cert, err := LoadCertFromFile(config.GetFilePath(currentCertFilePath))
+	if err != nil {
+		return "", fmt.Errorf("failed to load current cert: %v", err)
+	}
+
+	// check if the OU is users
+	ou := cert.Subject.OrganizationalUnit[0]
+	if ou != string(CertTypeUser) {
+		return "", fmt.Errorf("current cert is not a user certificate")
+	}
+
+	return cert.Subject.CommonName, nil
+}
 
 func Unlock(password []byte) error {
 	cert, err := LoadCertFromFile(config.GetFilePath(currentCertFilePath))

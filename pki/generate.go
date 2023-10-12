@@ -52,7 +52,10 @@ func generateRootCert(commonName string) (*x509.Certificate, *ecdsa.PrivateKey, 
 		return nil, nil, fmt.Errorf("failed to generate CA template: %v", err)
 	}
 
-	caTemplate.Subject = pkix.Name{CommonName: commonName}
+	caTemplate.Subject = pkix.Name{
+		OrganizationalUnit: []string{string(CertTypeRoot)},
+		CommonName:         commonName,
+	}
 	caTemplate.NotAfter = time.Now().Add(rootValidFor)
 	caTemplate.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign
 	caTemplate.IsCA = true
@@ -81,6 +84,13 @@ func signCert(template *x509.Certificate, caKey *ecdsa.PrivateKey, caCert *x509.
 	return cert, nil
 }
 
+type CertType string
+
+const (
+	CertTypeRoot CertType = "root"
+	CertTypeUser CertType = "users"
+)
+
 func generateUserCert(username string, caKey *ecdsa.PrivateKey, caCert *x509.Certificate) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	// Generate a new user private key
 	userPrivateKey, err := generateKeypair()
@@ -94,7 +104,7 @@ func generateUserCert(username string, caKey *ecdsa.PrivateKey, caCert *x509.Cer
 	}
 
 	userTemplate.Subject = pkix.Name{
-		OrganizationalUnit: []string{"users"},
+		OrganizationalUnit: []string{string(CertTypeUser)},
 		CommonName:         username,
 	}
 
