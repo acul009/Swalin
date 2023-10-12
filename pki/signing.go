@@ -125,6 +125,9 @@ func SignBytes(data []byte, key *ecdsa.PrivateKey) ([]byte, error) {
 	}
 
 	hash, err := HashBytes(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash data: %v", err)
+	}
 
 	signature, err := ecdsa.SignASN1(rand.Reader, key, hash)
 	if err != nil {
