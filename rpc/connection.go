@@ -24,6 +24,7 @@ const (
 	RpcRoleAgent RpcConnectionRole = iota
 	RpcRoleServer
 	RpcRoleClient
+	RpcRoleInit
 )
 
 type RpcConnection struct {
@@ -190,7 +191,11 @@ func (conn *RpcConnection) Close(code quic.ApplicationErrorCode, msg string) err
 		errorList = append(errorList, err)
 	}
 
-	var err error = nil
+	err := conn.Connection.CloseWithError(code, msg)
+	if err != nil {
+		errorList = append(errorList, err)
+	}
+
 	if len(errorList) > 0 {
 		err = fmt.Errorf("error closing sessions: %w", errors.Join(errorList...))
 	}
@@ -199,6 +204,5 @@ func (conn *RpcConnection) Close(code quic.ApplicationErrorCode, msg string) err
 		conn.server.removeConnection(conn.Uuid)
 	}
 
-	err = conn.Connection.CloseWithError(code, msg)
 	return err
 }

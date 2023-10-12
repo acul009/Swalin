@@ -33,9 +33,9 @@ to quickly create a Cobra application.`,
 		// create root user if missing
 		var rootPassword []byte
 
-		_, err := pki.GetCaCert()
+		_, err := pki.GetRootCert()
 		if err != nil {
-			if errors.Is(err, pki.ErrNoCaCert) {
+			if errors.Is(err, pki.ErrNoRootCert) {
 				fmt.Println("No root certificate found, generating one")
 
 				rootUser, err := util.AskForString("Enter username for root:")
@@ -48,7 +48,7 @@ to quickly create a Cobra application.`,
 					panic(err)
 				}
 
-				err = pki.InitCa(rootUser, rootPassword)
+				err = pki.InitRoot(rootUser, rootPassword)
 				if err != nil {
 					fmt.Printf("error generating root certificate: %v", err)
 				}

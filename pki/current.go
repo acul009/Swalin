@@ -100,7 +100,7 @@ func Unlock(password []byte) error {
 }
 
 func UnlockAsRoot(password []byte) error {
-	caCert, caKey, err := GetCa(password)
+	caCert, caKey, err := GetRoot(password)
 	if err != nil {
 		return fmt.Errorf("failed to load CA: %v", err)
 	}
@@ -139,7 +139,7 @@ func GetCurrentPublicKey() (*ecdsa.PublicKey, error) {
 }
 
 func SaveCurrentCertAndKey(cert *x509.Certificate, key *ecdsa.PrivateKey, password []byte) error {
-	err := SaveCertToFile(config.GetFilePath(currentCertFilePath), cert)
+	err := SaveCurrentCert(cert)
 	if err != nil {
 		return fmt.Errorf("failed to save current cert: %v", err)
 	}
@@ -158,6 +158,14 @@ func SaveCurrentKeyPair(key *ecdsa.PrivateKey, pub *ecdsa.PublicKey, password []
 	err = SavePublicKeyToFile(config.GetFilePath(currentPubFilePath), pub)
 	if err != nil {
 		return fmt.Errorf("failed to save current public key: %v", err)
+	}
+	return nil
+}
+
+func SaveCurrentCert(cert *x509.Certificate) error {
+	err := SaveCertToFile(config.GetFilePath(currentCertFilePath), cert)
+	if err != nil {
+		return fmt.Errorf("failed to save current cert: %v", err)
 	}
 	return nil
 }

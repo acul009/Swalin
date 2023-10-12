@@ -31,25 +31,45 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("server called")
 		config.SetSubdir("server")
+
 		err := config.InitDB()
+		if err != nil {
+			panic(err)
+		}
+
+		err = pki.UnlockHost()
+		if err != nil {
+			panic(err)
+		}
+
+		ready, err := pki.CurrentAvailable()
 		if err != nil {
 			panic(err)
 		}
 
 		addr := "localhost:1234"
 
+		if !ready {
+			err := rpc.SetupServer(addr)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		return
+
 		fmt.Printf("\nListening on localhost:%s\n", addr)
 
 		insecureCommands := rpc.NewCommandCollection()
 		tlsCommands := rpc.NewCommandCollection()
 
-		_, err = pki.GetCaCert()
+		_, err = pki.GetRootCert()
 
 		if err == nil {
 			// Server has a CA certificate
 
 		} else {
-			if errors.Is(err, pki.ErrNoCaCert) {
+			if errors.Is(err, pki.ErrNoRootCert) {
 				// Server doesn't have a CA certificate yet
 				insecureCommands.Add(rpc.UploadCaHandler)
 			} else {

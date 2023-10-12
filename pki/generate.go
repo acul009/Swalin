@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+var CurveToUse = elliptic.P521()
+
 const rootValidFor = 10 * 365 * 24 * time.Hour
 const userValidFor = 10 * 365 * 24 * time.Hour
 

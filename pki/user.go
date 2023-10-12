@@ -3,7 +3,7 @@ package pki
 import "fmt"
 
 func CreateAndApplyCurrentUserCert(username string, userPassword []byte, caPassword []byte) error {
-	cert, key, err := GetCa(caPassword)
+	cert, key, err := GetRoot(caPassword)
 	if err != nil {
 		return fmt.Errorf("failed to load CA: %v", err)
 	}

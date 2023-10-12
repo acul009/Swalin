@@ -51,7 +51,7 @@ func generateServerTLSConfig() *tls.Config {
 	return &tls.Config{
 		Certificates: []tls.Certificate{tlsCert},
 		NextProtos:   []string{"quic-echo-example"},
-		ClientAuth:   tls.VerifyClientCertIfGiven,
+		ClientAuth:   tls.RequireAnyClientCert,
 		RootCAs:      x509.NewCertPool(),
 	}
 }

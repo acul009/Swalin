@@ -20,7 +20,7 @@ type UploadCa struct {
 }
 
 func UploadCaCmd() (*UploadCa, error) {
-	ca, err := pki.GetCaCert()
+	ca, err := pki.GetRootCert()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load CA certificate: %v", err)
 	}
@@ -48,7 +48,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 	caMutex.Lock()
 	defer caMutex.Unlock()
 
-	_, err := pki.GetCaCert()
+	_, err := pki.GetRootCert()
 	if err == nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 409,
@@ -56,7 +56,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 		})
 		return nil
 	}
-	if !errors.Is(err, pki.ErrNoCaCert) {
+	if !errors.Is(err, pki.ErrNoRootCert) {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,
 			Msg:  "Failed to load CA certificate",
@@ -135,7 +135,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 	}
 
 	// actually save the CA certificate
-	err = pki.SaveCaCert(cert)
+	err = pki.SaveRootCert(cert)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,

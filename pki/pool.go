@@ -13,7 +13,7 @@ var rootPool *x509.CertPool = nil
 
 func updateRootPool() {
 	rootPool = x509.NewCertPool()
-	caCert, err := GetCaCert()
+	caCert, err := GetRootCert()
 	if err != nil {
 		return
 	}
