@@ -24,6 +24,19 @@ Initialization possibilities:
 - Client from Server (login)
 - Agent from Server
 
+For Server from client the following things need to happen in no particular order:
+- Upload the root certificate to the server
+- Download the servers public key, create a signed cert and upload the cert
+
+Which means 3 data transfers:
+- Upload root
+- Download public key
+- Upload cert
+
+Which can be combined into:
+1) Download public key
+2) upload root and server cert
+
 To initiate:
 1) create root certificicate 
 2) upload root certificate (needs to bypass 1 and 2 - message should be verified against provided root later)

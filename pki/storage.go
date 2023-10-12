@@ -112,3 +112,39 @@ func LoadCertKeyFromFile(filepath string, password []byte) (*ecdsa.PrivateKey, e
 
 	return caKey, nil
 }
+
+func SavePasswordToFile(filepath string, password []byte) error {
+	err := util.CreateParentDir(filepath)
+	if err != nil {
+		return fmt.Errorf("failed to create parent directory: %v", err)
+	}
+
+	certFile, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+
+	defer certFile.Close()
+	err = pem.Encode(certFile, &pem.Block{Type: "Password", Bytes: password})
+	if err != nil {
+		return fmt.Errorf("failed to encode certificate: %v", err)
+	}
+	return nil
+}
+
+func LoadPasswordFromFile(filepath string) ([]byte, error) {
+	// Read the certificate file
+	certPEM, err := os.ReadFile(filepath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Decode the PEM-encoded certificate
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode certificate PEM")
+	}
+
+	return block.Bytes, nil
+}
