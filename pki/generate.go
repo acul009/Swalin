@@ -18,6 +18,30 @@ func generateKeypair() (*ecdsa.PrivateKey, error) {
 	return ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 }
 
+const passwordLength = 64
+const passwordCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?"
+const charsetLength = len(passwordCharset)
+
+func generatePassword() ([]byte, error) {
+	// Create a byte slice to hold the random password
+	password := make([]byte, passwordLength)
+
+	max := big.NewInt(int64(charsetLength))
+
+	for i := 0; i < passwordLength; i++ {
+		// Generate a random index within the character set length
+		index, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			return []byte{}, err
+		}
+
+		// Use the index to select a character from the character set
+		password[i] = passwordCharset[index.Int64()]
+	}
+
+	return password, nil
+}
+
 func generateSerialNumber() (*big.Int, error) {
 	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {

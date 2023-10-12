@@ -3,7 +3,9 @@ package pki
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"rahnit-rmm/config"
 )
@@ -21,10 +23,12 @@ func (e NotUnlockedError) Is(target error) bool {
 }
 
 var currentKey *ecdsa.PrivateKey = nil
+var currentPub *ecdsa.PublicKey = nil
 var currentCert *x509.Certificate = nil
 
 const currentKeyFilePath = "current.key"
 const currentCertFilePath = "current.cert"
+const currentPubFilePath = "current.pub"
 
 func CurrentAvailable() (bool, error) {
 	_, err := os.Stat(config.GetFilePath(currentCertFilePath))
@@ -33,6 +37,17 @@ func CurrentAvailable() (bool, error) {
 	}
 	if err != nil {
 		return false, fmt.Errorf("failed to check if current cert exists: %v", err)
+	}
+	return true, nil
+}
+
+func CurrentPublicKeyAvailable() (bool, error) {
+	_, err := os.Stat(config.GetFilePath(currentPubFilePath))
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to check if current public key exists: %v", err)
 	}
 	return true, nil
 }
@@ -54,16 +69,33 @@ func CurrentAvailableUser() (string, error) {
 
 func Unlock(password []byte) error {
 	cert, err := LoadCertFromFile(config.GetFilePath(currentCertFilePath))
+	var pub *ecdsa.PublicKey
 	if err != nil {
-		return fmt.Errorf("failed to load current cert: %v", err)
+		if !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("failed to load current cert: %v", err)
+		}
+
+		pub, err = LoadPublicKeyFromFile(config.GetFilePath(currentPubFilePath))
+		if err != nil {
+			return fmt.Errorf("failed to load current public key: %v", err)
+		}
+	} else {
+		var ok bool
+		pub, ok = cert.PublicKey.(*ecdsa.PublicKey)
+		if !ok {
+			return fmt.Errorf("public key is not of type *ecdsa.PublicKey")
+		}
 	}
 
 	key, err := LoadCertKeyFromFile(config.GetFilePath(currentKeyFilePath), password)
 	if err != nil {
 		return fmt.Errorf("failed to load current key: %v", err)
 	}
+
 	currentCert = cert
+	currentPub = pub
 	currentKey = key
+
 	return nil
 }
 
@@ -73,8 +105,14 @@ func UnlockAsRoot(password []byte) error {
 		return fmt.Errorf("failed to load CA: %v", err)
 	}
 
+	pub, ok := currentCert.PublicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return fmt.Errorf("public key is not of type *ecdsa.PublicKey")
+	}
+
 	currentKey = caKey
 	currentCert = caCert
+	currentPub = pub
 
 	return nil
 }
@@ -94,15 +132,10 @@ func GetCurrentCert() (*x509.Certificate, error) {
 }
 
 func GetCurrentPublicKey() (*ecdsa.PublicKey, error) {
-	pub, err := GetCurrentCert()
-	if err != nil {
-		return nil, err
+	if currentPub == nil {
+		return nil, NotUnlockedError{}
 	}
-	typed, ok := pub.PublicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("public key is not of type *ecdsa.PublicKey")
-	}
-	return typed, nil
+	return currentPub, nil
 }
 
 func SaveCurrentCertAndKey(cert *x509.Certificate, key *ecdsa.PrivateKey, password []byte) error {
@@ -113,6 +146,18 @@ func SaveCurrentCertAndKey(cert *x509.Certificate, key *ecdsa.PrivateKey, passwo
 	err = SaveCertKeyToFile(config.GetFilePath(currentKeyFilePath), key, password)
 	if err != nil {
 		return fmt.Errorf("failed to save current key: %v", err)
+	}
+	return nil
+}
+
+func SaveCurrentKeyPair(key *ecdsa.PrivateKey, pub *ecdsa.PublicKey, password []byte) error {
+	err := SaveCertKeyToFile(config.GetFilePath(currentKeyFilePath), key, password)
+	if err != nil {
+		return fmt.Errorf("failed to save current key: %v", err)
+	}
+	err = SavePublicKeyToFile(config.GetFilePath(currentPubFilePath), pub)
+	if err != nil {
+		return fmt.Errorf("failed to save current public key: %v", err)
 	}
 	return nil
 }
