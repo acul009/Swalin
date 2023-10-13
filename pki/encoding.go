@@ -60,3 +60,17 @@ func DecodeCertificate(certPEM []byte) (*x509.Certificate, error) {
 
 	return cert, nil
 }
+
+func EncodePrivateKeyToPEM(key *ecdsa.PrivateKey) ([]byte, error) {
+	privBytes, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	keyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: privBytes,
+	})
+
+	return keyPEM, nil
+}

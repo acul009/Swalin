@@ -50,7 +50,7 @@ to quickly create a Cobra application.`,
 		addr := "localhost:1234"
 
 		if !ready {
-			err := rpc.SetupServer(addr)
+			err := rpc.WaitForServerSetup(addr)
 			if err != nil {
 				panic(err)
 			}

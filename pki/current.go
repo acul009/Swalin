@@ -2,6 +2,7 @@ package pki
 
 import (
 	"crypto/ecdsa"
+	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -136,6 +137,25 @@ func GetCurrentPublicKey() (*ecdsa.PublicKey, error) {
 		return nil, NotUnlockedError{}
 	}
 	return currentPub, nil
+}
+
+func GetCurrentTlsCert() (*tls.Certificate, error) {
+	cert, err := GetCurrentCert()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current cert: %v", err)
+	}
+
+	keyPEM, err := EncodePrivateKeyToPEM(currentKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode private key: %v", err)
+	}
+
+	tlsCert, err := tls.X509KeyPair(cert.Raw, keyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tls cert: %v", err)
+	}
+
+	return &tlsCert, nil
 }
 
 func SaveCurrentCertAndKey(cert *x509.Certificate, key *ecdsa.PrivateKey, password []byte) error {

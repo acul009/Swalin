@@ -10,7 +10,9 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
-func SetupServer(addr string) error {
+const serverInitProtocol = "rahnit-rmm-server-init"
+
+func WaitForServerSetup(listenAddr string) error {
 	tlsCert, err := getServerCert()
 	if err != nil {
 		return fmt.Errorf("error getting server cert: %v", err)
@@ -18,13 +20,13 @@ func SetupServer(addr string) error {
 
 	tlsConf := &tls.Config{
 		InsecureSkipVerify: true,
-		NextProtos:         []string{"quic-echo-example"},
+		NextProtos:         []string{serverInitProtocol},
 		ClientAuth:         tls.RequireAnyClientCert,
 		Certificates:       []tls.Certificate{*tlsCert},
 	}
 
 	quicConf := &quic.Config{}
-	listener, err := quic.ListenAddr(addr, tlsConf, quicConf)
+	listener, err := quic.ListenAddr(listenAddr, tlsConf, quicConf)
 	if err != nil {
 		return fmt.Errorf("error creating QUIC server: %v", err)
 	}
@@ -118,4 +120,58 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 	}
 
 	return nil
+}
+
+func SetupServer(addr string, rootPassword []byte) error {
+	err := pki.UnlockAsRoot(rootPassword)
+	if err != nil {
+		return fmt.Errorf("error unlocking root cert: %v", err)
+	}
+
+	tlsConf := &tls.Config{
+		InsecureSkipVerify: true,
+		NextProtos:         []string{serverInitProtocol},
+		GetClientCertificate: func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			tlsCert, err := pki.GetCurrentTlsCert()
+			if err != nil {
+				return nil, err
+			}
+
+			err = info.SupportsCertificate(tlsCert)
+			if err != nil {
+				return nil, err
+			}
+			return tlsCert, nil
+		},
+	}
+
+	quicConf := &quic.Config{}
+
+	quicConn, err := quic.DialAddr(context.Background(), addr, tlsConf, quicConf)
+	if err != nil {
+		return fmt.Errorf("error creating QUIC connection: %v", err)
+	}
+
+	initNonceStorage = NewNonceStorage()
+
+	conn := NewRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage)
+
+	session, err := conn.OpenSession(context.Background())
+	if err != nil {
+		return fmt.Errorf("error opening session: %v", err)
+	}
+
+	req := &serverInitRequest{}
+
+	sender, err := readMessageFromUnknown[*serverInitRequest](session, req)
+
+	serverPubKey, err := pki.DecodePubFromString(req.PubKey)
+	if err != nil {
+		return fmt.Errorf("error decoding server public key: %v", err)
+	}
+
+	if !sender.Equal(serverPubKey) {
+		return fmt.Errorf("server public key does not match sender")
+	}
+
 }
