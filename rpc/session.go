@@ -239,19 +239,11 @@ func (s *RpcSession) ReadUntil(delimiter []byte, bufferSize int, limit int) ([]b
 func readMessageFromUnknown[P any](s *RpcSession, payload P) (*ecdsa.PublicKey, error) {
 	log.Printf("Reading message from unknown sender")
 
-	msgData, err := s.ReadUntil(messageStop, 1024, 1024*1024)
-	if err != nil {
-		return nil, fmt.Errorf("error reading message: %w", err)
-	}
-
-	msgString := string(msgData)
-	log.Printf("Received message: %s", msgString)
-
 	message := RpcMessage[P]{}
 
-	sender, err := pki.UnmarshalAndVerify(msgData, message)
+	sender, err := pki.ReadAndUnmarshalAndVerify(s.Stream, message)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling message: %w", err)
+		return nil, fmt.Errorf("error reading message: %w", err)
 	}
 
 	myPub, err := pki.GetCurrentPublicKey()
@@ -277,17 +269,7 @@ func ReadMessage[P any](s *RpcSession, payload P, expectedSender *ecdsa.PublicKe
 		return err
 	}
 
-	expected, err := pki.EncodePubToString(expectedSender)
-	if err != nil {
-		return fmt.Errorf("failed to encode public key: %w", err)
-	}
-
-	actual, err := pki.EncodePubToString(actualSender)
-	if err != nil {
-		return fmt.Errorf("failed to encode public key: %w", err)
-	}
-
-	if expected != actual {
+	if !expectedSender.Equal(actualSender) {
 		return fmt.Errorf("expected sender does not match actual sender")
 	}
 
