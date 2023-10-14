@@ -145,17 +145,12 @@ func GetCurrentTlsCert() (*tls.Certificate, error) {
 		return nil, fmt.Errorf("failed to get current cert: %w", err)
 	}
 
-	keyPEM, err := EncodePrivateKeyToPEM(currentKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode private key: %w", err)
+	tlsCert := &tls.Certificate{
+		Certificate: [][]byte{cert.Raw},
+		PrivateKey:  currentKey,
 	}
 
-	tlsCert, err := tls.X509KeyPair(cert.Raw, keyPEM)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create tls cert: %w", err)
-	}
-
-	return &tlsCert, nil
+	return tlsCert, nil
 }
 
 func SaveCurrentCertAndKey(cert *x509.Certificate, key *ecdsa.PrivateKey, password []byte) error {

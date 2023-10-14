@@ -148,12 +148,12 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 		GetClientCertificate: func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
 			tlsCert, err := pki.GetCurrentTlsCert()
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("error getting current certificate: %w", err)
 			}
 
 			err = info.SupportsCertificate(tlsCert)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("error checking certificate: %w", err)
 			}
 			return tlsCert, nil
 		},
@@ -170,10 +170,14 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 
 	conn := NewRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage)
 
+	log.Printf("Connection opened to %s\n", addr)
+
 	session, err := conn.OpenSession(context.Background())
 	if err != nil {
 		return fmt.Errorf("error opening session: %w", err)
 	}
+
+	log.Printf("Session opened")
 
 	req := &serverInitRequest{}
 
@@ -188,10 +192,14 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 		return fmt.Errorf("server public key does not match sender")
 	}
 
+	log.Printf("Received request with pubkey: %s\n", req.PubKey)
+
 	serverHostCert, err := pki.CreateServerCertWithCurrent(nameForServer, serverPubKey)
 	if err != nil {
 		return fmt.Errorf("error creating server certificate: %w", err)
 	}
+
+	log.Printf("Created server certificate:\n%s\n\n", string(pki.EncodeCertificate(serverHostCert)))
 
 	rootCert, err := pki.GetRootCert()
 	if err != nil {

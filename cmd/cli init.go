@@ -4,10 +4,8 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"log"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
@@ -27,7 +25,21 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("init called")
+
+		// address is required
+		addr := cmd.Flag("addr").Value.String()
+		if len(addr) == 0 {
+			fmt.Println("Address is required (--addr)")
+			return
+		}
+
+		// server-name is required
+		nameForServer := cmd.Flag("server-name").Value.String()
+		if len(nameForServer) == 0 {
+			fmt.Println("Server name is required (--server-name)")
+			return
+		}
+
 		config.SetSubdir("cli")
 
 		// create root user if missing
@@ -89,7 +101,7 @@ to quickly create a Cobra application.`,
 			}
 		} else {
 			fmt.Println("User certificate found, skipping user creation")
-			userPassword, err = util.AskForPassword("Enter password to decrypt the user certificate:")
+			userPassword, err = util.AskForPassword("Enter password for the user:")
 			if err != nil {
 				panic(err)
 			}
@@ -100,34 +112,9 @@ to quickly create a Cobra application.`,
 			panic(err)
 		}
 
-		return
-
 		pki.UnlockAsRoot(rootPassword)
 
-		addr := "localhost:1234"
-
-		client, err := rpc.NewRpcClient(context.Background(), addr)
-		if err != nil {
-			panic(err)
-		}
-
-		log.Println("Established client connection")
-
-		rpcCmd, err := rpc.UploadCaCmd()
-		if err != nil {
-			panic(err)
-		}
-
-		log.Println("Preparing CA for Upload")
-
-		err = client.SendCommand(context.Background(), rpcCmd)
-		if err != nil {
-			panic(err)
-		}
-
-		log.Println("CA Upload successful")
-
-		err = client.Close(200, "OK")
+		err = rpc.SetupServer(addr, rootPassword, nameForServer)
 		if err != nil {
 			panic(err)
 		}
@@ -138,6 +125,8 @@ to quickly create a Cobra application.`,
 func init() {
 	cliCmd.AddCommand(initCmd)
 
+	initCmd.Flags().StringP("addr", "a", "", "example-rmm.com:1234")
+	initCmd.Flags().StringP("server-name", "n", "", "The name you want to assign to the server")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

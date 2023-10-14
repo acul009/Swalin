@@ -28,8 +28,7 @@ func (e rpcNotRunningError) Is(target error) bool {
 
 type RpcServer struct {
 	listener          *quic.Listener
-	unsecureCommands  *CommandCollection
-	tlsCommands       *CommandCollection
+	rpcCommands       *CommandCollection
 	state             RpcServerState
 	activeConnections map[uuid.UUID]*RpcConnection
 	mutex             sync.Mutex
@@ -44,7 +43,7 @@ const (
 	RpcServerStopped
 )
 
-func NewRpcServer(addr string, unsecureCommands *CommandCollection, tlsCommands *CommandCollection) (*RpcServer, error) {
+func NewRpcServer(addr string, rpcCommands *CommandCollection) (*RpcServer, error) {
 	listener, err := connection.CreateServer(addr)
 	if err != nil {
 		return nil, fmt.Errorf("error creating QUIC server: %w", err)
@@ -52,8 +51,7 @@ func NewRpcServer(addr string, unsecureCommands *CommandCollection, tlsCommands 
 
 	return &RpcServer{
 		listener:          listener,
-		unsecureCommands:  unsecureCommands,
-		tlsCommands:       tlsCommands,
+		rpcCommands:       rpcCommands,
 		state:             RpcServerCreated,
 		activeConnections: make(map[uuid.UUID]*RpcConnection),
 		mutex:             sync.Mutex{},
@@ -115,18 +113,12 @@ func (s *RpcServer) Run() error {
 			continue
 		}
 
-		chains := conn.ConnectionState().TLS.VerifiedChains
-		if len(chains) > 0 {
-			log.Printf("new connection using mTLS")
-			go conn.serve(s.tlsCommands)
+		certs := conn.ConnectionState().TLS.PeerCertificates
+		if len(certs) > 0 {
+			// TODO: check certificate
+			go conn.serve(s.rpcCommands)
 		} else {
-			certs := conn.ConnectionState().TLS.PeerCertificates
-			if len(certs) > 0 {
-				log.Printf("Could not verify client certificate")
-			} else {
-				log.Printf("new unverified connection")
-				go conn.serve(s.unsecureCommands)
-			}
+			log.Printf("Client tried to connect without certificate")
 		}
 
 	}

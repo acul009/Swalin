@@ -62,25 +62,9 @@ to quickly create a Cobra application.`,
 		return
 
 		fmt.Printf("\nListening on localhost:%s\n", addr)
+		rpcCommands := rpc.NewCommandCollection()
 
-		insecureCommands := rpc.NewCommandCollection()
-		tlsCommands := rpc.NewCommandCollection()
-
-		_, err = pki.GetRootCert()
-
-		if err == nil {
-			// Server has a CA certificate
-
-		} else {
-			if errors.Is(err, pki.ErrNoRootCert) {
-				// Server doesn't have a CA certificate yet
-				insecureCommands.Add(rpc.UploadCaHandler)
-			} else {
-				panic(err)
-			}
-		}
-
-		server, err := rpc.NewRpcServer(addr, insecureCommands, tlsCommands)
+		server, err := rpc.NewRpcServer(addr, rpcCommands)
 		if err != nil {
 			panic(err)
 		}
