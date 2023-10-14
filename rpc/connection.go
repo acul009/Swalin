@@ -54,7 +54,7 @@ func NewRpcConnection(conn quic.Connection, server *RpcServer, role RpcConnectio
 func (conn *RpcConnection) serve(commands *CommandCollection) error {
 	err := conn.EnsureState(RpcConnectionOpen)
 	if err != nil {
-		return fmt.Errorf("error ensuring RPC connection is open: %v", err)
+		return fmt.Errorf("error ensuring RPC connection is open: %w", err)
 	}
 
 	log.Printf("Connection accepted, serving RPC")
@@ -90,7 +90,7 @@ func (conn *RpcConnection) serve(commands *CommandCollection) error {
 func (conn *RpcConnection) AcceptSession(context.Context) (*RpcSession, error) {
 	stream, err := conn.AcceptStream(context.Background())
 	if err != nil {
-		return nil, fmt.Errorf("error accepting QUIC stream: %v", err)
+		return nil, fmt.Errorf("error accepting QUIC stream: %w", err)
 	}
 	var session *RpcSession = nil
 
@@ -117,12 +117,12 @@ func (conn *RpcConnection) AcceptSession(context.Context) (*RpcSession, error) {
 func (conn *RpcConnection) OpenSession(ctx context.Context) (*RpcSession, error) {
 	err := conn.EnsureState(RpcConnectionOpen)
 	if err != nil {
-		return nil, fmt.Errorf("error ensuring RPC connection is open: %v", err)
+		return nil, fmt.Errorf("error ensuring RPC connection is open: %w", err)
 	}
 
 	stream, err := conn.OpenStreamSync(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error opening QUIC stream: %v", err)
+		return nil, fmt.Errorf("error opening QUIC stream: %w", err)
 	}
 
 	return NewRpcSession(stream, conn), nil
@@ -158,7 +158,7 @@ func (conn *RpcConnection) removeSession(uuid uuid.UUID) {
 func (conn *RpcConnection) Close(code quic.ApplicationErrorCode, msg string) error {
 
 	if err := conn.MutateState(RpcConnectionOpen, RpcConnectionStopped); err != nil {
-		return fmt.Errorf("error closing connection: %v", err)
+		return fmt.Errorf("error closing connection: %w", err)
 	}
 
 	conn.mutex.Lock()

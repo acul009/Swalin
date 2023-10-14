@@ -27,7 +27,7 @@ type jsonRpcMessage[P any] struct {
 func newRpcMessage[P any](receiver *ecdsa.PublicKey, payload P) (*RpcMessage[P], error) {
 	nonce, err := NewNonce()
 	if err != nil {
-		return nil, fmt.Errorf("error generating nonce: %v", err)
+		return nil, fmt.Errorf("error generating nonce: %w", err)
 	}
 
 	return &RpcMessage[P]{
@@ -41,7 +41,7 @@ func newRpcMessage[P any](receiver *ecdsa.PublicKey, payload P) (*RpcMessage[P],
 func (m *RpcMessage[P]) MarshalJSON() ([]byte, error) {
 	pubKey, err := x509.MarshalPKIXPublicKey(m.Receiver)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling public key: %v", err)
+		return nil, fmt.Errorf("error marshalling public key: %w", err)
 	}
 	return json.Marshal(&jsonRpcMessage[P]{
 		Timestamp: m.Timestamp,
@@ -55,12 +55,12 @@ func (m *RpcMessage[P]) UnmarshalJSON(data []byte) error {
 	var message jsonRpcMessage[P]
 	err := json.Unmarshal(data, &message)
 	if err != nil {
-		return fmt.Errorf("error unmarshalling message: %v", err)
+		return fmt.Errorf("error unmarshalling message: %w", err)
 	}
 	m.Timestamp = message.Timestamp
 	pubKey, err := x509.ParsePKIXPublicKey(message.Receiver)
 	if err != nil {
-		return fmt.Errorf("error parsing public key: %v", err)
+		return fmt.Errorf("error parsing public key: %w", err)
 	}
 	m.Receiver = pubKey.(*ecdsa.PublicKey)
 	m.Nonce = message.Nonce

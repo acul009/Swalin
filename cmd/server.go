@@ -50,11 +50,14 @@ to quickly create a Cobra application.`,
 		addr := "localhost:1234"
 
 		if !ready {
+			log.Println("Server not initialized, waiting for setup...")
 			err := rpc.WaitForServerSetup(addr)
 			if err != nil {
 				panic(err)
 			}
 		}
+
+		log.Println("Server initialized, starting up...")
 
 		return
 
@@ -88,10 +91,10 @@ to quickly create a Cobra application.`,
 		go func() {
 			err := server.Run()
 			if err != nil {
-				if errors.Is(rpc.ErrRpcNotRunning, err) {
+				if errors.Is(err, rpc.ErrRpcNotRunning) {
 					log.Printf("Server was stopped")
 				} else {
-					logErr := fmt.Errorf("error running server: %v", err)
+					logErr := fmt.Errorf("error running server: %w", err)
 					log.Println(logErr)
 				}
 			}
@@ -106,7 +109,7 @@ to quickly create a Cobra application.`,
 			<-interrupt
 			err := server.Close(200, "OK")
 			if err != nil {
-				err := fmt.Errorf("error shutting down program: error closing server: %v", err)
+				err := fmt.Errorf("error shutting down program: error closing server: %w", err)
 				log.Println(err)
 			} else {
 				log.Println("Server closed without errors")

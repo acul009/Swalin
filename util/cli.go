@@ -15,12 +15,12 @@ func AskForNewPassword(message string) ([]byte, error) {
 		fmt.Println(message)
 		text1, err := term.ReadPassword(int(syscall.Stdin))
 		if err != nil {
-			return nil, fmt.Errorf("error reading password: %v", err)
+			return nil, fmt.Errorf("error reading password: %w", err)
 		}
 		fmt.Println("Repeat Password:")
 		text2, err := term.ReadPassword(int(syscall.Stdin))
 		if err != nil {
-			return nil, fmt.Errorf("error reading password: %v", err)
+			return nil, fmt.Errorf("error reading password: %w", err)
 		}
 
 		passwordsMatch := true
@@ -50,7 +50,7 @@ func AskForPassword(message string) ([]byte, error) {
 	fmt.Println(message)
 	text, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		return nil, fmt.Errorf("error reading password: %v", err)
+		return nil, fmt.Errorf("error reading password: %w", err)
 	}
 
 	return text, nil
@@ -63,7 +63,7 @@ func AskForString(message string) (string, error) {
 	fmt.Println(message)
 	text, err := reader.ReadString('\n')
 	if err != nil {
-		return "", fmt.Errorf("error reading string: %v", err)
+		return "", fmt.Errorf("error reading string: %w", err)
 	}
 	return text[:len(text)-1], nil
 }

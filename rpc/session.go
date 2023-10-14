@@ -203,7 +203,7 @@ func (s *RpcSession) Seek(needle []byte, bufferSize int, limit int) (offset int,
 			if err == io.EOF {
 				closed = true
 			} else {
-				return offset, fmt.Errorf("error seeking needle: %v", err)
+				return offset, fmt.Errorf("error seeking needle: %w", err)
 			}
 		}
 
@@ -241,7 +241,7 @@ func readMessageFromUnknown[P any](s *RpcSession, payload P) (*ecdsa.PublicKey, 
 
 	msgData, err := s.ReadUntil(messageStop, 1024, 1024*1024)
 	if err != nil {
-		return nil, fmt.Errorf("error reading message: %v", err)
+		return nil, fmt.Errorf("error reading message: %w", err)
 	}
 
 	msgString := string(msgData)
@@ -251,17 +251,17 @@ func readMessageFromUnknown[P any](s *RpcSession, payload P) (*ecdsa.PublicKey, 
 
 	sender, err := pki.UnmarshalAndVerify(msgData, message)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling message: %v", err)
+		return nil, fmt.Errorf("error unmarshalling message: %w", err)
 	}
 
 	myPub, err := pki.GetCurrentPublicKey()
 	if err != nil {
-		return nil, fmt.Errorf("error getting current key: %v", err)
+		return nil, fmt.Errorf("error getting current key: %w", err)
 	}
 
 	err = message.Verify(s.Connection.nonceStorage, myPub)
 	if err != nil {
-		return nil, fmt.Errorf("error verifying message: %v", err)
+		return nil, fmt.Errorf("error verifying message: %w", err)
 	}
 
 	return sender, nil
@@ -279,12 +279,12 @@ func ReadMessage[P any](s *RpcSession, payload P, expectedSender *ecdsa.PublicKe
 
 	expected, err := pki.EncodePubToString(expectedSender)
 	if err != nil {
-		return fmt.Errorf("failed to encode public key: %v", err)
+		return fmt.Errorf("failed to encode public key: %w", err)
 	}
 
 	actual, err := pki.EncodePubToString(actualSender)
 	if err != nil {
-		return fmt.Errorf("failed to encode public key: %v", err)
+		return fmt.Errorf("failed to encode public key: %w", err)
 	}
 
 	if expected != actual {
@@ -296,31 +296,31 @@ func ReadMessage[P any](s *RpcSession, payload P, expectedSender *ecdsa.PublicKe
 
 func WriteMessage[P any](s *RpcSession, payload P) error {
 	if err := s.EnsureState(RpcSessionOpen); err != nil {
-		return fmt.Errorf("error ensuring state: %v", err)
+		return fmt.Errorf("error ensuring state: %w", err)
 	}
 
 	pub, err := pki.GetCurrentPublicKey()
 	if err != nil {
-		return fmt.Errorf("error getting current key: %v", err)
+		return fmt.Errorf("error getting current key: %w", err)
 	}
 
 	key, err := pki.GetCurrentKey()
 	if err != nil {
-		return fmt.Errorf("error getting current key: %v", err)
+		return fmt.Errorf("error getting current key: %w", err)
 	}
 
 	if err != nil {
-		return fmt.Errorf("error getting current key: %v", err)
+		return fmt.Errorf("error getting current key: %w", err)
 	}
 
 	message, err := newRpcMessage[P](pub, payload)
 	if err != nil {
-		return fmt.Errorf("error creating message: %v", err)
+		return fmt.Errorf("error creating message: %w", err)
 	}
 
 	data, err := pki.MarshalAndSign(message, key, pub)
 	if err != nil {
-		return fmt.Errorf("error marshalling message: %v", err)
+		return fmt.Errorf("error marshalling message: %w", err)
 	}
 
 	toWrite := append(data, messageStop...)
@@ -329,7 +329,7 @@ func WriteMessage[P any](s *RpcSession, payload P) error {
 
 	_, err = s.Write(toWrite)
 	if err != nil {
-		return fmt.Errorf("error writing message: %v", err)
+		return fmt.Errorf("error writing message: %w", err)
 	}
 
 	return nil
@@ -338,18 +338,18 @@ func WriteMessage[P any](s *RpcSession, payload P) error {
 func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) error {
 	err := s.MutateState(RpcSessionCreated, RpcSessionOpen)
 	if err != nil {
-		return fmt.Errorf("error mutating state: %v", err)
+		return fmt.Errorf("error mutating state: %w", err)
 	}
 
 	err = WriteMessage[SessionRequestHeader](s, header)
 	if err != nil {
 		s.MutateState(RpcSessionOpen, RpcSessionClosed)
-		return fmt.Errorf("error writing request header: %v", err)
+		return fmt.Errorf("error writing request header: %w", err)
 	}
 
 	err = s.MutateState(RpcSessionOpen, RpcSessionRequested)
 	if err != nil {
-		return fmt.Errorf("error mutating state: %v", err)
+		return fmt.Errorf("error mutating state: %w", err)
 	}
 
 	return nil
@@ -358,13 +358,13 @@ func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) error {
 func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) error {
 	err := s.MutateState(RpcSessionRequested, RpcSessionOpen)
 	if err != nil {
-		return fmt.Errorf("error mutating state: %v", err)
+		return fmt.Errorf("error mutating state: %w", err)
 	}
 
 	err = WriteMessage[SessionResponseHeader](s, header)
 	if err != nil {
 		s.MutateState(s.state, RpcSessionClosed)
-		return fmt.Errorf("error writing response header: %v", err)
+		return fmt.Errorf("error writing response header: %w", err)
 	}
 
 	return nil
@@ -396,7 +396,7 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 	args := make(map[string]interface{})
 	err := reEncode(cmd, &args)
 	if err != nil {
-		return fmt.Errorf("error encoding command: %v", err)
+		return fmt.Errorf("error encoding command: %w", err)
 	}
 
 	header := SessionRequestHeader{
@@ -407,13 +407,13 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 
 	err = s.WriteRequestHeader(header)
 	if err != nil {
-		return fmt.Errorf("error writing header to stream: %v", err)
+		return fmt.Errorf("error writing header to stream: %w", err)
 	}
 
 	response, err := s.readResponseHeader(s.partner)
 
 	if err != nil {
-		return fmt.Errorf("error reading response header: %v", err)
+		return fmt.Errorf("error reading response header: %w", err)
 	}
 
 	fmt.Printf("Response Header:\n%v\n", response)
@@ -458,7 +458,7 @@ func (s *RpcSession) ReadRequestHeader() (SessionRequestHeader, *ecdsa.PublicKey
 	header := SessionRequestHeader{}
 	from, err := readMessageFromUnknown[SessionRequestHeader](s, header)
 	if err != nil {
-		return SessionRequestHeader{}, nil, fmt.Errorf("error reading request header: %v", err)
+		return SessionRequestHeader{}, nil, fmt.Errorf("error reading request header: %w", err)
 	}
 
 	return header, from, nil
@@ -476,7 +476,7 @@ func (s *RpcSession) readResponseHeader(expectedSender *ecdsa.PublicKey) (Sessio
 	header := SessionResponseHeader{}
 	err := ReadMessage[SessionResponseHeader](s, header, expectedSender)
 	if err != nil {
-		return SessionResponseHeader{}, fmt.Errorf("error reading response header: %v", err)
+		return SessionResponseHeader{}, fmt.Errorf("error reading response header: %w", err)
 	}
 
 	s.mutex.Lock()

@@ -22,7 +22,7 @@ type UploadCa struct {
 func UploadCaCmd() (*UploadCa, error) {
 	ca, err := pki.GetRootCert()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load CA certificate: %v", err)
+		return nil, fmt.Errorf("failed to load CA certificate: %w", err)
 	}
 
 	encodedToPem := pem.EncodeToMemory(&pem.Block{
@@ -61,7 +61,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 			Code: 500,
 			Msg:  "Failed to load CA certificate",
 		})
-		return fmt.Errorf("failed to load CA certificate: %v", err)
+		return fmt.Errorf("failed to load CA certificate: %w", err)
 	}
 
 	// Decode the PEM-encoded certificate
@@ -81,7 +81,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 			Code: 422,
 			Msg:  "Failed to parse CA certificate",
 		})
-		return fmt.Errorf("failed to parse CA certificate: %v", err)
+		return fmt.Errorf("failed to parse CA certificate: %w", err)
 	}
 
 	// everything seems to be alright, we can save the CA certificate
@@ -95,7 +95,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 				Code: 500,
 				Msg:  "Failed to connect to database",
 			})
-			return fmt.Errorf("failed to connect to database: %v", err)
+			return fmt.Errorf("failed to connect to database: %w", err)
 		}
 
 		users, err := db.User.Query().All(context.Background())
@@ -104,7 +104,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 				Code: 500,
 				Msg:  "Failed to load users",
 			})
-			return fmt.Errorf("failed to load users: %v", err)
+			return fmt.Errorf("failed to load users: %w", err)
 		}
 		if len(users) > 0 {
 			session.WriteResponseHeader(SessionResponseHeader{
@@ -120,7 +120,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 				Code: 500,
 				Msg:  "Failed to create root user",
 			})
-			return fmt.Errorf("failed to create root user: %v", err)
+			return fmt.Errorf("failed to create root user: %w", err)
 		}
 
 		err = db.Commit()
@@ -129,7 +129,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 				Code: 500,
 				Msg:  "Failed to commit changes",
 			})
-			return fmt.Errorf("failed to commit changes: %v", err)
+			return fmt.Errorf("failed to commit changes: %w", err)
 		}
 
 	}
@@ -141,7 +141,7 @@ func (p *UploadCa) ExecuteServer(session *RpcSession) error {
 			Code: 500,
 			Msg:  "Failed to save CA certificate",
 		})
-		return fmt.Errorf("failed to save CA certificate: %v", err)
+		return fmt.Errorf("failed to save CA certificate: %w", err)
 	}
 
 	session.WriteResponseHeader(SessionResponseHeader{

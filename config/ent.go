@@ -13,18 +13,18 @@ func openDB() (*ent.Client, error) {
 	filepath := GetFilePath("db.sqlite")
 	err := util.CreateParentDir(filepath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create parent directory: %v", err)
+		return nil, fmt.Errorf("failed to create parent directory: %w", err)
 	}
 
 	client, err := ent.Open(dialect.SQLite, "file:"+filepath+"?mode=rwc&cache=shared&_fk=1")
 	if err != nil {
-		return nil, fmt.Errorf("failed opening connection to sqlite: %v", err)
+		return nil, fmt.Errorf("failed opening connection to sqlite: %w", err)
 	}
 
 	ctx := context.Background()
 	// Run the automatic migration tool to create all schema resources.
 	if err := client.Schema.Create(ctx); err != nil {
-		return nil, fmt.Errorf("failed creating schema resources: %v", err)
+		return nil, fmt.Errorf("failed creating schema resources: %w", err)
 	}
 
 	return client, nil
@@ -38,7 +38,7 @@ func InitDB() error {
 	}
 	client, err := openDB()
 	if err != nil {
-		return fmt.Errorf("failed opening connection to db: %v", err)
+		return fmt.Errorf("failed opening connection to db: %w", err)
 	}
 	db = client
 	return nil

@@ -19,7 +19,7 @@ func CreateClient(ctx context.Context, addr string) (quic.Connection, error) {
 	conn, err := quic.DialAddr(ctx, addr, tlsConfig, quicConfig)
 
 	if err != nil {
-		return nil, fmt.Errorf("error creating QUIC client: %v", err)
+		return nil, fmt.Errorf("error creating QUIC client: %w", err)
 	}
 
 	return conn, nil

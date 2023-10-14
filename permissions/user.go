@@ -23,7 +23,7 @@ func CreateUserEntry(username string, cert *x509.Certificate) (*ent.User, error)
 
 	user, err := db.User.Create().SetPublicKey(pubEncoded).SetUsername(username).SetCertificate(string(certEncoded)).Save(context.Background())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create user: %v", err)
+		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
 	return user, nil
@@ -34,7 +34,7 @@ func GetUserFromPublicKey(pub *ecdsa.PublicKey) (*ent.User, error) {
 
 	encoded, err := pki.EncodePubToString(pub)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode public key: %v", err)
+		return nil, fmt.Errorf("failed to encode public key: %w", err)
 	}
 
 	userItem, err := db.User.Query().Where(user.PublicKeyEQ(encoded)).Only(context.Background())
@@ -45,12 +45,12 @@ func GetUserFromPublicKey(pub *ecdsa.PublicKey) (*ent.User, error) {
 				Reason:    "requested sender is not a user",
 			}
 		}
-		return nil, fmt.Errorf("failed to query user: %v", err)
+		return nil, fmt.Errorf("failed to query user: %w", err)
 	}
 
 	cert, err := pki.DecodeCertificate([]byte(userItem.Certificate))
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode certificate: %v", err)
+		return nil, fmt.Errorf("failed to decode certificate: %w", err)
 	}
 
 	fmt.Println(cert)

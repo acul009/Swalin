@@ -37,11 +37,11 @@ const (
 func GetRoot(password []byte) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	caCert, err := GetRootCert()
 	if err != nil {
-		return caCert, nil, fmt.Errorf("failed to load CA: %v", err)
+		return caCert, nil, fmt.Errorf("failed to load CA: %w", err)
 	}
 	caKey, err := GetRootKey(password)
 	if err != nil {
-		return caCert, caKey, fmt.Errorf("failed to load CA: %v", err)
+		return caCert, caKey, fmt.Errorf("failed to load CA: %w", err)
 	}
 	return caCert, caKey, nil
 }
@@ -53,12 +53,12 @@ func SaveRootCert(caCert *x509.Certificate) error {
 	}
 
 	if !errors.Is(err, ErrNoRootCert) {
-		return fmt.Errorf("failed to load existing root certificate: %v", err)
+		return fmt.Errorf("failed to load existing root certificate: %w", err)
 	}
 
 	err = SaveCertToFile(config.GetFilePath(rootCertFilePath), caCert)
 	if err != nil {
-		return fmt.Errorf("failed to save root certificate: %v", err)
+		return fmt.Errorf("failed to save root certificate: %w", err)
 	}
 
 	updateRootPool()
@@ -80,7 +80,7 @@ func GetRootCert() (*x509.Certificate, error) {
 func GetRootKey(password []byte) (*ecdsa.PrivateKey, error) {
 	caKey, err := LoadCertKeyFromFile(config.GetFilePath(rootKeyFilePath), password)
 	if err != nil {
-		return caKey, fmt.Errorf("failed to load CA certificate: %v", err)
+		return caKey, fmt.Errorf("failed to load CA certificate: %w", err)
 	}
 	return caKey, nil
 }
@@ -88,7 +88,7 @@ func GetRootKey(password []byte) (*ecdsa.PrivateKey, error) {
 func IsRootPublicKey(pub *ecdsa.PublicKey) (bool, error) {
 	caCert, err := GetRootCert()
 	if err != nil {
-		return false, fmt.Errorf("failed to load CA certificate: %v", err)
+		return false, fmt.Errorf("failed to load CA certificate: %w", err)
 	}
 
 	return pub.Equal(caCert.PublicKey), nil
@@ -98,22 +98,22 @@ func InitRoot(rootName string, password []byte) error {
 	if _, err := GetRootCert(); err == nil {
 		return fmt.Errorf("root certificate already exists")
 	} else if !errors.Is(err, ErrNoRootCert) {
-		return fmt.Errorf("failed to load existing root certificate: %v", err)
+		return fmt.Errorf("failed to load existing root certificate: %w", err)
 	}
 
 	caCert, caKey, err := generateRootCert(rootName)
 	if err != nil {
-		return fmt.Errorf("failed to generate root certificate: %v", err)
+		return fmt.Errorf("failed to generate root certificate: %w", err)
 	}
 
 	err = SaveCertToFile(config.GetFilePath(rootCertFilePath), caCert)
 	if err != nil {
-		return fmt.Errorf("failed to save root certificate: %v", err)
+		return fmt.Errorf("failed to save root certificate: %w", err)
 	}
 
 	err = SaveCertKeyToFile(config.GetFilePath(rootKeyFilePath), caKey, password)
 	if err != nil {
-		return fmt.Errorf("failed to save root certificate: %v", err)
+		return fmt.Errorf("failed to save root certificate: %w", err)
 	}
 
 	return nil

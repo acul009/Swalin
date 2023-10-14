@@ -40,11 +40,11 @@ func TestSignBytes(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(data, *unmarshalled) {
-		t.Errorf("expected %v, got %v", data, unmarshalled)
+		t.Errorf("expected %w, got %w", data, unmarshalled)
 	}
 
 	if !reflect.DeepEqual(key.PublicKey, *pub) {
-		t.Errorf("expected %v, got %v", key.PublicKey, pub)
+		t.Errorf("expected %w, got %w", key.PublicKey, pub)
 	}
 
 }

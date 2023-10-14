@@ -56,20 +56,20 @@ func MarshalAndSign(v any, key *ecdsa.PrivateKey, pub *ecdsa.PublicKey) ([]byte,
 
 	json, err := json.Marshal(v)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal data: %v", err)
+		return nil, fmt.Errorf("failed to marshal data: %w", err)
 	}
 
 	signature, err := SignBytes(json, key)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign data: %v", err)
+		return nil, fmt.Errorf("failed to sign data: %w", err)
 	}
 
 	bsig := util.Base64Encode(signature)
 
 	bpub, err := EncodePubToString(pub)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode public key: %v", err)
+		return nil, fmt.Errorf("failed to encode public key: %w", err)
 	}
 
 	msg := json
@@ -101,17 +101,17 @@ func UnmarshalAndVerify(signedData []byte, v any) (*ecdsa.PublicKey, error) {
 
 	pub, err := DecodePubFromString(string(bpub))
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode public key: %v", err)
+		return nil, fmt.Errorf("failed to decode public key: %w", err)
 	}
 
 	signature, err := util.Base64Decode(bsig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode signature: %v", err)
+		return nil, fmt.Errorf("failed to decode signature: %w", err)
 	}
 
 	err = VerifyBytes(msg, signature, pub)
 	if err != nil {
-		return nil, fmt.Errorf("failed to verify signature: %v", err)
+		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
 
 	json.Unmarshal(msg, v)
@@ -126,12 +126,12 @@ func SignBytes(data []byte, key *ecdsa.PrivateKey) ([]byte, error) {
 
 	hash, err := HashBytes(data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hash data: %v", err)
+		return nil, fmt.Errorf("failed to hash data: %w", err)
 	}
 
 	signature, err := ecdsa.SignASN1(rand.Reader, key, hash)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign data: %v", err)
+		return nil, fmt.Errorf("failed to sign data: %w", err)
 	}
 
 	return signature, nil
@@ -144,7 +144,7 @@ func VerifyBytes(data []byte, signature []byte, pub *ecdsa.PublicKey) error {
 
 	hash, err := HashBytes(data)
 	if err != nil {
-		return fmt.Errorf("failed to hash data: %v", err)
+		return fmt.Errorf("failed to hash data: %w", err)
 	}
 
 	ok := ecdsa.VerifyASN1(pub, hash, signature)
@@ -163,7 +163,7 @@ func HashBytes(data []byte) ([]byte, error) {
 	hasher := crypto.SHA512.New()
 	n, err := hasher.Write(data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hash data: %v", err)
+		return nil, fmt.Errorf("failed to hash data: %w", err)
 	}
 	if n != len(data) {
 		return nil, fmt.Errorf("failed to hash data: short write")

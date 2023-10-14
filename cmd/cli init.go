@@ -50,7 +50,7 @@ to quickly create a Cobra application.`,
 
 				err = pki.InitRoot(rootUser, rootPassword)
 				if err != nil {
-					fmt.Printf("error generating root certificate: %v", err)
+					panic(err)
 				}
 			} else {
 				panic(err)

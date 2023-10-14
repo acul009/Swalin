@@ -12,23 +12,23 @@ import (
 func SavePublicKeyToFile(filepath string, key *ecdsa.PublicKey) error {
 	err := util.CreateParentDir(filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create parent directory: %v", err)
+		return fmt.Errorf("failed to create parent directory: %w", err)
 	}
 
 	pubFile, err := os.Create(filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create public key file: %v", err)
+		return fmt.Errorf("failed to create public key file: %w", err)
 	}
 
 	keyBytes, err := x509.MarshalPKIXPublicKey(key)
 	if err != nil {
-		return fmt.Errorf("failed to marshal public key: %v", err)
+		return fmt.Errorf("failed to marshal public key: %w", err)
 	}
 
 	defer pubFile.Close()
 	err = pem.Encode(pubFile, &pem.Block{Type: "PUBLIC KEY", Bytes: keyBytes})
 	if err != nil {
-		return fmt.Errorf("failed to encode public key: %v", err)
+		return fmt.Errorf("failed to encode public key: %w", err)
 	}
 
 	return nil
@@ -38,7 +38,7 @@ func LoadPublicKeyFromFile(filepath string) (*ecdsa.PublicKey, error) {
 	// Read the public key file
 	pubPEM, err := os.ReadFile(filepath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read public key file: %v", err)
+		return nil, fmt.Errorf("failed to read public key file: %w", err)
 	}
 
 	// Decode the PEM-encoded public key
@@ -50,7 +50,7 @@ func LoadPublicKeyFromFile(filepath string) (*ecdsa.PublicKey, error) {
 	// Parse the public key
 	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse public key: %v", err)
+		return nil, fmt.Errorf("failed to parse public key: %w", err)
 	}
 
 	// Cast the public key to the correct type
@@ -65,18 +65,18 @@ func LoadPublicKeyFromFile(filepath string) (*ecdsa.PublicKey, error) {
 func SaveCertToFile(filepath string, cert *x509.Certificate) error {
 	err := util.CreateParentDir(filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create parent directory: %v", err)
+		return fmt.Errorf("failed to create parent directory: %w", err)
 	}
 
 	certFile, err := os.Create(filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create certificate file: %v", err)
+		return fmt.Errorf("failed to create certificate file: %w", err)
 	}
 
 	defer certFile.Close()
 	err = pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 	if err != nil {
-		return fmt.Errorf("failed to encode certificate: %v", err)
+		return fmt.Errorf("failed to encode certificate: %w", err)
 	}
 	return nil
 }
@@ -86,7 +86,7 @@ func LoadCertFromFile(filepath string) (*x509.Certificate, error) {
 	certPEM, err := os.ReadFile(filepath)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to read certificate file: %v", err)
+		return nil, fmt.Errorf("failed to read certificate file: %w", err)
 	}
 
 	// Decode the PEM-encoded certificate
@@ -98,7 +98,7 @@ func LoadCertFromFile(filepath string) (*x509.Certificate, error) {
 	// Parse the CA certificate
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return cert, fmt.Errorf("failed to parse certificate: %v", err)
+		return cert, fmt.Errorf("failed to parse certificate: %w", err)
 	}
 
 	return cert, nil
@@ -107,23 +107,23 @@ func LoadCertFromFile(filepath string) (*x509.Certificate, error) {
 func SaveCertKeyToFile(filepath string, key *ecdsa.PrivateKey, password []byte) error {
 	err := util.CreateParentDir(filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create parent directory: %v", err)
+		return fmt.Errorf("failed to create parent directory: %w", err)
 	}
 
 	caKeyFile, err := os.Create(filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create CA private key file: %v", err)
+		return fmt.Errorf("failed to create CA private key file: %w", err)
 	}
 	defer caKeyFile.Close()
 
 	caKeyBytes, err := x509.MarshalECPrivateKey(key)
 	if err != nil {
-		return fmt.Errorf("failed to marshal CA private key: %v", err)
+		return fmt.Errorf("failed to marshal CA private key: %w", err)
 	}
 
 	encryptedBytes, err := util.EncryptDataWithPassword(password, caKeyBytes)
 	if err != nil {
-		return fmt.Errorf("failed to encrypt CA private key: %v", err)
+		return fmt.Errorf("failed to encrypt CA private key: %w", err)
 	}
 
 	err = pem.Encode(
@@ -154,13 +154,13 @@ func LoadCertKeyFromFile(filepath string, password []byte) (*ecdsa.PrivateKey, e
 
 	decryptedData, err := util.DecryptDataWithPassword(password, block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt CA private key: %v", err)
+		return nil, fmt.Errorf("failed to decrypt CA private key: %w", err)
 	}
 
 	// Parse the CA private key
 	caKey, err := x509.ParseECPrivateKey(decryptedData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse CA private key: %v", err)
+		return nil, fmt.Errorf("failed to parse CA private key: %w", err)
 	}
 
 	return caKey, nil
@@ -169,7 +169,7 @@ func LoadCertKeyFromFile(filepath string, password []byte) (*ecdsa.PrivateKey, e
 func SavePasswordToFile(filepath string, password []byte) error {
 	err := util.CreateParentDir(filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create parent directory: %v", err)
+		return fmt.Errorf("failed to create parent directory: %w", err)
 	}
 
 	certFile, err := os.Create(filepath)
@@ -180,7 +180,7 @@ func SavePasswordToFile(filepath string, password []byte) error {
 	defer certFile.Close()
 	err = pem.Encode(certFile, &pem.Block{Type: "Password", Bytes: password})
 	if err != nil {
-		return fmt.Errorf("failed to encode certificate: %v", err)
+		return fmt.Errorf("failed to encode certificate: %w", err)
 	}
 	return nil
 }

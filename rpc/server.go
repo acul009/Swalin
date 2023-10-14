@@ -47,7 +47,7 @@ const (
 func NewRpcServer(addr string, unsecureCommands *CommandCollection, tlsCommands *CommandCollection) (*RpcServer, error) {
 	listener, err := connection.CreateServer(addr)
 	if err != nil {
-		return nil, fmt.Errorf("error creating QUIC server: %v", err)
+		return nil, fmt.Errorf("error creating QUIC server: %w", err)
 	}
 
 	return &RpcServer{

@@ -41,7 +41,7 @@ func (c *CertPool) Verify(cert *x509.Certificate) error {
 
 	_, err := cert.Verify(opts)
 	if err != nil {
-		return fmt.Errorf("failed to verify certificate: %v", err)
+		return fmt.Errorf("failed to verify certificate: %w", err)
 	}
 
 	return nil

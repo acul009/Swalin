@@ -14,10 +14,10 @@ func NewNonce() (Nonce, error) {
 	nonce := make([]byte, 32)
 	n, err := rand.Reader.Read(nonce)
 	if err != nil {
-		return nil, fmt.Errorf("error generating nonce: %v", err)
+		return nil, fmt.Errorf("error generating nonce: %w", err)
 	}
 	if n != len(nonce) {
-		return nil, fmt.Errorf("error generating nonce: %v", err)
+		return nil, fmt.Errorf("error generating nonce: %w", err)
 	}
 	return Nonce(nonce), nil
 }

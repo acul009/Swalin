@@ -29,7 +29,7 @@ func (e PermissionDeniedError) Is(target error) bool {
 func MayStartCommand(sender *ecdsa.PublicKey, command string) error {
 	isRoot, err := pki.IsRootPublicKey(sender)
 	if err != nil {
-		return fmt.Errorf("failed to check if public key is CA: %v", err)
+		return fmt.Errorf("failed to check if public key is CA: %w", err)
 	}
 
 	if isRoot {
@@ -40,7 +40,7 @@ func MayStartCommand(sender *ecdsa.PublicKey, command string) error {
 
 	encoded, err := pki.EncodePubToString(sender)
 	if err != nil {
-		return fmt.Errorf("failed to encode public key: %v", err)
+		return fmt.Errorf("failed to encode public key: %w", err)
 	}
 
 	_, err = db.User.Query().Where(user.PublicKeyEQ(encoded)).Only(context.Background())
@@ -51,7 +51,7 @@ func MayStartCommand(sender *ecdsa.PublicKey, command string) error {
 				Reason:    "requested sender is not a user",
 			}
 		}
-		return fmt.Errorf("failed to query user: %v", err)
+		return fmt.Errorf("failed to query user: %w", err)
 	}
 
 	return nil

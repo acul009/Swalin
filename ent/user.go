@@ -124,7 +124,7 @@ func (u *User) Unwrap() *User {
 func (u *User) String() string {
 	var builder strings.Builder
 	builder.WriteString("User(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", u.ID))
+	builder.WriteString(fmt.Sprintf("id=%w, ", u.ID))
 	builder.WriteString("username=")
 	builder.WriteString(u.Username)
 	builder.WriteString(", ")

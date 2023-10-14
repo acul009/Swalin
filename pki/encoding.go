@@ -19,7 +19,7 @@ func GetEncodedPublicKey(cert *x509.Certificate) (string, error) {
 func EncodePubToString(pub *ecdsa.PublicKey) (string, error) {
 	key, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal public key: %v", err)
+		return "", fmt.Errorf("failed to marshal public key: %w", err)
 	}
 	return base64.RawStdEncoding.EncodeToString(key), nil
 }
@@ -27,12 +27,12 @@ func EncodePubToString(pub *ecdsa.PublicKey) (string, error) {
 func DecodePubFromString(pubString string) (*ecdsa.PublicKey, error) {
 	key, err := base64.RawStdEncoding.DecodeString(pubString)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode public key: %v", err)
+		return nil, fmt.Errorf("failed to decode public key: %w", err)
 	}
 
 	pub, err := x509.ParsePKIXPublicKey(key)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse public key: %v", err)
+		return nil, fmt.Errorf("failed to parse public key: %w", err)
 	}
 
 	pubTyped, ok := pub.(*ecdsa.PublicKey)
@@ -55,7 +55,7 @@ func DecodeCertificate(certPEM []byte) (*x509.Certificate, error) {
 
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse certificate: %v", err)
+		return nil, fmt.Errorf("failed to parse certificate: %w", err)
 	}
 
 	return cert, nil

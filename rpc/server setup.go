@@ -13,9 +13,19 @@ import (
 const serverInitProtocol = "rahnit-rmm-server-init"
 
 func WaitForServerSetup(listenAddr string) error {
+	ok, err := pki.CurrentAvailable()
+	if err != nil {
+		return fmt.Errorf("failed to check if current cert exists: %w", err)
+	}
+
+	if ok {
+		// Server already initialized
+		return nil
+	}
+
 	tlsCert, err := getServerCert()
 	if err != nil {
-		return fmt.Errorf("error getting server cert: %v", err)
+		return fmt.Errorf("error getting server cert: %w", err)
 	}
 
 	tlsConf := &tls.Config{
@@ -28,7 +38,7 @@ func WaitForServerSetup(listenAddr string) error {
 	quicConf := &quic.Config{}
 	listener, err := quic.ListenAddr(listenAddr, tlsConf, quicConf)
 	if err != nil {
-		return fmt.Errorf("error creating QUIC server: %v", err)
+		return fmt.Errorf("error creating QUIC server: %w", err)
 	}
 
 	initNonceStorage = NewNonceStorage()
@@ -36,13 +46,13 @@ func WaitForServerSetup(listenAddr string) error {
 	for {
 		conn, err := listener.Accept(context.Background())
 		if err != nil {
-			err := fmt.Errorf("error accepting QUIC connection: %v", err)
+			err := fmt.Errorf("error accepting QUIC connection: %w", err)
 			log.Println(err)
 		}
 
 		err = acceptServerInitialization(conn)
 		if err != nil {
-			err := fmt.Errorf("error initializing server: %v", err)
+			err := fmt.Errorf("error initializing server: %w", err)
 			log.Println(err)
 		} else {
 			// no error, initialization was successful
@@ -67,17 +77,17 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 
 	session, err := conn.AcceptSession(context.Background())
 	if err != nil {
-		return fmt.Errorf("error accepting QUIC stream: %v", err)
+		return fmt.Errorf("error accepting QUIC stream: %w", err)
 	}
 
 	pubKey, err := pki.GetCurrentPublicKey()
 	if err != nil {
-		return fmt.Errorf("error getting current public key: %v", err)
+		return fmt.Errorf("error getting current public key: %w", err)
 	}
 
 	pubMarshalled, err := pki.EncodePubToString(pubKey)
 	if err != nil {
-		return fmt.Errorf("error marshalling public key: %v", err)
+		return fmt.Errorf("error marshalling public key: %w", err)
 	}
 
 	initRequest := &serverInitRequest{
@@ -86,18 +96,18 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 
 	err = WriteMessage[*serverInitRequest](session, initRequest)
 	if err != nil {
-		return fmt.Errorf("error writing message: %v", err)
+		return fmt.Errorf("error writing message: %w", err)
 	}
 
 	response := &serverInitResponse{}
 	sender, err := readMessageFromUnknown[*serverInitResponse](session, response)
 	if err != nil {
-		return fmt.Errorf("error reading message: %v", err)
+		return fmt.Errorf("error reading message: %w", err)
 	}
 
 	rootCert, err := pki.DecodeCertificate([]byte(response.RootCa))
 	if err != nil {
-		return fmt.Errorf("error decoding root certificate: %v", err)
+		return fmt.Errorf("error decoding root certificate: %w", err)
 	}
 
 	if !sender.Equal(rootCert.PublicKey) {
@@ -106,29 +116,33 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 
 	serverCert, err := pki.DecodeCertificate([]byte(response.ServerCert))
 	if err != nil {
-		return fmt.Errorf("error decoding server certificate: %v", err)
+		return fmt.Errorf("error decoding server certificate: %w", err)
 	}
 
 	err = pki.SaveCurrentCert(serverCert)
 	if err != nil {
-		return fmt.Errorf("error saving server certificate: %v", err)
+		return fmt.Errorf("error saving server certificate: %w", err)
 	}
 
 	err = pki.SaveRootCert(rootCert)
 	if err != nil {
-		return fmt.Errorf("error saving root certificate: %v", err)
+		return fmt.Errorf("error saving root certificate: %w", err)
 	}
+
+	session.Close()
+	conn.Close(200, "done")
 
 	return nil
 }
 
-func SetupServer(addr string, rootPassword []byte) error {
+func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 	err := pki.UnlockAsRoot(rootPassword)
 	if err != nil {
-		return fmt.Errorf("error unlocking root cert: %v", err)
+		return fmt.Errorf("error unlocking root cert: %w", err)
 	}
 
 	tlsConf := &tls.Config{
+		// TODO: implement ACME certificate request and remove the InsecureSkipVerify option
 		InsecureSkipVerify: true,
 		NextProtos:         []string{serverInitProtocol},
 		GetClientCertificate: func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
@@ -149,7 +163,7 @@ func SetupServer(addr string, rootPassword []byte) error {
 
 	quicConn, err := quic.DialAddr(context.Background(), addr, tlsConf, quicConf)
 	if err != nil {
-		return fmt.Errorf("error creating QUIC connection: %v", err)
+		return fmt.Errorf("error creating QUIC connection: %w", err)
 	}
 
 	initNonceStorage = NewNonceStorage()
@@ -158,7 +172,7 @@ func SetupServer(addr string, rootPassword []byte) error {
 
 	session, err := conn.OpenSession(context.Background())
 	if err != nil {
-		return fmt.Errorf("error opening session: %v", err)
+		return fmt.Errorf("error opening session: %w", err)
 	}
 
 	req := &serverInitRequest{}
@@ -167,11 +181,35 @@ func SetupServer(addr string, rootPassword []byte) error {
 
 	serverPubKey, err := pki.DecodePubFromString(req.PubKey)
 	if err != nil {
-		return fmt.Errorf("error decoding server public key: %v", err)
+		return fmt.Errorf("error decoding server public key: %w", err)
 	}
 
 	if !sender.Equal(serverPubKey) {
 		return fmt.Errorf("server public key does not match sender")
 	}
 
+	serverHostCert, err := pki.CreateServerCertWithCurrent(nameForServer, serverPubKey)
+	if err != nil {
+		return fmt.Errorf("error creating server certificate: %w", err)
+	}
+
+	rootCert, err := pki.GetRootCert()
+	if err != nil {
+		return fmt.Errorf("error getting root certificate: %w", err)
+	}
+
+	response := &serverInitResponse{
+		RootCa:     string(pki.EncodeCertificate(rootCert)),
+		ServerCert: string(pki.EncodeCertificate(serverHostCert)),
+	}
+
+	err = WriteMessage[*serverInitResponse](session, response)
+	if err != nil {
+		return fmt.Errorf("error writing message: %w", err)
+	}
+
+	session.Close()
+	conn.Close(200, "done")
+
+	return nil
 }

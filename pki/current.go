@@ -37,7 +37,7 @@ func CurrentAvailable() (bool, error) {
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("failed to check if current cert exists: %v", err)
+		return false, fmt.Errorf("failed to check if current cert exists: %w", err)
 	}
 	return true, nil
 }
@@ -48,7 +48,7 @@ func CurrentPublicKeyAvailable() (bool, error) {
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("failed to check if current public key exists: %v", err)
+		return false, fmt.Errorf("failed to check if current public key exists: %w", err)
 	}
 	return true, nil
 }
@@ -56,7 +56,7 @@ func CurrentPublicKeyAvailable() (bool, error) {
 func CurrentAvailableUser() (string, error) {
 	cert, err := LoadCertFromFile(config.GetFilePath(currentCertFilePath))
 	if err != nil {
-		return "", fmt.Errorf("failed to load current cert: %v", err)
+		return "", fmt.Errorf("failed to load current cert: %w", err)
 	}
 
 	// check if the OU is users
@@ -73,12 +73,12 @@ func Unlock(password []byte) error {
 	var pub *ecdsa.PublicKey
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("failed to load current cert: %v", err)
+			return fmt.Errorf("failed to load current cert: %w", err)
 		}
 
 		pub, err = LoadPublicKeyFromFile(config.GetFilePath(currentPubFilePath))
 		if err != nil {
-			return fmt.Errorf("failed to load current public key: %v", err)
+			return fmt.Errorf("failed to load current public key: %w", err)
 		}
 	} else {
 		var ok bool
@@ -90,7 +90,7 @@ func Unlock(password []byte) error {
 
 	key, err := LoadCertKeyFromFile(config.GetFilePath(currentKeyFilePath), password)
 	if err != nil {
-		return fmt.Errorf("failed to load current key: %v", err)
+		return fmt.Errorf("failed to load current key: %w", err)
 	}
 
 	currentCert = cert
@@ -103,7 +103,7 @@ func Unlock(password []byte) error {
 func UnlockAsRoot(password []byte) error {
 	caCert, caKey, err := GetRoot(password)
 	if err != nil {
-		return fmt.Errorf("failed to load CA: %v", err)
+		return fmt.Errorf("failed to load CA: %w", err)
 	}
 
 	pub, ok := currentCert.PublicKey.(*ecdsa.PublicKey)
@@ -142,17 +142,17 @@ func GetCurrentPublicKey() (*ecdsa.PublicKey, error) {
 func GetCurrentTlsCert() (*tls.Certificate, error) {
 	cert, err := GetCurrentCert()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get current cert: %v", err)
+		return nil, fmt.Errorf("failed to get current cert: %w", err)
 	}
 
 	keyPEM, err := EncodePrivateKeyToPEM(currentKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode private key: %v", err)
+		return nil, fmt.Errorf("failed to encode private key: %w", err)
 	}
 
 	tlsCert, err := tls.X509KeyPair(cert.Raw, keyPEM)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create tls cert: %v", err)
+		return nil, fmt.Errorf("failed to create tls cert: %w", err)
 	}
 
 	return &tlsCert, nil
@@ -161,11 +161,11 @@ func GetCurrentTlsCert() (*tls.Certificate, error) {
 func SaveCurrentCertAndKey(cert *x509.Certificate, key *ecdsa.PrivateKey, password []byte) error {
 	err := SaveCurrentCert(cert)
 	if err != nil {
-		return fmt.Errorf("failed to save current cert: %v", err)
+		return fmt.Errorf("failed to save current cert: %w", err)
 	}
 	err = SaveCertKeyToFile(config.GetFilePath(currentKeyFilePath), key, password)
 	if err != nil {
-		return fmt.Errorf("failed to save current key: %v", err)
+		return fmt.Errorf("failed to save current key: %w", err)
 	}
 	return nil
 }
@@ -173,11 +173,11 @@ func SaveCurrentCertAndKey(cert *x509.Certificate, key *ecdsa.PrivateKey, passwo
 func SaveCurrentKeyPair(key *ecdsa.PrivateKey, pub *ecdsa.PublicKey, password []byte) error {
 	err := SaveCertKeyToFile(config.GetFilePath(currentKeyFilePath), key, password)
 	if err != nil {
-		return fmt.Errorf("failed to save current key: %v", err)
+		return fmt.Errorf("failed to save current key: %w", err)
 	}
 	err = SavePublicKeyToFile(config.GetFilePath(currentPubFilePath), pub)
 	if err != nil {
-		return fmt.Errorf("failed to save current public key: %v", err)
+		return fmt.Errorf("failed to save current public key: %w", err)
 	}
 	return nil
 }
@@ -185,7 +185,7 @@ func SaveCurrentKeyPair(key *ecdsa.PrivateKey, pub *ecdsa.PublicKey, password []
 func SaveCurrentCert(cert *x509.Certificate) error {
 	err := SaveCertToFile(config.GetFilePath(currentCertFilePath), cert)
 	if err != nil {
-		return fmt.Errorf("failed to save current cert: %v", err)
+		return fmt.Errorf("failed to save current cert: %w", err)
 	}
 	return nil
 }

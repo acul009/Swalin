@@ -18,12 +18,12 @@ func EncryptDataWithPassword(password []byte, data []byte) ([]byte, error) {
 	// Generate a random salt
 	salt := make([]byte, aes.BlockSize)
 	if _, err := rand.Read(salt); err != nil {
-		return nil, fmt.Errorf("failed generating salt: %v", err)
+		return nil, fmt.Errorf("failed generating salt: %w", err)
 	}
 
 	iv := make([]byte, aes.BlockSize)
 	if _, err := rand.Read(iv); err != nil {
-		return nil, fmt.Errorf("failed generating iv: %v", err)
+		return nil, fmt.Errorf("failed generating iv: %w", err)
 	}
 
 	parameters := EncryptionParameters{
@@ -37,13 +37,13 @@ func EncryptDataWithPassword(password []byte, data []byte) ([]byte, error) {
 	// Derive an encryption key from the password and salt
 	key, err := deriveKeyFromPassword(password, parameters.ArgonParameters)
 	if err != nil {
-		return nil, fmt.Errorf("failed deriving encryption key: %v", err)
+		return nil, fmt.Errorf("failed deriving encryption key: %w", err)
 	}
 
 	// Create a new AES cipher block
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("failed creating cipher: %v", err)
+		return nil, fmt.Errorf("failed creating cipher: %w", err)
 	}
 
 	// Create a stream cipher for encryption
@@ -56,7 +56,7 @@ func EncryptDataWithPassword(password []byte, data []byte) ([]byte, error) {
 	// Prepend the parameters to the encrypted data
 	encryptionInfo, err := json.Marshal(parameters)
 	if err != nil {
-		return nil, fmt.Errorf("failed marshaling parameters: %v", err)
+		return nil, fmt.Errorf("failed marshaling parameters: %w", err)
 	}
 	encryptionInfo = append(encryptionInfo, encryptionInfoDelimiter...)
 
@@ -80,19 +80,19 @@ func DecryptDataWithPassword(password, encryptedData []byte) ([]byte, error) {
 	parameters := &EncryptionParameters{}
 	err := json.Unmarshal(encodedParams, parameters)
 	if err != nil {
-		return nil, fmt.Errorf("failed unmarshaling parameters: %v", err)
+		return nil, fmt.Errorf("failed unmarshaling parameters: %w", err)
 	}
 
 	// Derive the encryption key from the password and salt
 	key, err := deriveKeyFromPassword(password, parameters.ArgonParameters)
 	if err != nil {
-		return nil, fmt.Errorf("failed deriving encryption key: %v", err)
+		return nil, fmt.Errorf("failed deriving encryption key: %w", err)
 	}
 
 	// Create a new AES cipher block
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("failed creating cipher: %v", err)
+		return nil, fmt.Errorf("failed creating cipher: %w", err)
 	}
 
 	// Create a stream cipher for decryption
