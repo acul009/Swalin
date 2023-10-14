@@ -1,9 +1,11 @@
 package pki_test
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"io"
 	"rahnit-rmm/pki"
 	"reflect"
 	"testing"
@@ -40,11 +42,89 @@ func TestSignBytes(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(data, *unmarshalled) {
-		t.Errorf("expected %w, got %w", data, unmarshalled)
+		t.Errorf("expected %v, got %v", data, unmarshalled)
 	}
 
 	if !reflect.DeepEqual(key.PublicKey, *pub) {
-		t.Errorf("expected %w, got %w", key.PublicKey, pub)
+		t.Errorf("expected %v, got %v", key.PublicKey, pub)
+	}
+}
+
+func TestPackedReadWrite(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
 	}
 
+	data1 := testData{
+		Text: "test",
+		Num:  1,
+		Flt:  1.0,
+	}
+
+	data2 := testData{
+		Text: "test2",
+		Num:  2,
+		Flt:  2.0,
+	}
+
+	marshalled1, err := pki.MarshalAndSign(data1, key, &key.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	marshalled2, err := pki.MarshalAndSign(data2, key, &key.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	marshalled := bytes.Join([][]byte{marshalled1, marshalled2}, nil)
+
+	reader, writer := io.Pipe()
+
+	errChan := make(chan error)
+
+	go func() {
+		defer writer.Close()
+		_, err := writer.Write(marshalled)
+		if err != nil {
+			errChan <- err
+		}
+		close(errChan)
+	}()
+
+	unmarshalled1 := &testData{}
+
+	unmarshalled2 := &testData{}
+
+	pub1, err := pki.ReadAndUnmarshalAndVerify(reader, unmarshalled1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pub2, err := pki.ReadAndUnmarshalAndVerify(reader, unmarshalled2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err, ok := <-errChan
+	if ok {
+		t.Fatal(err)
+	}
+
+	if !key.PublicKey.Equal(pub1) {
+		t.Errorf("expected %v, got %v", key.PublicKey, pub1)
+	}
+
+	if !key.PublicKey.Equal(pub2) {
+		t.Errorf("expected %v, got %v", key.PublicKey, pub2)
+	}
+
+	if !reflect.DeepEqual(data1, *unmarshalled1) {
+		t.Errorf("expected %v, got %v", data1, unmarshalled1)
+	}
+
+	if !reflect.DeepEqual(data2, *unmarshalled2) {
+		t.Errorf("expected %v, got %v", data2, unmarshalled2)
+	}
 }

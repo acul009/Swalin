@@ -5,9 +5,11 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/asn1"
 	"encoding/json"
 	"fmt"
-	"rahnit-rmm/util"
+	"io"
+	"math/big"
 )
 
 var ErrSignatureInvalid = SignatureVerificationError{
@@ -43,8 +45,6 @@ func (e NotSignedError) Is(target error) bool {
 	return ok
 }
 
-var jsonDelimiter = []byte("|")
-
 func MarshalAndSign(v any, key *ecdsa.PrivateKey, pub *ecdsa.PublicKey) ([]byte, error) {
 	if key == nil {
 		return nil, fmt.Errorf("private key cannot be nil")
@@ -59,24 +59,10 @@ func MarshalAndSign(v any, key *ecdsa.PrivateKey, pub *ecdsa.PublicKey) ([]byte,
 		return nil, fmt.Errorf("failed to marshal data: %w", err)
 	}
 
-	signature, err := SignBytes(json, key)
-
+	msg, err := packAndSign(json, key, pub)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign data: %w", err)
+		return nil, fmt.Errorf("failed to package data: %w", err)
 	}
-
-	bsig := util.Base64Encode(signature)
-
-	bpub, err := EncodePubToString(pub)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode public key: %w", err)
-	}
-
-	msg := json
-	msg = append(msg, jsonDelimiter...)
-	msg = append(msg, bsig...)
-	msg = append(msg, jsonDelimiter...)
-	msg = append(msg, bpub...)
 
 	return msg, nil
 }
@@ -86,30 +72,7 @@ func UnmarshalAndVerify(signedData []byte, v any) (*ecdsa.PublicKey, error) {
 		return nil, fmt.Errorf("empty signed data")
 	}
 
-	split := bytes.SplitN(signedData, jsonDelimiter, 3)
-
-	if len(split) == 1 {
-		return nil, NotSignedError{}
-	}
-	if len(split) != 3 {
-		return nil, fmt.Errorf("invalid signed data")
-	}
-
-	msg := split[0]
-	bsig := split[1]
-	bpub := split[2]
-
-	pub, err := DecodePubFromString(string(bpub))
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode public key: %w", err)
-	}
-
-	signature, err := util.Base64Decode(bsig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode signature: %w", err)
-	}
-
-	err = VerifyBytes(msg, signature, pub)
+	msg, pub, err := unpackAndVerify(signedData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
@@ -119,7 +82,113 @@ func UnmarshalAndVerify(signedData []byte, v any) (*ecdsa.PublicKey, error) {
 	return pub, nil
 }
 
-func SignBytes(data []byte, key *ecdsa.PrivateKey) ([]byte, error) {
+func ReadAndUnmarshalAndVerify(reader io.Reader, v any) (*ecdsa.PublicKey, error) {
+	der, err := ReadSingleDer(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read asn1 block: %w", err)
+	}
+
+	return UnmarshalAndVerify(der, v)
+}
+
+func ReadSingleDer(reader io.Reader) ([]byte, error) {
+	derStart := make([]byte, 2)
+	_, err := io.ReadFull(reader, derStart)
+	if err != nil {
+		return nil, fmt.Errorf("failed to first two asn1 bytes: %w", err)
+	}
+
+	isMultiByteLength := derStart[1]&0b1000_0000 != 0
+	firstByteValue := derStart[1] & 0b0111_1111
+	var lengthBytes []byte
+	if isMultiByteLength {
+		lengthBytes = make([]byte, uint(firstByteValue))
+		_, err := io.ReadFull(reader, lengthBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read extended asn1 length: %w", err)
+		}
+	} else {
+		lengthBytes = []byte{firstByteValue}
+	}
+
+	length := &big.Int{}
+	length.SetBytes(lengthBytes)
+
+	derBody := make([]byte, length.Int64())
+	_, err = io.ReadFull(reader, derBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read asn1 body: %w", err)
+	}
+
+	toJoin := [][]byte{
+		derStart,
+	}
+
+	if isMultiByteLength {
+		toJoin = append(toJoin, lengthBytes)
+	}
+	toJoin = append(toJoin, derBody)
+
+	return bytes.Join(toJoin, []byte{}), nil
+}
+
+type PackedData struct {
+	Data      []byte `asn1:"tag:0"`
+	Signature []byte `asn1:"tag:1"`
+	PublicKey []byte `asn1:"tag:2"`
+}
+
+func packAndSign(data []byte, key *ecdsa.PrivateKey, pub *ecdsa.PublicKey) ([]byte, error) {
+
+	signature, err := signBytes(data, key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign data: %w", err)
+	}
+
+	pubData, err := EncodePubToBytes(pub)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode public key: %w", err)
+	}
+
+	d := PackedData{
+		Data:      data,
+		Signature: signature,
+		PublicKey: pubData,
+	}
+
+	packed, err := asn1.Marshal(d)
+	if err != nil {
+		return nil, fmt.Errorf("failed to pack data to asn1: %w", err)
+	}
+
+	return packed, nil
+}
+
+func unpackAndVerify(packed []byte) ([]byte, *ecdsa.PublicKey, error) {
+	d := &PackedData{}
+
+	rest, err := asn1.Unmarshal(packed, d)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal data: %w", err)
+	}
+	if len(rest) > 0 {
+		return nil, nil, fmt.Errorf("found rest after unmarshaling data: %v", rest)
+	}
+
+	pub, err := DecodePubFromBytes(d.PublicKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decode public key: %w", err)
+	}
+
+	err = verifyBytes(d.Data, d.Signature, pub)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to verify signature: %w", err)
+	}
+
+	return d.Data, pub, nil
+}
+
+func signBytes(data []byte, key *ecdsa.PrivateKey) ([]byte, error) {
 	if key == nil {
 		return nil, fmt.Errorf("private key cannot be nil")
 	}
@@ -137,7 +206,7 @@ func SignBytes(data []byte, key *ecdsa.PrivateKey) ([]byte, error) {
 	return signature, nil
 }
 
-func VerifyBytes(data []byte, signature []byte, pub *ecdsa.PublicKey) error {
+func verifyBytes(data []byte, signature []byte, pub *ecdsa.PublicKey) error {
 	if pub == nil {
 		return fmt.Errorf("public key cannot be nil")
 	}
