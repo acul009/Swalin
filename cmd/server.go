@@ -55,6 +55,12 @@ to quickly create a Cobra application.`,
 			if err != nil {
 				panic(err)
 			}
+
+			//Unlock again to load cert into memory
+			err = pki.UnlockHost()
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		log.Println("Server initialized, starting up...")
