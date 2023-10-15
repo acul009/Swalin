@@ -28,7 +28,7 @@ var currentPub *ecdsa.PublicKey = nil
 var currentCert *x509.Certificate = nil
 
 const currentKeyFilePath = "current.key"
-const currentCertFilePath = "current.cert"
+const currentCertFilePath = "current.crt"
 const currentPubFilePath = "current.pub"
 
 func CurrentAvailable() (bool, error) {

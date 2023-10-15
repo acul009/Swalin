@@ -31,9 +31,9 @@ to quickly create a Cobra application.`,
 
 		client, err := rpc.NewRpcClient(context.Background(), addr)
 
-		rpcCmd := &rpc.PingCmd{}
+		//rpcCmd := &rpc.PingCmd{}
 
-		err = client.SendCommand(context.Background(), rpcCmd)
+		//err = client.SendCommand(context.Background(), rpcCmd)
 		if err != nil {
 			panic(err)
 		}

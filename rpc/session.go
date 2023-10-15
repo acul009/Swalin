@@ -55,6 +55,14 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) {
 	log.Printf("Session opened, reading request header...")
 
 	header, sender, err := s.ReadRequestHeader()
+
+	if sender == nil {
+		s.Close()
+		return
+	}
+
+	s.partner = sender
+
 	if err != nil {
 		s.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,
@@ -75,8 +83,6 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) {
 		log.Printf("permission denied: %v", err)
 		return
 	}
-
-	s.partner = sender
 
 	debug, err := json.Marshal(header)
 	if err != nil {
@@ -239,7 +245,9 @@ func (s *RpcSession) ReadUntil(delimiter []byte, bufferSize int, limit int) ([]b
 func readMessageFromUnknown[P any](s *RpcSession, payload P) (*ecdsa.PublicKey, error) {
 	log.Printf("Reading message from unknown sender")
 
-	message := RpcMessage[P]{}
+	message := &RpcMessage[P]{
+		Payload: payload,
+	}
 
 	sender, err := pki.ReadAndUnmarshalAndVerify(s.Stream, message)
 	if err != nil {
@@ -276,7 +284,7 @@ func ReadMessage[P any](s *RpcSession, payload P, expectedSender *ecdsa.PublicKe
 	return nil
 }
 
-func WriteMessage[P any](s *RpcSession, payload P) error {
+func WriteMessage[P any](s *RpcSession, receiver *ecdsa.PublicKey, payload P) error {
 	if err := s.EnsureState(RpcSessionOpen); err != nil {
 		return fmt.Errorf("error ensuring state: %w", err)
 	}
@@ -295,7 +303,7 @@ func WriteMessage[P any](s *RpcSession, payload P) error {
 		return fmt.Errorf("error getting current key: %w", err)
 	}
 
-	message, err := newRpcMessage[P](pub, payload)
+	message, err := newRpcMessage[P](receiver, payload)
 	if err != nil {
 		return fmt.Errorf("error creating message: %w", err)
 	}
@@ -305,25 +313,26 @@ func WriteMessage[P any](s *RpcSession, payload P) error {
 		return fmt.Errorf("error marshalling message: %w", err)
 	}
 
-	toWrite := append(data, messageStop...)
+	log.Printf("Sending message: \n%s\n", string(data))
 
-	fmt.Printf("Sending message: %s", string(toWrite))
-
-	_, err = s.Write(toWrite)
+	n, err := s.Write(data)
 	if err != nil {
 		return fmt.Errorf("error writing message: %w", err)
+	}
+	if n != len(data) {
+		return fmt.Errorf("error writing message: %w", io.ErrShortWrite)
 	}
 
 	return nil
 }
 
-func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) error {
+func (s *RpcSession) WriteRequestHeader(receiver *ecdsa.PublicKey, header SessionRequestHeader) error {
 	err := s.MutateState(RpcSessionCreated, RpcSessionOpen)
 	if err != nil {
 		return fmt.Errorf("error mutating state: %w", err)
 	}
 
-	err = WriteMessage[SessionRequestHeader](s, header)
+	err = WriteMessage[SessionRequestHeader](s, receiver, header)
 	if err != nil {
 		s.MutateState(RpcSessionOpen, RpcSessionClosed)
 		return fmt.Errorf("error writing request header: %w", err)
@@ -343,7 +352,7 @@ func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) error {
 		return fmt.Errorf("error mutating state: %w", err)
 	}
 
-	err = WriteMessage[SessionResponseHeader](s, header)
+	err = WriteMessage[SessionResponseHeader](s, s.partner, header)
 	if err != nil {
 		s.MutateState(s.state, RpcSessionClosed)
 		return fmt.Errorf("error writing response header: %w", err)
@@ -373,7 +382,7 @@ func (s *RpcSession) EnsureState(state RpcSessionState) error {
 	return nil
 }
 
-func (s *RpcSession) SendCommand(cmd RpcCommand) error {
+func (s *RpcSession) SendCommand(receiver *ecdsa.PublicKey, cmd RpcCommand) error {
 
 	args := make(map[string]interface{})
 	err := reEncode(cmd, &args)
@@ -387,7 +396,7 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 		Args:      args,
 	}
 
-	err = s.WriteRequestHeader(header)
+	err = s.WriteRequestHeader(receiver, header)
 	if err != nil {
 		return fmt.Errorf("error writing header to stream: %w", err)
 	}
@@ -422,8 +431,6 @@ func (s *RpcSession) Close() error {
 	return err
 }
 
-var messageStop = []byte("\n")
-
 type SessionRequestHeader struct {
 	Cmd       string                 `json:"cmd"`
 	Timestamp int64                  `json:"timestamp"`
@@ -440,7 +447,7 @@ func (s *RpcSession) ReadRequestHeader() (SessionRequestHeader, *ecdsa.PublicKey
 	header := SessionRequestHeader{}
 	from, err := readMessageFromUnknown[SessionRequestHeader](s, header)
 	if err != nil {
-		return SessionRequestHeader{}, nil, fmt.Errorf("error reading request header: %w", err)
+		return SessionRequestHeader{}, from, fmt.Errorf("error reading request header: %w", err)
 	}
 
 	return header, from, nil

@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"rahnit-rmm/connection"
 	"sync"
@@ -35,7 +36,7 @@ func NewRpcClient(ctx context.Context, addr string) (*RpcClient, error) {
 	}, nil
 }
 
-func (c *RpcClient) SendCommand(ctx context.Context, cmd RpcCommand) error {
+func (c *RpcClient) SendCommand(ctx context.Context, receiver *ecdsa.PublicKey, cmd RpcCommand) error {
 	c.mutex.Lock()
 	if c.state != RpcClientRunning {
 		c.mutex.Unlock()
@@ -47,7 +48,7 @@ func (c *RpcClient) SendCommand(ctx context.Context, cmd RpcCommand) error {
 		return fmt.Errorf("error opening session: %w", err)
 	}
 
-	err = session.SendCommand(cmd)
+	err = session.SendCommand(receiver, cmd)
 	if err != nil {
 		return fmt.Errorf("error sending command: %w", err)
 	}

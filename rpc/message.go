@@ -2,9 +2,9 @@ package rpc
 
 import (
 	"crypto/ecdsa"
-	"crypto/x509"
-	"encoding/json"
 	"fmt"
+	"log"
+	"rahnit-rmm/pki"
 	"time"
 )
 
@@ -12,15 +12,8 @@ const messageExpiration = 30
 
 type RpcMessage[P any] struct {
 	Timestamp int64
-	Receiver  *ecdsa.PublicKey
-	Nonce     Nonce
-	Payload   P
-}
-
-type jsonRpcMessage[P any] struct {
-	Timestamp int64
 	Receiver  []byte
-	Nonce     []byte
+	Nonce     Nonce
 	Payload   P
 }
 
@@ -30,45 +23,22 @@ func newRpcMessage[P any](receiver *ecdsa.PublicKey, payload P) (*RpcMessage[P],
 		return nil, fmt.Errorf("error generating nonce: %w", err)
 	}
 
+	receiverBytes, err := pki.EncodePubToBytes(receiver)
+	if err != nil {
+		return nil, fmt.Errorf("error encoding receiver: %w", err)
+	}
+
 	return &RpcMessage[P]{
 		Timestamp: time.Now().Unix(),
-		Receiver:  receiver,
+		Receiver:  receiverBytes,
 		Nonce:     nonce,
 		Payload:   payload,
 	}, nil
 }
 
-func (m *RpcMessage[P]) MarshalJSON() ([]byte, error) {
-	pubKey, err := x509.MarshalPKIXPublicKey(m.Receiver)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling public key: %w", err)
-	}
-	return json.Marshal(&jsonRpcMessage[P]{
-		Timestamp: m.Timestamp,
-		Receiver:  pubKey,
-		Nonce:     m.Nonce,
-		Payload:   m.Payload,
-	})
-}
-
-func (m *RpcMessage[P]) UnmarshalJSON(data []byte) error {
-	var message jsonRpcMessage[P]
-	err := json.Unmarshal(data, &message)
-	if err != nil {
-		return fmt.Errorf("error unmarshalling message: %w", err)
-	}
-	m.Timestamp = message.Timestamp
-	pubKey, err := x509.ParsePKIXPublicKey(message.Receiver)
-	if err != nil {
-		return fmt.Errorf("error parsing public key: %w", err)
-	}
-	m.Receiver = pubKey.(*ecdsa.PublicKey)
-	m.Nonce = message.Nonce
-	m.Payload = message.Payload
-	return nil
-}
-
 func (m *RpcMessage[P]) Verify(store *nonceStorage, receiver *ecdsa.PublicKey) error {
+	log.Printf("Verifying message: %+v", m)
+
 	if err := m.VerifyTimestamp(); err != nil {
 		return err
 	}
@@ -85,23 +55,29 @@ func (m *RpcMessage[P]) Verify(store *nonceStorage, receiver *ecdsa.PublicKey) e
 }
 
 func (m *RpcMessage[P]) VerifyTimestamp() error {
-	if time.Now().Unix()-m.Timestamp > messageExpiration {
-		return fmt.Errorf("message expired")
+	diff := time.Now().Unix() - m.Timestamp
+	if diff > messageExpiration {
+		return fmt.Errorf("message expired, singed at %d, now is %d, off by %d seconds", m.Timestamp, time.Now().Unix(), messageExpiration)
 	}
 	return nil
 }
 
 func (m *RpcMessage[P]) VerifyNonce(store *nonceStorage) error {
 	if !store.CheckNonce(m.Nonce) {
-		return fmt.Errorf("invalid nonce")
+		return fmt.Errorf("nonce has already been used, possible replay attack")
 	}
 	store.AddNonce(m.Nonce)
 	return nil
 }
 
 func (m *RpcMessage[P]) VerifyReceiver(receiver *ecdsa.PublicKey) error {
-	if !m.Receiver.Equal(receiver) {
-		return fmt.Errorf("invalid receiver")
+	actualReceiver, err := pki.DecodePubFromBytes(m.Receiver)
+	if err != nil {
+		return fmt.Errorf("error decoding receiver: %w", err)
+	}
+
+	if !receiver.Equal(actualReceiver) {
+		return fmt.Errorf("message was meant for someone else, possible replay attack")
 	}
 	return nil
 }
