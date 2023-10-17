@@ -10,12 +10,12 @@ import (
 
 var v *viper.Viper
 
-func Set(key string, value interface{}) {
-	v.Set(key, value)
-}
-
-func Get(key string) interface{} {
-	return v.Get(key)
+func V() *viper.Viper {
+	if v == nil {
+		err := fmt.Errorf("viper not initialized")
+		panic(err)
+	}
+	return v
 }
 
 func Save() error {

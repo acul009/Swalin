@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"rahnit-rmm/connection"
 	"rahnit-rmm/pki"
 	"sync"
 
@@ -44,8 +43,14 @@ const (
 	RpcServerStopped
 )
 
-func NewRpcServer(addr string, rpcCommands *CommandCollection) (*RpcServer, error) {
-	listener, err := connection.CreateServer(addr)
+func NewRpcServer(listenAddr string, rpcCommands *CommandCollection) (*RpcServer, error) {
+	tlsConf, err := GetTlsServerConfig([]TlsConnectionProto{ProtoServerInit})
+	if err != nil {
+		return nil, fmt.Errorf("error getting server tls config: %w", err)
+	}
+
+	quicConf := &quic.Config{}
+	listener, err := quic.ListenAddr(listenAddr, tlsConf, quicConf)
 	if err != nil {
 		return nil, fmt.Errorf("error creating QUIC server: %w", err)
 	}

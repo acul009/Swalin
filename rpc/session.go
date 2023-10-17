@@ -37,11 +37,16 @@ type RpcSession struct {
 
 func NewRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 
-	pubkey, ok := conn.partner.PublicKey.(*ecdsa.PublicKey)
+	var pubkey *ecdsa.PublicKey = nil
 
-	if !ok {
-		err := errors.New("invalid public key type")
-		panic(err)
+	if conn.partner != nil {
+		var ok bool
+		pubkey, ok = conn.partner.PublicKey.(*ecdsa.PublicKey)
+
+		if !ok {
+			err := errors.New("invalid public key type")
+			panic(err)
+		}
 	}
 
 	return &RpcSession{

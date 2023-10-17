@@ -36,7 +36,3 @@ func GetFilePath(filePath ...string) string {
 	fullPath := filepath.Join(pathParts...)
 	return fullPath
 }
-
-func init() {
-
-}

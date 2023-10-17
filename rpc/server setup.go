@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -11,8 +10,6 @@ import (
 
 	"github.com/quic-go/quic-go"
 )
-
-const serverInitProtocol = "rahnit-rmm-server-init"
 
 func WaitForServerSetup(listenAddr string) error {
 	ok, err := pki.CurrentAvailable()
@@ -24,17 +21,9 @@ func WaitForServerSetup(listenAddr string) error {
 		// Server already initialized
 		return nil
 	}
-
-	tlsCert, err := getServerCert()
+	tlsConf, err := GetTlsServerConfig([]TlsConnectionProto{ProtoServerInit})
 	if err != nil {
-		return fmt.Errorf("error getting server cert: %w", err)
-	}
-
-	tlsConf := &tls.Config{
-		InsecureSkipVerify: true,
-		NextProtos:         []string{serverInitProtocol},
-		ClientAuth:         tls.RequireAnyClientCert,
-		Certificates:       []tls.Certificate{*tlsCert},
+		return fmt.Errorf("error getting server tls config: %w", err)
 	}
 
 	quicConf := &quic.Config{}
@@ -186,23 +175,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 		return fmt.Errorf("error unlocking root cert: %w", err)
 	}
 
-	tlsConf := &tls.Config{
-		// TODO: implement ACME certificate request and remove the InsecureSkipVerify option
-		InsecureSkipVerify: true,
-		NextProtos:         []string{serverInitProtocol},
-		GetClientCertificate: func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
-			tlsCert, err := pki.GetCurrentTlsCert()
-			if err != nil {
-				return nil, fmt.Errorf("error getting current certificate: %w", err)
-			}
-
-			err = info.SupportsCertificate(tlsCert)
-			if err != nil {
-				return nil, fmt.Errorf("error checking certificate: %w", err)
-			}
-			return tlsCert, nil
-		},
-	}
+	tlsConf := GetTlsClientConfig(ProtoServerInit)
 
 	quicConf := &quic.Config{}
 
@@ -306,7 +279,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 	session.Close()
 	conn.Close(200, "done")
 
-	config.Set("server-address", addr)
+	config.V().Set("upstream.address", addr)
 	err = config.Save()
 	if err != nil {
 		return fmt.Errorf("error saving config: %w", err)
