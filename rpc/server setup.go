@@ -61,6 +61,10 @@ func WaitForServerSetup(listenAddr string) error {
 			log.Println(err)
 		} else {
 			// no error, initialization was successful
+			err = listener.Close()
+			if err != nil {
+				return fmt.Errorf("error closing listener: %w", err)
+			}
 			return nil
 		}
 	}
