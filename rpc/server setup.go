@@ -102,6 +102,8 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 		return fmt.Errorf("root public key does not match sender")
 	}
 
+	session.partner = pubRoot
+
 	log.Printf("preparing init request...")
 
 	pubMe, err := pki.GetCurrentPublicKey()
@@ -120,7 +122,7 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 
 	log.Printf("Sending init request...")
 
-	err = WriteMessage[*serverInitRequest](session, pubRoot, initRequest)
+	err = WriteMessage[*serverInitRequest](session, initRequest)
 	if err != nil {
 		return fmt.Errorf("error writing message: %w", err)
 	}
@@ -252,6 +254,8 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 		return fmt.Errorf("server public key does not match sender")
 	}
 
+	session.partner = sender
+
 	log.Printf("Received request with pubkey: %s\n", req.ServerPubKey)
 
 	serverHostCert, err := pki.CreateServerCertWithCurrent(nameForServer, serverPubKey)
@@ -271,7 +275,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 		ServerCert: string(pki.EncodeCertificate(serverHostCert)),
 	}
 
-	err = WriteMessage[*serverInitResponse](session, sender, response)
+	err = WriteMessage[*serverInitResponse](session, response)
 	if err != nil {
 		return fmt.Errorf("error writing message: %w", err)
 	}

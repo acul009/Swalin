@@ -101,18 +101,18 @@ func Unlock(password []byte) error {
 }
 
 func UnlockAsRoot(password []byte) error {
-	caCert, caKey, err := GetRoot(password)
+	rootCert, rootKey, err := GetRoot(password)
 	if err != nil {
 		return fmt.Errorf("failed to load CA: %w", err)
 	}
 
-	pub, ok := currentCert.PublicKey.(*ecdsa.PublicKey)
+	pub, ok := rootCert.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
 		return fmt.Errorf("public key is not of type *ecdsa.PublicKey")
 	}
 
-	currentKey = caKey
-	currentCert = caCert
+	currentKey = rootKey
+	currentCert = rootCert
 	currentPub = pub
 
 	return nil

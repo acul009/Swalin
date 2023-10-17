@@ -25,7 +25,7 @@ type RpcEndpoint struct {
 }
 
 func ConnectToUpstream(ctx context.Context) (*RpcEndpoint, error) {
-	upstreamAddr := config.V().GetString("upstream.addr")
+	upstreamAddr := config.V().GetString("upstream.address")
 	if upstreamAddr == "" {
 		return nil, fmt.Errorf("upstream address is missing")
 	}

@@ -6,7 +6,9 @@ package cmd
 import (
 	"context"
 	"rahnit-rmm/config"
+	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
+	"rahnit-rmm/util"
 
 	"github.com/spf13/cobra"
 )
@@ -23,12 +25,27 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		config.SetSubdir("cli")
+		password, err := util.AskForPassword("Please enter your password: ")
+		if err != nil {
+			panic(err)
+		}
+		err = pki.UnlockAsRoot(password)
+		if err != nil {
+			panic(err)
+		}
 		ep, err := rpc.ConnectToUpstream(context.Background())
 		if err != nil {
 			panic(err)
 		}
-		ping := rpc.PingCmd{}
-
+		ping := rpc.RpcCommand(&rpc.PingCmd{})
+		session, err := ep.Session(context.Background())
+		if err != nil {
+			panic(err)
+		}
+		err = session.SendCommand(ping)
+		if err != nil {
+			panic(err)
+		}
 	},
 }
 

@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -31,16 +30,11 @@ func (p *PingCmd) ExecuteClient(session *RpcSession) error {
 	}()
 
 	for errorOccured == nil {
-		data, err := session.ReadUntil([]byte("\n"), 17, 65536)
+		var timestamp int64
+		err := ReadMessage[*int64](session, &timestamp)
 		if err != nil {
 			errorOccured = err
-			return err
-		}
-		//parse data as number string
-		timestamp, err := strconv.ParseInt(string(data), 10, 64)
-		if err != nil {
-			errorOccured = err
-			return err
+			break
 		}
 
 		difference := time.Now().UnixMicro() - timestamp
@@ -56,11 +50,12 @@ func (p *PingCmd) ExecuteServer(session *RpcSession) error {
 		Msg:  "OK",
 	})
 	for {
-		data, err := session.ReadUntil([]byte("\n"), 17, 65536)
+		var timestamp int64
+		err := ReadMessage[*int64](session, &timestamp)
 		if err != nil {
 			return err
 		}
-		session.Write(append(data, []byte("\n")...))
+		WriteMessage[*int64](session, &timestamp)
 	}
 }
 

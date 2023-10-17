@@ -10,7 +10,6 @@ import (
 	"rahnit-rmm/permissions"
 	"rahnit-rmm/pki"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/quic-go/quic-go"
@@ -35,7 +34,7 @@ type RpcSession struct {
 	partner    *ecdsa.PublicKey
 }
 
-func NewRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
+func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 
 	var pubkey *ecdsa.PublicKey = nil
 
@@ -56,6 +55,7 @@ func NewRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 		Uuid:       uuid.New(),
 		state:      RpcSessionCreated,
 		partner:    pubkey,
+		mutex:      sync.Mutex{},
 	}
 
 }
@@ -71,10 +71,13 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) {
 
 	header, sender, err := s.ReadRequestHeader()
 
-	if sender == nil {
+	if err != nil {
+		log.Printf("error reading request header: %v", err)
 		s.Close()
 		return
 	}
+
+	log.Printf("Received Header: %v", header)
 
 	s.partner = sender
 
@@ -170,93 +173,6 @@ func (s *RpcSession) Read(p []byte) (n int, err error) {
 	return readCounter, nil
 }
 
-func (s *RpcSession) Peek(p []byte, offset int) (n int, err error) {
-	readRequestSize := len(p)
-
-	currentBufferSize := len(s.ReadBuffer)
-
-	var eof error = nil
-
-	if currentBufferSize < offset+readRequestSize {
-		toRead := offset + readRequestSize - currentBufferSize
-		readBuffer := make([]byte, toRead)
-		n, err := s.Stream.Read(readBuffer)
-		s.ReadBuffer = append(s.ReadBuffer, readBuffer[:n]...)
-		log.Printf("buffer: %s", string(s.ReadBuffer))
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				eof = err
-			} else {
-				return n, err
-			}
-		}
-	}
-
-	if offset+readRequestSize > len(s.ReadBuffer) {
-		readRequestSize = len(s.ReadBuffer) - offset
-		if readRequestSize < 0 {
-			return 0, eof
-		}
-	}
-
-	n = copy(p, s.ReadBuffer[offset:offset+readRequestSize])
-
-	return n, eof
-}
-
-func (s *RpcSession) Seek(needle []byte, bufferSize int, limit int) (offset int, err error) {
-	needleLength := len(needle)
-	readBuffer := make([]byte, bufferSize)
-
-	offset = 0
-
-	closed := false
-
-	for offset+bufferSize < limit {
-		readOffset := offset - needleLength
-		if readOffset < 0 {
-			readOffset = 0
-		}
-
-		n, err := s.Peek(readBuffer, readOffset)
-
-		if err != nil {
-			if err == io.EOF {
-				closed = true
-			} else {
-				return offset, fmt.Errorf("error seeking needle: %w", err)
-			}
-		}
-
-		i := findSubSlice(readBuffer[:n], needle)
-		if i != -1 {
-			return offset + i, nil
-		}
-
-		if closed {
-			return i, fmt.Errorf("error seeking needle, EOF reached")
-		}
-
-		offset += n
-	}
-
-	return offset, fmt.Errorf("error seeking needle, limit reached")
-}
-
-func (s *RpcSession) ReadUntil(delimiter []byte, bufferSize int, limit int) ([]byte, error) {
-	dataLength, err := s.Seek(delimiter, bufferSize, limit)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	buffer := make([]byte, dataLength+len(delimiter))
-	_, err = s.Read(buffer)
-	if err != nil {
-		return buffer, err
-	}
-	return buffer[:dataLength], nil
-}
-
 func readMessageFromUnknown[P any](s *RpcSession, payload P) (*ecdsa.PublicKey, error) {
 	log.Printf("Reading message from unknown sender")
 
@@ -268,6 +184,8 @@ func readMessageFromUnknown[P any](s *RpcSession, payload P) (*ecdsa.PublicKey, 
 	if err != nil {
 		return nil, fmt.Errorf("error reading message: %w", err)
 	}
+
+	log.Printf("Received message from unknown sender: %v", sender)
 
 	myPub, err := pki.GetCurrentPublicKey()
 	if err != nil {
@@ -282,9 +200,9 @@ func readMessageFromUnknown[P any](s *RpcSession, payload P) (*ecdsa.PublicKey, 
 	return sender, nil
 }
 
-func ReadMessage[P any](s *RpcSession, payload P, expectedSender *ecdsa.PublicKey) error {
-	if expectedSender == nil {
-		return fmt.Errorf("expected sender not found")
+func ReadMessage[P any](s *RpcSession, payload P) error {
+	if s.partner == nil {
+		return fmt.Errorf("can't read message from unknown sender: session has no partner specified")
 	}
 
 	actualSender, err := readMessageFromUnknown[P](s, payload)
@@ -292,14 +210,14 @@ func ReadMessage[P any](s *RpcSession, payload P, expectedSender *ecdsa.PublicKe
 		return err
 	}
 
-	if !expectedSender.Equal(actualSender) {
+	if !actualSender.Equal(s.partner) {
 		return fmt.Errorf("expected sender does not match actual sender")
 	}
 
 	return nil
 }
 
-func WriteMessage[P any](s *RpcSession, receiver *ecdsa.PublicKey, payload P) error {
+func WriteMessage[P any](s *RpcSession, payload P) error {
 	if err := s.EnsureState(RpcSessionOpen); err != nil {
 		return fmt.Errorf("error ensuring state: %w", err)
 	}
@@ -318,7 +236,11 @@ func WriteMessage[P any](s *RpcSession, receiver *ecdsa.PublicKey, payload P) er
 		return fmt.Errorf("error getting current key: %w", err)
 	}
 
-	message, err := newRpcMessage[P](receiver, payload)
+	if s.partner == nil {
+		return fmt.Errorf("can't read message from unknown sender: session has no partner specified")
+	}
+
+	message, err := newRpcMessage[P](s.partner, payload)
 	if err != nil {
 		return fmt.Errorf("error creating message: %w", err)
 	}
@@ -341,13 +263,13 @@ func WriteMessage[P any](s *RpcSession, receiver *ecdsa.PublicKey, payload P) er
 	return nil
 }
 
-func (s *RpcSession) WriteRequestHeader(receiver *ecdsa.PublicKey, header SessionRequestHeader) error {
+func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) error {
 	err := s.MutateState(RpcSessionCreated, RpcSessionOpen)
 	if err != nil {
 		return fmt.Errorf("error mutating state: %w", err)
 	}
 
-	err = WriteMessage[SessionRequestHeader](s, receiver, header)
+	err = WriteMessage[SessionRequestHeader](s, header)
 	if err != nil {
 		s.MutateState(RpcSessionOpen, RpcSessionClosed)
 		return fmt.Errorf("error writing request header: %w", err)
@@ -367,7 +289,7 @@ func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) error {
 		return fmt.Errorf("error mutating state: %w", err)
 	}
 
-	err = WriteMessage[SessionResponseHeader](s, s.partner, header)
+	err = WriteMessage[SessionResponseHeader](s, header)
 	if err != nil {
 		s.MutateState(s.state, RpcSessionClosed)
 		return fmt.Errorf("error writing response header: %w", err)
@@ -397,7 +319,7 @@ func (s *RpcSession) EnsureState(state RpcSessionState) error {
 	return nil
 }
 
-func (s *RpcSession) SendCommand(receiver *ecdsa.PublicKey, cmd RpcCommand) error {
+func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 
 	args := make(map[string]interface{})
 	err := reEncode(cmd, &args)
@@ -406,17 +328,16 @@ func (s *RpcSession) SendCommand(receiver *ecdsa.PublicKey, cmd RpcCommand) erro
 	}
 
 	header := SessionRequestHeader{
-		Cmd:       cmd.GetKey(),
-		Timestamp: time.Now().UnixMicro(),
-		Args:      args,
+		Cmd:  cmd.GetKey(),
+		Args: args,
 	}
 
-	err = s.WriteRequestHeader(receiver, header)
+	err = s.WriteRequestHeader(header)
 	if err != nil {
 		return fmt.Errorf("error writing header to stream: %w", err)
 	}
 
-	response, err := s.readResponseHeader(s.partner)
+	response, err := s.readResponseHeader()
 
 	if err != nil {
 		return fmt.Errorf("error reading response header: %w", err)
@@ -447,9 +368,8 @@ func (s *RpcSession) Close() error {
 }
 
 type SessionRequestHeader struct {
-	Cmd       string                 `json:"cmd"`
-	Timestamp int64                  `json:"timestamp"`
-	Args      map[string]interface{} `json:"args"`
+	Cmd  string                 `json:"cmd"`
+	Args map[string]interface{} `json:"args"`
 }
 
 type SessionResponseHeader struct {
@@ -460,7 +380,7 @@ type SessionResponseHeader struct {
 
 func (s *RpcSession) ReadRequestHeader() (SessionRequestHeader, *ecdsa.PublicKey, error) {
 	header := SessionRequestHeader{}
-	from, err := readMessageFromUnknown[SessionRequestHeader](s, header)
+	from, err := readMessageFromUnknown[*SessionRequestHeader](s, &header)
 	if err != nil {
 		return SessionRequestHeader{}, from, fmt.Errorf("error reading request header: %w", err)
 	}
@@ -468,7 +388,7 @@ func (s *RpcSession) ReadRequestHeader() (SessionRequestHeader, *ecdsa.PublicKey
 	return header, from, nil
 }
 
-func (s *RpcSession) readResponseHeader(expectedSender *ecdsa.PublicKey) (SessionResponseHeader, error) {
+func (s *RpcSession) readResponseHeader() (SessionResponseHeader, error) {
 
 	s.mutex.Lock()
 	if s.state != RpcSessionRequested {
@@ -478,7 +398,7 @@ func (s *RpcSession) readResponseHeader(expectedSender *ecdsa.PublicKey) (Sessio
 	s.mutex.Unlock()
 
 	header := SessionResponseHeader{}
-	err := ReadMessage[SessionResponseHeader](s, header, expectedSender)
+	err := ReadMessage[SessionResponseHeader](s, header)
 	if err != nil {
 		return SessionResponseHeader{}, fmt.Errorf("error reading response header: %w", err)
 	}
@@ -492,27 +412,6 @@ func (s *RpcSession) readResponseHeader(expectedSender *ecdsa.PublicKey) (Sessio
 	s.mutex.Unlock()
 
 	return header, nil
-}
-
-func findSubSlice(bigSlice, subSlice []byte) int {
-	for i := 0; i < len(bigSlice)-len(subSlice)+1; i++ {
-		if bytesEqual(bigSlice[i:i+len(subSlice)], subSlice) {
-			return i
-		}
-	}
-	return -1 // Return -1 if subSlice is not found in bigSlice
-}
-
-func bytesEqual(a, b []byte) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func reEncode(from interface{}, to interface{}) error {

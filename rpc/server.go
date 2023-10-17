@@ -44,7 +44,7 @@ const (
 )
 
 func NewRpcServer(listenAddr string, rpcCommands *CommandCollection) (*RpcServer, error) {
-	tlsConf, err := GetTlsServerConfig([]TlsConnectionProto{ProtoServerInit})
+	tlsConf, err := GetTlsServerConfig([]TlsConnectionProto{ProtoRpc})
 	if err != nil {
 		return nil, fmt.Errorf("error getting server tls config: %w", err)
 	}
@@ -136,13 +136,8 @@ func (s *RpcServer) Run() error {
 			continue
 		}
 
-		certs := conn.ConnectionState().TLS.PeerCertificates
-		if len(certs) > 0 {
-			// TODO: check certificate
-			go conn.serve(s.rpcCommands)
-		} else {
-			log.Printf("Client tried to connect without certificate")
-		}
+		// TODO: check certificate
+		go conn.serve(s.rpcCommands)
 
 	}
 }

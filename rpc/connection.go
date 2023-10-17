@@ -101,7 +101,7 @@ func (conn *RpcConnection) AcceptSession(context.Context) (*RpcSession, error) {
 	defer conn.mutex.Unlock()
 
 	for i := 0; i < 10; i++ {
-		newSession := NewRpcSession(stream, conn)
+		newSession := newRpcSession(stream, conn)
 		if _, ok := conn.activeSessions[newSession.Uuid]; !ok {
 			session = newSession
 			break
@@ -128,7 +128,7 @@ func (conn *RpcConnection) OpenSession(ctx context.Context) (*RpcSession, error)
 		return nil, fmt.Errorf("error opening QUIC stream: %w", err)
 	}
 
-	return NewRpcSession(stream, conn), nil
+	return newRpcSession(stream, conn), nil
 }
 
 func (conn *RpcConnection) MutateState(from RpcConnectionState, to RpcConnectionState) error {
