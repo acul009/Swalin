@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"log"
@@ -30,6 +31,7 @@ const (
 type RpcConnection struct {
 	quic.Connection
 	server         *RpcServer
+	partner        *x509.Certificate
 	Uuid           uuid.UUID
 	state          RpcConnectionState
 	role           RpcConnectionRole
@@ -38,10 +40,11 @@ type RpcConnection struct {
 	nonceStorage   *nonceStorage
 }
 
-func NewRpcConnection(conn quic.Connection, server *RpcServer, role RpcConnectionRole, nonceStorage *nonceStorage) *RpcConnection {
+func newRpcConnection(conn quic.Connection, server *RpcServer, role RpcConnectionRole, nonceStorage *nonceStorage, partner *x509.Certificate) *RpcConnection {
 	return &RpcConnection{
 		Connection:     conn,
 		server:         server,
+		partner:        partner,
 		Uuid:           uuid.New(),
 		state:          RpcConnectionOpen,
 		role:           role,

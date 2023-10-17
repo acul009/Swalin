@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"rahnit-rmm/connection"
+	"rahnit-rmm/pki"
 	"sync"
 
 	"github.com/google/uuid"
@@ -64,22 +65,39 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error accepting QUIC connection: %w", err)
 	}
+
+	peerCertList := conn.ConnectionState().TLS.PeerCertificates
+	if len(peerCertList) == 0 {
+		return nil, fmt.Errorf("peer did not provide a certificate")
+	} else if len(peerCertList) > 1 {
+		return nil, fmt.Errorf("peer provided multiple certificates")
+	}
+
+	peerCert := peerCertList[0]
+
+	if err := pki.VerifyCertificate(peerCert); err != nil {
+		return nil, fmt.Errorf("peer did not provide a valid certificate: %w", err)
+	}
+
 	var connection *RpcConnection
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	for i := 0; i < 10; i++ {
-		newConnection := NewRpcConnection(conn, s, RpcRoleServer, s.nonceStorage)
+		newConnection := newRpcConnection(conn, s, RpcRoleServer, s.nonceStorage, peerCert)
 		if _, ok := s.activeConnections[newConnection.Uuid]; !ok {
 			connection = newConnection
 			break
 		}
 	}
+
 	if connection == nil {
 		return nil, fmt.Errorf("multiple uuid collisions, this should mathematically be impossible")
 	}
+
 	s.activeConnections[connection.Uuid] = connection
+
 	return connection, nil
 }
 

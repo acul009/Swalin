@@ -4,11 +4,8 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"rahnit-rmm/config"
-	"rahnit-rmm/rpc"
-	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -31,23 +28,23 @@ to quickly create a Cobra application.`,
 			panic(err)
 		}
 
-		addr := "localhost:1234"
+		// addr := "localhost:1234"
 
-		client, err := rpc.NewRpcClient(context.Background(), addr)
+		// client, err := rpc.NewRpcClient(context.Background(), addr)
 
-		//rpcCmd := &rpc.PingCmd{}
+		// rpcCmd := &rpc.PingCmd{}
 
-		//err = client.SendCommand(context.Background(), rpcCmd)
-		if err != nil {
-			panic(err)
-		}
+		// err = client.SendCommand(context.Background(), rpcCmd)
+		// if err != nil {
+		// 	panic(err)
+		// }
 
-		err = client.Close(200, "OK")
-		if err != nil {
-			panic(err)
-		}
+		// err = client.Close(200, "OK")
+		// if err != nil {
+		// 	panic(err)
+		// }
 
-		time.Sleep(time.Second)
+		// time.Sleep(time.Second)
 
 	},
 }

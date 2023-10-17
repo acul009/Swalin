@@ -82,7 +82,7 @@ type serverInitResponse struct {
 }
 
 func acceptServerInitialization(quicConn quic.Connection) error {
-	conn := NewRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage)
+	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil)
 
 	log.Printf("Opening init QUIC stream...")
 
@@ -217,7 +217,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 
 	initNonceStorage = NewNonceStorage()
 
-	conn := NewRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage)
+	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil)
 
 	log.Printf("Connection opened to %s\n", addr)
 
@@ -281,7 +281,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 
 	log.Printf("Received request with pubkey: %s\n", req.ServerPubKey)
 
-	serverHostCert, err := pki.CreateHostCertWithCurrent(nameForServer, serverPubKey)
+	serverHostCert, err := pki.CreateServerCertWithCurrent(nameForServer, serverPubKey)
 	if err != nil {
 		return fmt.Errorf("error creating server certificate: %w", err)
 	}
@@ -310,6 +310,11 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 	err = config.Save()
 	if err != nil {
 		return fmt.Errorf("error saving config: %w", err)
+	}
+
+	err = pki.SaveUpstreamCert(serverHostCert)
+	if err != nil {
+		return fmt.Errorf("error saving upstream certificate: %w", err)
 	}
 
 	return nil

@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/x509"
 	"fmt"
 	"rahnit-rmm/connection"
 	"sync"
@@ -23,12 +24,22 @@ type RpcClient struct {
 	mutex sync.Mutex
 }
 
-func NewRpcClient(ctx context.Context, addr string) (*RpcClient, error) {
+func NewRpcClient(ctx context.Context, addr string, partner *x509.Certificate) (*RpcClient, error) {
+	if addr == "" {
+		return nil, fmt.Errorf("address cannot be empty")
+	}
+
+	if partner == nil {
+		return nil, fmt.Errorf("partner cannot be nil")
+	}
+
 	conn, err := connection.CreateClient(ctx, addr)
 	if err != nil {
 		return nil, fmt.Errorf("error creating QUIC client: %w", err)
 	}
-	rpcConn := NewRpcConnection(conn, nil, RpcRoleClient, NewNonceStorage())
+
+	rpcConn := newRpcConnection(conn, nil, RpcRoleClient, NewNonceStorage(), partner)
+
 	return &RpcClient{
 		conn:  rpcConn,
 		state: RpcClientRunning,

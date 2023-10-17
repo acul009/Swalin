@@ -54,7 +54,7 @@ func UnlockHost() error {
 	return nil
 }
 
-func CreateHostCertWithCurrent(name string, pub *ecdsa.PublicKey) (*x509.Certificate, error) {
+func CreateServerCertWithCurrent(name string, pub *ecdsa.PublicKey) (*x509.Certificate, error) {
 	cert, err := GetCurrentCert()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load current cert: %w", err)
