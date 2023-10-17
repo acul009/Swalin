@@ -203,6 +203,10 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 
 	quicConn, err := quic.DialAddr(context.Background(), addr, tlsConf, quicConf)
 	if err != nil {
+		qErr, ok := err.(*quic.TransportError)
+		if ok && uint8(qErr.ErrorCode) == 120 {
+			return fmt.Errorf("server not in init mode: %w", err)
+		}
 		return fmt.Errorf("error creating QUIC connection: %w", err)
 	}
 

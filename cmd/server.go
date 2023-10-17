@@ -30,7 +30,7 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("server called")
-		err := config.SetSubdir("cli")
+		err := config.SetSubdir("server")
 		if err != nil {
 			panic(err)
 		}
@@ -67,8 +67,6 @@ to quickly create a Cobra application.`,
 		}
 
 		log.Println("Server initialized, starting up...")
-
-		return
 
 		fmt.Printf("\nListening on localhost:%s\n", addr)
 		rpcCommands := rpc.NewCommandCollection()

@@ -15,9 +15,22 @@ var v *viper.Viper
 
 func SetSubdir(s string) error {
 	subdir = s
+
+	_, err := os.Stat(GetConfigDir())
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			err = os.MkdirAll(GetConfigDir(), 0755)
+			if err != nil {
+				return fmt.Errorf("failed to create config dir: %w", err)
+			}
+		} else {
+			return fmt.Errorf("failed to check for config dir: %w", err)
+		}
+	}
+
 	v = viper.New()
 
-	_, err := os.Stat(GetFilePath("config.yml"))
+	_, err = os.Stat(GetFilePath("config.yml"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			err = createMissingConfig()
@@ -40,6 +53,10 @@ func SetSubdir(s string) error {
 }
 
 func Viper() *viper.Viper {
+	if v == nil {
+		err := fmt.Errorf("viper not initialized")
+		panic(err)
+	}
 	return v
 }
 
@@ -72,5 +89,5 @@ func GetFilePath(filePath ...string) string {
 }
 
 func init() {
-	SetSubdir("fallback")
+
 }
