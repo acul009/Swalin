@@ -30,9 +30,12 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("server called")
-		config.SetSubdir("server")
+		err := config.SetSubdir("cli")
+		if err != nil {
+			panic(err)
+		}
 
-		err := config.InitDB()
+		err = config.InitDB()
 		if err != nil {
 			panic(err)
 		}

@@ -40,12 +40,15 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		config.SetSubdir("cli")
+		err := config.SetSubdir("cli")
+		if err != nil {
+			panic(err)
+		}
 
 		// create root user if missing
 		var rootPassword []byte
 
-		_, err := pki.GetRootCert()
+		_, err = pki.GetRootCert()
 		if err != nil {
 			if errors.Is(err, pki.ErrNoRootCert) {
 				fmt.Println("No root certificate found, generating one")
