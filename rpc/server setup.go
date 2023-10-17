@@ -281,7 +281,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 
 	log.Printf("Received request with pubkey: %s\n", req.ServerPubKey)
 
-	serverHostCert, err := pki.CreateServerCertWithCurrent(nameForServer, serverPubKey)
+	serverHostCert, err := pki.CreateHostCertWithCurrent(nameForServer, serverPubKey)
 	if err != nil {
 		return fmt.Errorf("error creating server certificate: %w", err)
 	}
