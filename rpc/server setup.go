@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
 
 	"github.com/quic-go/quic-go"
@@ -300,6 +301,8 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 
 	session.Close()
 	conn.Close(200, "done")
+
+	config.Set("server-address", addr)
 
 	return nil
 }
