@@ -307,6 +307,10 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 	conn.Close(200, "done")
 
 	config.Set("server-address", addr)
+	err = config.Save()
+	if err != nil {
+		return fmt.Errorf("error saving config: %w", err)
+	}
 
 	return nil
 }
