@@ -41,7 +41,7 @@ func updateViper() error {
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
 
-	_, err = os.Stat(GetFilePath("config.yml"))
+	_, err = os.Stat(GetFilePath("config.yaml"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			err = createMissingConfig()
