@@ -27,7 +27,6 @@ const (
 type RpcSession struct {
 	quic.Stream
 	Connection *RpcConnection
-	ReadBuffer []byte
 	Uuid       uuid.UUID
 	state      RpcSessionState
 	mutex      sync.Mutex
@@ -50,7 +49,6 @@ func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 
 	return &RpcSession{
 		Stream:     stream,
-		ReadBuffer: make([]byte, 0, 1024),
 		Connection: conn,
 		Uuid:       uuid.New(),
 		state:      RpcSessionCreated,
@@ -61,10 +59,11 @@ func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 }
 
 func (s *RpcSession) handleIncoming(commands *CommandCollection) {
-	err := s.MutateState(RpcSessionCreated, RpcSessionOpen)
+	defer s.Close()
+	log.Printf("handling incoming session...")
+	err := s.EnsureState(RpcSessionCreated)
 	if err != nil {
-		log.Printf("session already open: %v", err)
-		return
+		log.Printf("error ensuring state: %v", err)
 	}
 
 	log.Printf("Session opened, reading request header...")
@@ -73,11 +72,10 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) {
 
 	if err != nil {
 		log.Printf("error reading request header: %v", err)
-		s.Close()
 		return
 	}
 
-	log.Printf("Received Header: %v", header)
+	log.Printf("Received Header: %+v", header)
 
 	s.partner = sender
 
@@ -90,7 +88,7 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) {
 		return
 	}
 
-	log.Printf("Header: %v", header)
+	log.Printf("Header: %+v", header)
 
 	err = permissions.MayStartCommand(sender, header.Cmd)
 	if err != nil {
@@ -105,6 +103,7 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) {
 	debug, err := json.Marshal(header)
 	if err != nil {
 		log.Printf("error marshalling header: %v\n", err)
+		return
 	}
 
 	fmt.Printf("\nHeader\n%v\n", string(debug))
@@ -151,26 +150,7 @@ func (s *RpcSession) Write(p []byte) (n int, err error) {
 }
 
 func (s *RpcSession) Read(p []byte) (n int, err error) {
-	readRequestSize := len(p)
-
-	readCounter := 0
-
-	if len(s.ReadBuffer) > 0 {
-		readCounter = copy(p, s.ReadBuffer)
-		s.ReadBuffer = s.ReadBuffer[readCounter:]
-	}
-
-	readRequestSize -= readCounter
-
-	if readRequestSize > 0 {
-		readFromStreamCount, err := s.Stream.Read(p[readCounter:])
-		readCounter += readFromStreamCount
-		if err != nil {
-			return readCounter, err
-		}
-	}
-
-	return readCounter, nil
+	return s.Stream.Read(p)
 }
 
 func readMessageFromUnknown[P any](s *RpcSession, payload P) (*ecdsa.PublicKey, error) {
@@ -218,6 +198,7 @@ func ReadMessage[P any](s *RpcSession, payload P) error {
 }
 
 func WriteMessage[P any](s *RpcSession, payload P) error {
+	log.Printf("trying to write message to session")
 	if err := s.EnsureState(RpcSessionOpen); err != nil {
 		return fmt.Errorf("error ensuring state: %w", err)
 	}
@@ -237,7 +218,7 @@ func WriteMessage[P any](s *RpcSession, payload P) error {
 	}
 
 	if s.partner == nil {
-		return fmt.Errorf("can't read message from unknown sender: session has no partner specified")
+		return fmt.Errorf("can't address message to unknown sender: session has no partner specified")
 	}
 
 	message, err := newRpcMessage[P](s.partner, payload)
@@ -291,7 +272,10 @@ func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) error {
 
 	err = WriteMessage[SessionResponseHeader](s, header)
 	if err != nil {
-		s.MutateState(s.state, RpcSessionClosed)
+		stateErr := s.MutateState(s.state, RpcSessionClosed)
+		if stateErr != nil {
+			panic(stateErr)
+		}
 		return fmt.Errorf("error writing response header: %w", err)
 	}
 
@@ -385,6 +369,11 @@ func (s *RpcSession) ReadRequestHeader() (SessionRequestHeader, *ecdsa.PublicKey
 		return SessionRequestHeader{}, from, fmt.Errorf("error reading request header: %w", err)
 	}
 
+	err = s.MutateState(RpcSessionCreated, RpcSessionRequested)
+	if err != nil {
+		return SessionRequestHeader{}, from, fmt.Errorf("error setting session state: %w", err)
+	}
+
 	return header, from, nil
 }
 
@@ -398,7 +387,7 @@ func (s *RpcSession) readResponseHeader() (SessionResponseHeader, error) {
 	s.mutex.Unlock()
 
 	header := SessionResponseHeader{}
-	err := ReadMessage[SessionResponseHeader](s, header)
+	err := ReadMessage[*SessionResponseHeader](s, &header)
 	if err != nil {
 		return SessionResponseHeader{}, fmt.Errorf("error reading response header: %w", err)
 	}

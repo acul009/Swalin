@@ -68,6 +68,11 @@ func TestPackedReadWrite(t *testing.T) {
 		Flt:  2.0,
 	}
 
+	data3 := make([]byte, 10000)
+	for i := 0; i < len(data3); i++ {
+		data3[i] = byte(i)
+	}
+
 	marshalled1, err := pki.MarshalAndSign(data1, key, &key.PublicKey)
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +83,9 @@ func TestPackedReadWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	marshalled := bytes.Join([][]byte{marshalled1, marshalled2}, nil)
+	marshalled3, err := pki.MarshalAndSign(data3, key, &key.PublicKey)
+
+	marshalled := bytes.Join([][]byte{marshalled1, marshalled2, marshalled3}, nil)
 
 	reader, writer := io.Pipe()
 
@@ -97,12 +104,19 @@ func TestPackedReadWrite(t *testing.T) {
 
 	unmarshalled2 := &testData{}
 
+	unmarshalled3 := make([]byte, 10000)
+
 	pub1, err := pki.ReadAndUnmarshalAndVerify(reader, unmarshalled1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	pub2, err := pki.ReadAndUnmarshalAndVerify(reader, unmarshalled2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pub3, err := pki.ReadAndUnmarshalAndVerify(reader, &unmarshalled3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,11 +134,19 @@ func TestPackedReadWrite(t *testing.T) {
 		t.Errorf("expected %v, got %v", key.PublicKey, pub2)
 	}
 
+	if !key.PublicKey.Equal(pub3) {
+		t.Errorf("expected %v, got %v", key.PublicKey, pub3)
+	}
+
 	if !reflect.DeepEqual(data1, *unmarshalled1) {
 		t.Errorf("expected %v, got %v", data1, unmarshalled1)
 	}
 
 	if !reflect.DeepEqual(data2, *unmarshalled2) {
 		t.Errorf("expected %v, got %v", data2, unmarshalled2)
+	}
+
+	if !reflect.DeepEqual(data3, unmarshalled3) {
+		t.Errorf("expected %v, got %v", data3, unmarshalled3)
 	}
 }

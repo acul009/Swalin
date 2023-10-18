@@ -82,6 +82,7 @@ func (conn *RpcConnection) serve(commands *CommandCollection) error {
 			if errors.Is(err, &quic.ApplicationError{}) {
 				return err
 			}
+			return nil
 		}
 
 		log.Printf("RPC session opened, handling incoming commands")

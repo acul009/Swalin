@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -20,8 +21,8 @@ func (p *PingCmd) ExecuteClient(session *RpcSession) error {
 	go func() {
 		for errorOccured == nil {
 			time.Sleep(time.Second)
-			payload := fmt.Sprintf("%d\n", time.Now().UnixMicro())
-			_, err := session.Write([]byte(payload))
+			payload := time.Now().UnixMicro()
+			err := WriteMessage[int64](session, payload)
 			if err != nil {
 				errorOccured = err
 				return
@@ -45,10 +46,15 @@ func (p *PingCmd) ExecuteClient(session *RpcSession) error {
 }
 
 func (p *PingCmd) ExecuteServer(session *RpcSession) error {
-	session.WriteResponseHeader(SessionResponseHeader{
+	log.Printf("Starting echo server")
+	err := session.WriteResponseHeader(SessionResponseHeader{
 		Code: 200,
 		Msg:  "OK",
 	})
+	if err != nil {
+		return fmt.Errorf("error writing response header: %w", err)
+	}
+	log.Printf("Sent Response")
 	for {
 		var timestamp int64
 		err := ReadMessage[*int64](session, &timestamp)
