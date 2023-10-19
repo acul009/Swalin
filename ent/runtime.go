@@ -17,12 +17,20 @@ func init() {
 	userDescUsername := userFields[0].Descriptor()
 	// user.UsernameValidator is a validator for the "username" field. It is called by the builders before save.
 	user.UsernameValidator = userDescUsername.Validators[0].(func(string) error)
+	// userDescPasswordDoubleHashed is the schema descriptor for password_double_hashed field.
+	userDescPasswordDoubleHashed := userFields[3].Descriptor()
+	// user.PasswordDoubleHashedValidator is a validator for the "password_double_hashed" field. It is called by the builders before save.
+	user.PasswordDoubleHashedValidator = userDescPasswordDoubleHashed.Validators[0].(func(string) error)
 	// userDescCertificate is the schema descriptor for certificate field.
-	userDescCertificate := userFields[2].Descriptor()
+	userDescCertificate := userFields[4].Descriptor()
 	// user.CertificateValidator is a validator for the "certificate" field. It is called by the builders before save.
 	user.CertificateValidator = userDescCertificate.Validators[0].(func(string) error)
 	// userDescPublicKey is the schema descriptor for public_key field.
-	userDescPublicKey := userFields[3].Descriptor()
+	userDescPublicKey := userFields[5].Descriptor()
 	// user.PublicKeyValidator is a validator for the "public_key" field. It is called by the builders before save.
 	user.PublicKeyValidator = userDescPublicKey.Validators[0].(func(string) error)
+	// userDescEncryptedPrivateKey is the schema descriptor for encrypted_private_key field.
+	userDescEncryptedPrivateKey := userFields[6].Descriptor()
+	// user.EncryptedPrivateKeyValidator is a validator for the "encrypted_private_key" field. It is called by the builders before save.
+	user.EncryptedPrivateKeyValidator = userDescEncryptedPrivateKey.Validators[0].(func(string) error)
 }

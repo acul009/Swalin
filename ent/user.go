@@ -3,8 +3,10 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"rahnit-rmm/ent/user"
+	"rahnit-rmm/util"
 	"strings"
 
 	"entgo.io/ent"
@@ -18,15 +20,21 @@ type User struct {
 	ID int `json:"id,omitempty"`
 	// Username holds the value of the "username" field.
 	Username string `json:"username,omitempty"`
+	// PasswordClientHashingOptions holds the value of the "password_client_hashing_options" field.
+	PasswordClientHashingOptions *util.ArgonParameters `json:"-"`
+	// PasswordServerHashingOptions holds the value of the "password_server_hashing_options" field.
+	PasswordServerHashingOptions *util.ArgonParameters `json:"-"`
 	// PasswordDoubleHashed holds the value of the "password_double_hashed" field.
-	PasswordDoubleHashed string `json:"password_double_hashed,omitempty"`
+	PasswordDoubleHashed string `json:"-"`
 	// Certificate holds the value of the "certificate" field.
 	Certificate string `json:"certificate,omitempty"`
 	// PublicKey holds the value of the "public_key" field.
 	PublicKey string `json:"public_key,omitempty"`
 	// EncryptedPrivateKey holds the value of the "encrypted_private_key" field.
-	EncryptedPrivateKey string `json:"encrypted_private_key,omitempty"`
-	selectValues        sql.SelectValues
+	EncryptedPrivateKey string `json:"-"`
+	// TotpSecret holds the value of the "totp_secret" field.
+	TotpSecret   string `json:"-"`
+	selectValues sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -34,9 +42,11 @@ func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case user.FieldPasswordClientHashingOptions, user.FieldPasswordServerHashingOptions:
+			values[i] = new([]byte)
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldUsername, user.FieldPasswordDoubleHashed, user.FieldCertificate, user.FieldPublicKey, user.FieldEncryptedPrivateKey:
+		case user.FieldUsername, user.FieldPasswordDoubleHashed, user.FieldCertificate, user.FieldPublicKey, user.FieldEncryptedPrivateKey, user.FieldTotpSecret:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -65,6 +75,22 @@ func (u *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				u.Username = value.String
 			}
+		case user.FieldPasswordClientHashingOptions:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field password_client_hashing_options", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &u.PasswordClientHashingOptions); err != nil {
+					return fmt.Errorf("unmarshal field password_client_hashing_options: %w", err)
+				}
+			}
+		case user.FieldPasswordServerHashingOptions:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field password_server_hashing_options", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &u.PasswordServerHashingOptions); err != nil {
+					return fmt.Errorf("unmarshal field password_server_hashing_options: %w", err)
+				}
+			}
 		case user.FieldPasswordDoubleHashed:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field password_double_hashed", values[i])
@@ -88,6 +114,12 @@ func (u *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field encrypted_private_key", values[i])
 			} else if value.Valid {
 				u.EncryptedPrivateKey = value.String
+			}
+		case user.FieldTotpSecret:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field totp_secret", values[i])
+			} else if value.Valid {
+				u.TotpSecret = value.String
 			}
 		default:
 			u.selectValues.Set(columns[i], values[i])
@@ -124,12 +156,15 @@ func (u *User) Unwrap() *User {
 func (u *User) String() string {
 	var builder strings.Builder
 	builder.WriteString("User(")
-	builder.WriteString(fmt.Sprintf("id=%w, ", u.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", u.ID))
 	builder.WriteString("username=")
 	builder.WriteString(u.Username)
 	builder.WriteString(", ")
-	builder.WriteString("password_double_hashed=")
-	builder.WriteString(u.PasswordDoubleHashed)
+	builder.WriteString("password_client_hashing_options=<sensitive>")
+	builder.WriteString(", ")
+	builder.WriteString("password_server_hashing_options=<sensitive>")
+	builder.WriteString(", ")
+	builder.WriteString("password_double_hashed=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("certificate=")
 	builder.WriteString(u.Certificate)
@@ -137,8 +172,9 @@ func (u *User) String() string {
 	builder.WriteString("public_key=")
 	builder.WriteString(u.PublicKey)
 	builder.WriteString(", ")
-	builder.WriteString("encrypted_private_key=")
-	builder.WriteString(u.EncryptedPrivateKey)
+	builder.WriteString("encrypted_private_key=<sensitive>")
+	builder.WriteString(", ")
+	builder.WriteString("totp_secret=<sensitive>")
 	builder.WriteByte(')')
 	return builder.String()
 }

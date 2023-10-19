@@ -5,6 +5,7 @@ go 1.20
 require (
 	entgo.io/ent v0.12.4
 	github.com/google/uuid v1.3.1
+	github.com/pquerna/otp v1.4.0
 	github.com/quic-go/quic-go v0.39.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
@@ -15,6 +16,7 @@ require (
 	ariga.io/atlas v0.14.2 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-openapi/inflect v0.19.0 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect

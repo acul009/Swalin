@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"rahnit-rmm/ent/user"
+	"rahnit-rmm/util"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -22,6 +23,18 @@ type UserCreate struct {
 // SetUsername sets the "username" field.
 func (uc *UserCreate) SetUsername(s string) *UserCreate {
 	uc.mutation.SetUsername(s)
+	return uc
+}
+
+// SetPasswordClientHashingOptions sets the "password_client_hashing_options" field.
+func (uc *UserCreate) SetPasswordClientHashingOptions(up *util.ArgonParameters) *UserCreate {
+	uc.mutation.SetPasswordClientHashingOptions(up)
+	return uc
+}
+
+// SetPasswordServerHashingOptions sets the "password_server_hashing_options" field.
+func (uc *UserCreate) SetPasswordServerHashingOptions(up *util.ArgonParameters) *UserCreate {
+	uc.mutation.SetPasswordServerHashingOptions(up)
 	return uc
 }
 
@@ -46,6 +59,12 @@ func (uc *UserCreate) SetPublicKey(s string) *UserCreate {
 // SetEncryptedPrivateKey sets the "encrypted_private_key" field.
 func (uc *UserCreate) SetEncryptedPrivateKey(s string) *UserCreate {
 	uc.mutation.SetEncryptedPrivateKey(s)
+	return uc
+}
+
+// SetTotpSecret sets the "totp_secret" field.
+func (uc *UserCreate) SetTotpSecret(s string) *UserCreate {
+	uc.mutation.SetTotpSecret(s)
 	return uc
 }
 
@@ -91,8 +110,19 @@ func (uc *UserCreate) check() error {
 			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "User.username": %w`, err)}
 		}
 	}
+	if _, ok := uc.mutation.PasswordClientHashingOptions(); !ok {
+		return &ValidationError{Name: "password_client_hashing_options", err: errors.New(`ent: missing required field "User.password_client_hashing_options"`)}
+	}
+	if _, ok := uc.mutation.PasswordServerHashingOptions(); !ok {
+		return &ValidationError{Name: "password_server_hashing_options", err: errors.New(`ent: missing required field "User.password_server_hashing_options"`)}
+	}
 	if _, ok := uc.mutation.PasswordDoubleHashed(); !ok {
 		return &ValidationError{Name: "password_double_hashed", err: errors.New(`ent: missing required field "User.password_double_hashed"`)}
+	}
+	if v, ok := uc.mutation.PasswordDoubleHashed(); ok {
+		if err := user.PasswordDoubleHashedValidator(v); err != nil {
+			return &ValidationError{Name: "password_double_hashed", err: fmt.Errorf(`ent: validator failed for field "User.password_double_hashed": %w`, err)}
+		}
 	}
 	if _, ok := uc.mutation.Certificate(); !ok {
 		return &ValidationError{Name: "certificate", err: errors.New(`ent: missing required field "User.certificate"`)}
@@ -112,6 +142,14 @@ func (uc *UserCreate) check() error {
 	}
 	if _, ok := uc.mutation.EncryptedPrivateKey(); !ok {
 		return &ValidationError{Name: "encrypted_private_key", err: errors.New(`ent: missing required field "User.encrypted_private_key"`)}
+	}
+	if v, ok := uc.mutation.EncryptedPrivateKey(); ok {
+		if err := user.EncryptedPrivateKeyValidator(v); err != nil {
+			return &ValidationError{Name: "encrypted_private_key", err: fmt.Errorf(`ent: validator failed for field "User.encrypted_private_key": %w`, err)}
+		}
+	}
+	if _, ok := uc.mutation.TotpSecret(); !ok {
+		return &ValidationError{Name: "totp_secret", err: errors.New(`ent: missing required field "User.totp_secret"`)}
 	}
 	return nil
 }
@@ -143,6 +181,14 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldUsername, field.TypeString, value)
 		_node.Username = value
 	}
+	if value, ok := uc.mutation.PasswordClientHashingOptions(); ok {
+		_spec.SetField(user.FieldPasswordClientHashingOptions, field.TypeJSON, value)
+		_node.PasswordClientHashingOptions = value
+	}
+	if value, ok := uc.mutation.PasswordServerHashingOptions(); ok {
+		_spec.SetField(user.FieldPasswordServerHashingOptions, field.TypeJSON, value)
+		_node.PasswordServerHashingOptions = value
+	}
 	if value, ok := uc.mutation.PasswordDoubleHashed(); ok {
 		_spec.SetField(user.FieldPasswordDoubleHashed, field.TypeString, value)
 		_node.PasswordDoubleHashed = value
@@ -158,6 +204,10 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := uc.mutation.EncryptedPrivateKey(); ok {
 		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeString, value)
 		_node.EncryptedPrivateKey = value
+	}
+	if value, ok := uc.mutation.TotpSecret(); ok {
+		_spec.SetField(user.FieldTotpSecret, field.TypeString, value)
+		_node.TotpSecret = value
 	}
 	return _node, _spec
 }

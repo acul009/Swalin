@@ -13,6 +13,10 @@ const (
 	FieldID = "id"
 	// FieldUsername holds the string denoting the username field in the database.
 	FieldUsername = "username"
+	// FieldPasswordClientHashingOptions holds the string denoting the password_client_hashing_options field in the database.
+	FieldPasswordClientHashingOptions = "password_client_hashing_options"
+	// FieldPasswordServerHashingOptions holds the string denoting the password_server_hashing_options field in the database.
+	FieldPasswordServerHashingOptions = "password_server_hashing_options"
 	// FieldPasswordDoubleHashed holds the string denoting the password_double_hashed field in the database.
 	FieldPasswordDoubleHashed = "password_double_hashed"
 	// FieldCertificate holds the string denoting the certificate field in the database.
@@ -21,6 +25,8 @@ const (
 	FieldPublicKey = "public_key"
 	// FieldEncryptedPrivateKey holds the string denoting the encrypted_private_key field in the database.
 	FieldEncryptedPrivateKey = "encrypted_private_key"
+	// FieldTotpSecret holds the string denoting the totp_secret field in the database.
+	FieldTotpSecret = "totp_secret"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 )
@@ -29,10 +35,13 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldUsername,
+	FieldPasswordClientHashingOptions,
+	FieldPasswordServerHashingOptions,
 	FieldPasswordDoubleHashed,
 	FieldCertificate,
 	FieldPublicKey,
 	FieldEncryptedPrivateKey,
+	FieldTotpSecret,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -48,10 +57,14 @@ func ValidColumn(column string) bool {
 var (
 	// UsernameValidator is a validator for the "username" field. It is called by the builders before save.
 	UsernameValidator func(string) error
+	// PasswordDoubleHashedValidator is a validator for the "password_double_hashed" field. It is called by the builders before save.
+	PasswordDoubleHashedValidator func(string) error
 	// CertificateValidator is a validator for the "certificate" field. It is called by the builders before save.
 	CertificateValidator func(string) error
 	// PublicKeyValidator is a validator for the "public_key" field. It is called by the builders before save.
 	PublicKeyValidator func(string) error
+	// EncryptedPrivateKeyValidator is a validator for the "encrypted_private_key" field. It is called by the builders before save.
+	EncryptedPrivateKeyValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the User queries.
@@ -85,4 +98,9 @@ func ByPublicKey(opts ...sql.OrderTermOption) OrderOption {
 // ByEncryptedPrivateKey orders the results by the encrypted_private_key field.
 func ByEncryptedPrivateKey(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEncryptedPrivateKey, opts...).ToFunc()
+}
+
+// ByTotpSecret orders the results by the totp_secret field.
+func ByTotpSecret(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTotpSecret, opts...).ToFunc()
 }

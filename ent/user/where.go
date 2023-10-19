@@ -78,6 +78,11 @@ func EncryptedPrivateKey(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldEncryptedPrivateKey, v))
 }
 
+// TotpSecret applies equality check predicate on the "totp_secret" field. It's identical to TotpSecretEQ.
+func TotpSecret(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldTotpSecret, v))
+}
+
 // UsernameEQ applies the EQ predicate on the "username" field.
 func UsernameEQ(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldUsername, v))
@@ -401,6 +406,71 @@ func EncryptedPrivateKeyEqualFold(v string) predicate.User {
 // EncryptedPrivateKeyContainsFold applies the ContainsFold predicate on the "encrypted_private_key" field.
 func EncryptedPrivateKeyContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldEncryptedPrivateKey, v))
+}
+
+// TotpSecretEQ applies the EQ predicate on the "totp_secret" field.
+func TotpSecretEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldTotpSecret, v))
+}
+
+// TotpSecretNEQ applies the NEQ predicate on the "totp_secret" field.
+func TotpSecretNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldTotpSecret, v))
+}
+
+// TotpSecretIn applies the In predicate on the "totp_secret" field.
+func TotpSecretIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldTotpSecret, vs...))
+}
+
+// TotpSecretNotIn applies the NotIn predicate on the "totp_secret" field.
+func TotpSecretNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldTotpSecret, vs...))
+}
+
+// TotpSecretGT applies the GT predicate on the "totp_secret" field.
+func TotpSecretGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldTotpSecret, v))
+}
+
+// TotpSecretGTE applies the GTE predicate on the "totp_secret" field.
+func TotpSecretGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldTotpSecret, v))
+}
+
+// TotpSecretLT applies the LT predicate on the "totp_secret" field.
+func TotpSecretLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldTotpSecret, v))
+}
+
+// TotpSecretLTE applies the LTE predicate on the "totp_secret" field.
+func TotpSecretLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldTotpSecret, v))
+}
+
+// TotpSecretContains applies the Contains predicate on the "totp_secret" field.
+func TotpSecretContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldTotpSecret, v))
+}
+
+// TotpSecretHasPrefix applies the HasPrefix predicate on the "totp_secret" field.
+func TotpSecretHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldTotpSecret, v))
+}
+
+// TotpSecretHasSuffix applies the HasSuffix predicate on the "totp_secret" field.
+func TotpSecretHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldTotpSecret, v))
+}
+
+// TotpSecretEqualFold applies the EqualFold predicate on the "totp_secret" field.
+func TotpSecretEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldTotpSecret, v))
+}
+
+// TotpSecretContainsFold applies the ContainsFold predicate on the "totp_secret" field.
+func TotpSecretContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldTotpSecret, v))
 }
 
 // And groups predicates with the AND operator between them.

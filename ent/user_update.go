@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"rahnit-rmm/ent/predicate"
 	"rahnit-rmm/ent/user"
+	"rahnit-rmm/util"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -33,15 +34,39 @@ func (uu *UserUpdate) SetUsername(s string) *UserUpdate {
 	return uu
 }
 
+// SetPasswordClientHashingOptions sets the "password_client_hashing_options" field.
+func (uu *UserUpdate) SetPasswordClientHashingOptions(up *util.ArgonParameters) *UserUpdate {
+	uu.mutation.SetPasswordClientHashingOptions(up)
+	return uu
+}
+
+// SetPasswordServerHashingOptions sets the "password_server_hashing_options" field.
+func (uu *UserUpdate) SetPasswordServerHashingOptions(up *util.ArgonParameters) *UserUpdate {
+	uu.mutation.SetPasswordServerHashingOptions(up)
+	return uu
+}
+
 // SetPasswordDoubleHashed sets the "password_double_hashed" field.
 func (uu *UserUpdate) SetPasswordDoubleHashed(s string) *UserUpdate {
 	uu.mutation.SetPasswordDoubleHashed(s)
 	return uu
 }
 
+// SetCertificate sets the "certificate" field.
+func (uu *UserUpdate) SetCertificate(s string) *UserUpdate {
+	uu.mutation.SetCertificate(s)
+	return uu
+}
+
 // SetEncryptedPrivateKey sets the "encrypted_private_key" field.
 func (uu *UserUpdate) SetEncryptedPrivateKey(s string) *UserUpdate {
 	uu.mutation.SetEncryptedPrivateKey(s)
+	return uu
+}
+
+// SetTotpSecret sets the "totp_secret" field.
+func (uu *UserUpdate) SetTotpSecret(s string) *UserUpdate {
+	uu.mutation.SetTotpSecret(s)
 	return uu
 }
 
@@ -84,6 +109,21 @@ func (uu *UserUpdate) check() error {
 			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "User.username": %w`, err)}
 		}
 	}
+	if v, ok := uu.mutation.PasswordDoubleHashed(); ok {
+		if err := user.PasswordDoubleHashedValidator(v); err != nil {
+			return &ValidationError{Name: "password_double_hashed", err: fmt.Errorf(`ent: validator failed for field "User.password_double_hashed": %w`, err)}
+		}
+	}
+	if v, ok := uu.mutation.Certificate(); ok {
+		if err := user.CertificateValidator(v); err != nil {
+			return &ValidationError{Name: "certificate", err: fmt.Errorf(`ent: validator failed for field "User.certificate": %w`, err)}
+		}
+	}
+	if v, ok := uu.mutation.EncryptedPrivateKey(); ok {
+		if err := user.EncryptedPrivateKeyValidator(v); err != nil {
+			return &ValidationError{Name: "encrypted_private_key", err: fmt.Errorf(`ent: validator failed for field "User.encrypted_private_key": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -102,11 +142,23 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := uu.mutation.Username(); ok {
 		_spec.SetField(user.FieldUsername, field.TypeString, value)
 	}
+	if value, ok := uu.mutation.PasswordClientHashingOptions(); ok {
+		_spec.SetField(user.FieldPasswordClientHashingOptions, field.TypeJSON, value)
+	}
+	if value, ok := uu.mutation.PasswordServerHashingOptions(); ok {
+		_spec.SetField(user.FieldPasswordServerHashingOptions, field.TypeJSON, value)
+	}
 	if value, ok := uu.mutation.PasswordDoubleHashed(); ok {
 		_spec.SetField(user.FieldPasswordDoubleHashed, field.TypeString, value)
 	}
+	if value, ok := uu.mutation.Certificate(); ok {
+		_spec.SetField(user.FieldCertificate, field.TypeString, value)
+	}
 	if value, ok := uu.mutation.EncryptedPrivateKey(); ok {
 		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeString, value)
+	}
+	if value, ok := uu.mutation.TotpSecret(); ok {
+		_spec.SetField(user.FieldTotpSecret, field.TypeString, value)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -134,15 +186,39 @@ func (uuo *UserUpdateOne) SetUsername(s string) *UserUpdateOne {
 	return uuo
 }
 
+// SetPasswordClientHashingOptions sets the "password_client_hashing_options" field.
+func (uuo *UserUpdateOne) SetPasswordClientHashingOptions(up *util.ArgonParameters) *UserUpdateOne {
+	uuo.mutation.SetPasswordClientHashingOptions(up)
+	return uuo
+}
+
+// SetPasswordServerHashingOptions sets the "password_server_hashing_options" field.
+func (uuo *UserUpdateOne) SetPasswordServerHashingOptions(up *util.ArgonParameters) *UserUpdateOne {
+	uuo.mutation.SetPasswordServerHashingOptions(up)
+	return uuo
+}
+
 // SetPasswordDoubleHashed sets the "password_double_hashed" field.
 func (uuo *UserUpdateOne) SetPasswordDoubleHashed(s string) *UserUpdateOne {
 	uuo.mutation.SetPasswordDoubleHashed(s)
 	return uuo
 }
 
+// SetCertificate sets the "certificate" field.
+func (uuo *UserUpdateOne) SetCertificate(s string) *UserUpdateOne {
+	uuo.mutation.SetCertificate(s)
+	return uuo
+}
+
 // SetEncryptedPrivateKey sets the "encrypted_private_key" field.
 func (uuo *UserUpdateOne) SetEncryptedPrivateKey(s string) *UserUpdateOne {
 	uuo.mutation.SetEncryptedPrivateKey(s)
+	return uuo
+}
+
+// SetTotpSecret sets the "totp_secret" field.
+func (uuo *UserUpdateOne) SetTotpSecret(s string) *UserUpdateOne {
+	uuo.mutation.SetTotpSecret(s)
 	return uuo
 }
 
@@ -198,6 +274,21 @@ func (uuo *UserUpdateOne) check() error {
 			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "User.username": %w`, err)}
 		}
 	}
+	if v, ok := uuo.mutation.PasswordDoubleHashed(); ok {
+		if err := user.PasswordDoubleHashedValidator(v); err != nil {
+			return &ValidationError{Name: "password_double_hashed", err: fmt.Errorf(`ent: validator failed for field "User.password_double_hashed": %w`, err)}
+		}
+	}
+	if v, ok := uuo.mutation.Certificate(); ok {
+		if err := user.CertificateValidator(v); err != nil {
+			return &ValidationError{Name: "certificate", err: fmt.Errorf(`ent: validator failed for field "User.certificate": %w`, err)}
+		}
+	}
+	if v, ok := uuo.mutation.EncryptedPrivateKey(); ok {
+		if err := user.EncryptedPrivateKeyValidator(v); err != nil {
+			return &ValidationError{Name: "encrypted_private_key", err: fmt.Errorf(`ent: validator failed for field "User.encrypted_private_key": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -233,11 +324,23 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 	if value, ok := uuo.mutation.Username(); ok {
 		_spec.SetField(user.FieldUsername, field.TypeString, value)
 	}
+	if value, ok := uuo.mutation.PasswordClientHashingOptions(); ok {
+		_spec.SetField(user.FieldPasswordClientHashingOptions, field.TypeJSON, value)
+	}
+	if value, ok := uuo.mutation.PasswordServerHashingOptions(); ok {
+		_spec.SetField(user.FieldPasswordServerHashingOptions, field.TypeJSON, value)
+	}
 	if value, ok := uuo.mutation.PasswordDoubleHashed(); ok {
 		_spec.SetField(user.FieldPasswordDoubleHashed, field.TypeString, value)
 	}
+	if value, ok := uuo.mutation.Certificate(); ok {
+		_spec.SetField(user.FieldCertificate, field.TypeString, value)
+	}
 	if value, ok := uuo.mutation.EncryptedPrivateKey(); ok {
 		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeString, value)
+	}
+	if value, ok := uuo.mutation.TotpSecret(); ok {
+		_spec.SetField(user.FieldTotpSecret, field.TypeString, value)
 	}
 	_node = &User{config: uuo.config}
 	_spec.Assign = _node.assignValues

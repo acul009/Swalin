@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"rahnit-rmm/ent/predicate"
 	"rahnit-rmm/ent/user"
+	"rahnit-rmm/util"
 	"sync"
 
 	"entgo.io/ent"
@@ -29,18 +30,21 @@ const (
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op                     Op
-	typ                    string
-	id                     *int
-	username               *string
-	password_double_hashed *string
-	certificate            *string
-	public_key             *string
-	encrypted_private_key  *string
-	clearedFields          map[string]struct{}
-	done                   bool
-	oldValue               func(context.Context) (*User, error)
-	predicates             []predicate.User
+	op                              Op
+	typ                             string
+	id                              *int
+	username                        *string
+	password_client_hashing_options **util.ArgonParameters
+	password_server_hashing_options **util.ArgonParameters
+	password_double_hashed          *string
+	certificate                     *string
+	public_key                      *string
+	encrypted_private_key           *string
+	totp_secret                     *string
+	clearedFields                   map[string]struct{}
+	done                            bool
+	oldValue                        func(context.Context) (*User, error)
+	predicates                      []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -175,6 +179,78 @@ func (m *UserMutation) OldUsername(ctx context.Context) (v string, err error) {
 // ResetUsername resets all changes to the "username" field.
 func (m *UserMutation) ResetUsername() {
 	m.username = nil
+}
+
+// SetPasswordClientHashingOptions sets the "password_client_hashing_options" field.
+func (m *UserMutation) SetPasswordClientHashingOptions(up *util.ArgonParameters) {
+	m.password_client_hashing_options = &up
+}
+
+// PasswordClientHashingOptions returns the value of the "password_client_hashing_options" field in the mutation.
+func (m *UserMutation) PasswordClientHashingOptions() (r *util.ArgonParameters, exists bool) {
+	v := m.password_client_hashing_options
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPasswordClientHashingOptions returns the old "password_client_hashing_options" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldPasswordClientHashingOptions(ctx context.Context) (v *util.ArgonParameters, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPasswordClientHashingOptions is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPasswordClientHashingOptions requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPasswordClientHashingOptions: %w", err)
+	}
+	return oldValue.PasswordClientHashingOptions, nil
+}
+
+// ResetPasswordClientHashingOptions resets all changes to the "password_client_hashing_options" field.
+func (m *UserMutation) ResetPasswordClientHashingOptions() {
+	m.password_client_hashing_options = nil
+}
+
+// SetPasswordServerHashingOptions sets the "password_server_hashing_options" field.
+func (m *UserMutation) SetPasswordServerHashingOptions(up *util.ArgonParameters) {
+	m.password_server_hashing_options = &up
+}
+
+// PasswordServerHashingOptions returns the value of the "password_server_hashing_options" field in the mutation.
+func (m *UserMutation) PasswordServerHashingOptions() (r *util.ArgonParameters, exists bool) {
+	v := m.password_server_hashing_options
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPasswordServerHashingOptions returns the old "password_server_hashing_options" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldPasswordServerHashingOptions(ctx context.Context) (v *util.ArgonParameters, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPasswordServerHashingOptions is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPasswordServerHashingOptions requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPasswordServerHashingOptions: %w", err)
+	}
+	return oldValue.PasswordServerHashingOptions, nil
+}
+
+// ResetPasswordServerHashingOptions resets all changes to the "password_server_hashing_options" field.
+func (m *UserMutation) ResetPasswordServerHashingOptions() {
+	m.password_server_hashing_options = nil
 }
 
 // SetPasswordDoubleHashed sets the "password_double_hashed" field.
@@ -321,6 +397,42 @@ func (m *UserMutation) ResetEncryptedPrivateKey() {
 	m.encrypted_private_key = nil
 }
 
+// SetTotpSecret sets the "totp_secret" field.
+func (m *UserMutation) SetTotpSecret(s string) {
+	m.totp_secret = &s
+}
+
+// TotpSecret returns the value of the "totp_secret" field in the mutation.
+func (m *UserMutation) TotpSecret() (r string, exists bool) {
+	v := m.totp_secret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotpSecret returns the old "totp_secret" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldTotpSecret(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotpSecret is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotpSecret requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotpSecret: %w", err)
+	}
+	return oldValue.TotpSecret, nil
+}
+
+// ResetTotpSecret resets all changes to the "totp_secret" field.
+func (m *UserMutation) ResetTotpSecret() {
+	m.totp_secret = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -355,9 +467,15 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 8)
 	if m.username != nil {
 		fields = append(fields, user.FieldUsername)
+	}
+	if m.password_client_hashing_options != nil {
+		fields = append(fields, user.FieldPasswordClientHashingOptions)
+	}
+	if m.password_server_hashing_options != nil {
+		fields = append(fields, user.FieldPasswordServerHashingOptions)
 	}
 	if m.password_double_hashed != nil {
 		fields = append(fields, user.FieldPasswordDoubleHashed)
@@ -371,6 +489,9 @@ func (m *UserMutation) Fields() []string {
 	if m.encrypted_private_key != nil {
 		fields = append(fields, user.FieldEncryptedPrivateKey)
 	}
+	if m.totp_secret != nil {
+		fields = append(fields, user.FieldTotpSecret)
+	}
 	return fields
 }
 
@@ -381,6 +502,10 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case user.FieldUsername:
 		return m.Username()
+	case user.FieldPasswordClientHashingOptions:
+		return m.PasswordClientHashingOptions()
+	case user.FieldPasswordServerHashingOptions:
+		return m.PasswordServerHashingOptions()
 	case user.FieldPasswordDoubleHashed:
 		return m.PasswordDoubleHashed()
 	case user.FieldCertificate:
@@ -389,6 +514,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.PublicKey()
 	case user.FieldEncryptedPrivateKey:
 		return m.EncryptedPrivateKey()
+	case user.FieldTotpSecret:
+		return m.TotpSecret()
 	}
 	return nil, false
 }
@@ -400,6 +527,10 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 	switch name {
 	case user.FieldUsername:
 		return m.OldUsername(ctx)
+	case user.FieldPasswordClientHashingOptions:
+		return m.OldPasswordClientHashingOptions(ctx)
+	case user.FieldPasswordServerHashingOptions:
+		return m.OldPasswordServerHashingOptions(ctx)
 	case user.FieldPasswordDoubleHashed:
 		return m.OldPasswordDoubleHashed(ctx)
 	case user.FieldCertificate:
@@ -408,6 +539,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldPublicKey(ctx)
 	case user.FieldEncryptedPrivateKey:
 		return m.OldEncryptedPrivateKey(ctx)
+	case user.FieldTotpSecret:
+		return m.OldTotpSecret(ctx)
 	}
 	return nil, fmt.Errorf("unknown User field %s", name)
 }
@@ -423,6 +556,20 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUsername(v)
+		return nil
+	case user.FieldPasswordClientHashingOptions:
+		v, ok := value.(*util.ArgonParameters)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPasswordClientHashingOptions(v)
+		return nil
+	case user.FieldPasswordServerHashingOptions:
+		v, ok := value.(*util.ArgonParameters)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPasswordServerHashingOptions(v)
 		return nil
 	case user.FieldPasswordDoubleHashed:
 		v, ok := value.(string)
@@ -451,6 +598,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetEncryptedPrivateKey(v)
+		return nil
+	case user.FieldTotpSecret:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotpSecret(v)
 		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)
@@ -504,6 +658,12 @@ func (m *UserMutation) ResetField(name string) error {
 	case user.FieldUsername:
 		m.ResetUsername()
 		return nil
+	case user.FieldPasswordClientHashingOptions:
+		m.ResetPasswordClientHashingOptions()
+		return nil
+	case user.FieldPasswordServerHashingOptions:
+		m.ResetPasswordServerHashingOptions()
+		return nil
 	case user.FieldPasswordDoubleHashed:
 		m.ResetPasswordDoubleHashed()
 		return nil
@@ -515,6 +675,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldEncryptedPrivateKey:
 		m.ResetEncryptedPrivateKey()
+		return nil
+	case user.FieldTotpSecret:
+		m.ResetTotpSecret()
 		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)

@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"rahnit-rmm/util"
+
 	"entgo.io/ent"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
@@ -15,10 +17,13 @@ type User struct {
 func (User) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("username").Unique().NotEmpty(),
-		field.String("password_double_hashed"),
-		field.String("certificate").NotEmpty().Unique().Immutable(),
+		field.JSON("password_client_hashing_options", &util.ArgonParameters{}).Sensitive(),
+		field.JSON("password_server_hashing_options", &util.ArgonParameters{}).Sensitive(),
+		field.String("password_double_hashed").NotEmpty().Sensitive(),
+		field.String("certificate").NotEmpty().Unique(),
 		field.String("public_key").NotEmpty().Unique().Immutable(),
-		field.String("encrypted_private_key"),
+		field.String("encrypted_private_key").NotEmpty().Sensitive(),
+		field.String("totp_secret").Sensitive(),
 	}
 }
 

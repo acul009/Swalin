@@ -15,23 +15,9 @@ var encryptionInfoDelimiter = []byte("\n")
 
 // EncryptDataWithPassword encrypts data using a password and returns the encrypted result.
 func EncryptDataWithPassword(password []byte, data []byte) ([]byte, error) {
-	// Generate a random salt
-	salt := make([]byte, aes.BlockSize)
-	if _, err := rand.Read(salt); err != nil {
-		return nil, fmt.Errorf("failed generating salt: %w", err)
-	}
-
-	iv := make([]byte, aes.BlockSize)
-	if _, err := rand.Read(iv); err != nil {
-		return nil, fmt.Errorf("failed generating iv: %w", err)
-	}
-
-	parameters := EncryptionParameters{
-		ArgonParameters: ArgonParameters{
-			ArgonOptions: DefaultArgonOptions(),
-			Salt:         salt,
-		},
-		IV: iv,
+	parameters, err := generateEncryptionParameters()
+	if err != nil {
+		return nil, fmt.Errorf("failed generating encryption parameters: %w", err)
 	}
 
 	// Derive an encryption key from the password and salt
@@ -47,7 +33,7 @@ func EncryptDataWithPassword(password []byte, data []byte) ([]byte, error) {
 	}
 
 	// Create a stream cipher for encryption
-	stream := cipher.NewCFBEncrypter(block, iv)
+	stream := cipher.NewCFBEncrypter(block, parameters.IV)
 
 	// Encrypt the data
 	encryptedData := make([]byte, len(data))
@@ -122,13 +108,82 @@ type EncryptionParameters struct {
 	IV []byte
 }
 
-func DefaultArgonOptions() ArgonOptions {
+func GenerateArgonParameters() (ArgonParameters, error) {
+	// Generate a random salt
+	salt := make([]byte, aes.BlockSize)
+	if _, err := rand.Read(salt); err != nil {
+		return ArgonParameters{}, fmt.Errorf("failed generating salt: %w", err)
+	}
+
+	return ArgonParameters{
+		ArgonOptions: defaultArgonOptions(),
+		Salt:         make([]byte, 16),
+	}, nil
+}
+
+func (p ArgonParameters) IsInsecure() bool {
+	min := defaultArgonOptions()
+	if p.TimeCost < min.TimeCost {
+		return true
+	}
+
+	if p.MemoryCost < min.MemoryCost {
+		return true
+	}
+
+	if p.Parallelism < min.Parallelism {
+		return true
+	}
+
+	if p.KeyLength < min.KeyLength {
+		return true
+	}
+
+	return false
+}
+
+func generateEncryptionParameters() (EncryptionParameters, error) {
+	// Generate a random iv
+	iv := make([]byte, aes.BlockSize)
+	if _, err := rand.Read(iv); err != nil {
+		return EncryptionParameters{}, fmt.Errorf("failed generating iv: %w", err)
+	}
+
+	parameters, err := GenerateArgonParameters()
+	if err != nil {
+		return EncryptionParameters{}, fmt.Errorf("failed generating argon parameters: %w", err)
+	}
+
+	return EncryptionParameters{
+		ArgonParameters: parameters,
+		IV:              iv,
+	}, nil
+}
+
+func defaultArgonOptions() ArgonOptions {
 	return ArgonOptions{
 		TimeCost:    1,
 		MemoryCost:  64 * 1024,
 		Parallelism: 4,
 		KeyLength:   32,
 	}
+}
+
+func HashPassword(password []byte, params ArgonParameters) ([]byte, error) {
+	return deriveKeyFromPassword(password, params)
+}
+
+func VerifyPassword(password []byte, hash []byte, params ArgonParameters) error {
+	actualHash, err := deriveKeyFromPassword(password, params)
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(actualHash, hash) {
+		return fmt.Errorf("hashes do not match")
+	}
+
+	return nil
 }
 
 func deriveKeyFromPassword(password []byte, params ArgonParameters) ([]byte, error) {
