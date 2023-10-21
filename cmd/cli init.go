@@ -4,6 +4,7 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"rahnit-rmm/config"
@@ -53,12 +54,12 @@ to quickly create a Cobra application.`,
 			if errors.Is(err, pki.ErrNoRootCert) {
 				fmt.Println("No root certificate found, generating one")
 
-				rootUser, err := util.AskForString("Enter username for root:")
+				rootUser, err := util.AskForString("Enter username for root")
 				if err != nil {
 					panic(err)
 				}
 
-				rootPassword, err = util.AskForNewPassword("Enter password to encrypt the root certificate:")
+				rootPassword, err = util.AskForNewPassword("Enter password to encrypt the root certificate")
 				if err != nil {
 					panic(err)
 				}
@@ -72,12 +73,55 @@ to quickly create a Cobra application.`,
 			}
 		} else {
 			fmt.Println("Root certificate found, skipping CA generation")
-			rootPassword, err = util.AskForPassword("Enter password to decrypt the root certificate:")
+			rootPassword, err = util.AskForPassword("Enter password to decrypt the root certificate")
 			if err != nil {
 				panic(err)
 			}
 		}
 
+		pki.UnlockAsRoot(rootPassword)
+
+		err = rpc.SetupServer(addr, rootPassword, nameForServer)
+		if err != nil {
+			panic(err)
+		}
+
+		rootCert, err := pki.GetRootCert()
+		if err != nil {
+			panic(err)
+		}
+
+		rootKey, err := pki.GetRootKey(rootPassword)
+		if err != nil {
+			panic(err)
+		}
+
+		rootTotp, current, err := util.AskForNewTotp(rootCert.Subject.CommonName)
+		if err != nil {
+			panic(err)
+		}
+
+		reg, err := rpc.NewRegisterUserCmd(rootCert, rootKey, rootPassword, rootTotp, current)
+		if err != nil {
+			panic(err)
+		}
+
+		ep, err := rpc.ConnectToUpstream(context.Background())
+		if err != nil {
+			panic(err)
+		}
+
+		session, err := ep.Session(context.Background())
+		if err != nil {
+			panic(err)
+		}
+
+		err = session.SendCommand(reg)
+		if err != nil {
+			panic(err)
+		}
+
+		return
 		// create user if missing
 
 		var userPassword []byte
@@ -88,12 +132,12 @@ to quickly create a Cobra application.`,
 		}
 
 		if !ok {
-			newUser, err := util.AskForString("Enter username for new user:")
+			newUser, err := util.AskForString("Enter username for new user")
 			if err != nil {
 				panic(err)
 			}
 
-			userPassword, err = util.AskForNewPassword("Enter password to encrypt the user certificate:")
+			userPassword, err = util.AskForNewPassword("Enter password to encrypt the user certificate")
 			if err != nil {
 				panic(err)
 			}
@@ -104,20 +148,13 @@ to quickly create a Cobra application.`,
 			}
 		} else {
 			fmt.Println("User certificate found, skipping user creation")
-			userPassword, err = util.AskForPassword("Enter password for the user:")
+			userPassword, err = util.AskForPassword("Enter password for the user")
 			if err != nil {
 				panic(err)
 			}
 		}
 
 		pki.Unlock(userPassword)
-		if err != nil {
-			panic(err)
-		}
-
-		pki.UnlockAsRoot(rootPassword)
-
-		err = rpc.SetupServer(addr, rootPassword, nameForServer)
 		if err != nil {
 			panic(err)
 		}

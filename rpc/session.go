@@ -26,14 +26,14 @@ const (
 
 type RpcSession struct {
 	quic.Stream
-	Connection *RpcConnection
+	Connection *rpcConnection
 	Uuid       uuid.UUID
 	state      RpcSessionState
 	mutex      sync.Mutex
 	partner    *ecdsa.PublicKey
 }
 
-func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
+func newRpcSession(stream quic.Stream, conn *rpcConnection) *RpcSession {
 
 	var pubkey *ecdsa.PublicKey = nil
 
@@ -61,14 +61,14 @@ func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 func (s *RpcSession) handleIncoming(commands *CommandCollection) {
 	defer s.Close()
 	log.Printf("handling incoming session...")
-	err := s.EnsureState(RpcSessionCreated)
+	err := s.ensureState(RpcSessionCreated)
 	if err != nil {
 		log.Printf("error ensuring state: %v", err)
 	}
 
 	log.Printf("Session opened, reading request header...")
 
-	header, sender, err := s.ReadRequestHeader()
+	header, sender, err := s.readRequestHeader()
 
 	if err != nil {
 		log.Printf("error reading request header: %v", err)
@@ -199,7 +199,7 @@ func ReadMessage[P any](s *RpcSession, payload P) error {
 
 func WriteMessage[P any](s *RpcSession, payload P) error {
 	log.Printf("trying to write message to session")
-	if err := s.EnsureState(RpcSessionOpen); err != nil {
+	if err := s.ensureState(RpcSessionOpen); err != nil {
 		return fmt.Errorf("error ensuring state: %w", err)
 	}
 
@@ -244,19 +244,19 @@ func WriteMessage[P any](s *RpcSession, payload P) error {
 	return nil
 }
 
-func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) error {
-	err := s.MutateState(RpcSessionCreated, RpcSessionOpen)
+func (s *RpcSession) writeRequestHeader(header SessionRequestHeader) error {
+	err := s.mutateState(RpcSessionCreated, RpcSessionOpen)
 	if err != nil {
 		return fmt.Errorf("error mutating state: %w", err)
 	}
 
 	err = WriteMessage[SessionRequestHeader](s, header)
 	if err != nil {
-		s.MutateState(RpcSessionOpen, RpcSessionClosed)
+		s.mutateState(RpcSessionOpen, RpcSessionClosed)
 		return fmt.Errorf("error writing request header: %w", err)
 	}
 
-	err = s.MutateState(RpcSessionOpen, RpcSessionRequested)
+	err = s.mutateState(RpcSessionOpen, RpcSessionRequested)
 	if err != nil {
 		return fmt.Errorf("error mutating state: %w", err)
 	}
@@ -265,14 +265,14 @@ func (s *RpcSession) WriteRequestHeader(header SessionRequestHeader) error {
 }
 
 func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) error {
-	err := s.MutateState(RpcSessionRequested, RpcSessionOpen)
+	err := s.mutateState(RpcSessionRequested, RpcSessionOpen)
 	if err != nil {
 		return fmt.Errorf("error mutating state: %w", err)
 	}
 
 	err = WriteMessage[SessionResponseHeader](s, header)
 	if err != nil {
-		stateErr := s.MutateState(s.state, RpcSessionClosed)
+		stateErr := s.mutateState(s.state, RpcSessionClosed)
 		if stateErr != nil {
 			panic(stateErr)
 		}
@@ -282,7 +282,7 @@ func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) error {
 	return nil
 }
 
-func (s *RpcSession) MutateState(from RpcSessionState, to RpcSessionState) error {
+func (s *RpcSession) mutateState(from RpcSessionState, to RpcSessionState) error {
 	s.mutex.Lock()
 	if s.state != from {
 		s.mutex.Unlock()
@@ -293,7 +293,7 @@ func (s *RpcSession) MutateState(from RpcSessionState, to RpcSessionState) error
 	return nil
 }
 
-func (s *RpcSession) EnsureState(state RpcSessionState) error {
+func (s *RpcSession) ensureState(state RpcSessionState) error {
 	s.mutex.Lock()
 	if s.state != state {
 		s.mutex.Unlock()
@@ -316,7 +316,7 @@ func (s *RpcSession) SendCommand(cmd RpcCommand) error {
 		Args: args,
 	}
 
-	err = s.WriteRequestHeader(header)
+	err = s.writeRequestHeader(header)
 	if err != nil {
 		return fmt.Errorf("error writing header to stream: %w", err)
 	}
@@ -362,14 +362,14 @@ type SessionResponseHeader struct {
 	Info interface{} `json:"info"`
 }
 
-func (s *RpcSession) ReadRequestHeader() (SessionRequestHeader, *ecdsa.PublicKey, error) {
+func (s *RpcSession) readRequestHeader() (SessionRequestHeader, *ecdsa.PublicKey, error) {
 	header := SessionRequestHeader{}
 	from, err := readMessageFromUnknown[*SessionRequestHeader](s, &header)
 	if err != nil {
 		return SessionRequestHeader{}, from, fmt.Errorf("error reading request header: %w", err)
 	}
 
-	err = s.MutateState(RpcSessionCreated, RpcSessionRequested)
+	err = s.mutateState(RpcSessionCreated, RpcSessionRequested)
 	if err != nil {
 		return SessionRequestHeader{}, from, fmt.Errorf("error setting session state: %w", err)
 	}

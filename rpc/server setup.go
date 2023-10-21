@@ -71,7 +71,7 @@ type serverInitResponse struct {
 }
 
 func acceptServerInitialization(quicConn quic.Connection) error {
-	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil)
+	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoServerInit)
 
 	log.Printf("Opening init QUIC stream...")
 
@@ -80,7 +80,7 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 		return fmt.Errorf("error opening QUIC stream: %w", err)
 	}
 
-	err = session.MutateState(RpcSessionCreated, RpcSessionOpen)
+	err = session.mutateState(RpcSessionCreated, RpcSessionOpen)
 	if err != nil {
 		return fmt.Errorf("error mutating session state: %w", err)
 	}
@@ -192,7 +192,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 
 	initNonceStorage = NewNonceStorage()
 
-	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil)
+	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoServerInit)
 
 	log.Printf("Connection opened to %s\n", addr)
 
@@ -201,7 +201,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 		return fmt.Errorf("error opening QUIC stream: %w", err)
 	}
 
-	err = session.MutateState(RpcSessionCreated, RpcSessionOpen)
+	err = session.mutateState(RpcSessionCreated, RpcSessionOpen)
 	if err != nil {
 		return fmt.Errorf("error mutating session state: %w", err)
 	}

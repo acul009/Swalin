@@ -9,8 +9,10 @@ import (
 type TlsConnectionProto string
 
 const (
-	ProtoServerInit TlsConnectionProto = "rahnit-rmm-server-init"
-	ProtoRpc        TlsConnectionProto = "rahnit-rmm-rpc"
+	ProtoError       TlsConnectionProto = ""
+	ProtoServerInit  TlsConnectionProto = "rahnit-rmm-server-init"
+	ProtoRpc         TlsConnectionProto = "rahnit-rmm-rpc"
+	ProtoClientLogin TlsConnectionProto = "rahnit-rmm-client-login"
 )
 
 func GetTlsClientConfig(proto TlsConnectionProto) *tls.Config {
@@ -49,7 +51,7 @@ func GetTlsServerConfig(protos []TlsConnectionProto) (*tls.Config, error) {
 	return &tls.Config{
 		InsecureSkipVerify: true,
 		NextProtos:         tlsProtos,
-		ClientAuth:         tls.RequireAnyClientCert,
+		ClientAuth:         tls.RequestClientCert,
 		Certificates:       []tls.Certificate{*tlsCert},
 	}, nil
 }

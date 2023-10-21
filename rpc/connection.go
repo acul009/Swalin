@@ -28,8 +28,8 @@ const (
 	RpcRoleInit
 )
 
-type RpcConnection struct {
-	quic.Connection
+type rpcConnection struct {
+	connection     quic.Connection
 	server         *RpcServer
 	partner        *x509.Certificate
 	Uuid           uuid.UUID
@@ -38,11 +38,18 @@ type RpcConnection struct {
 	activeSessions map[uuid.UUID]*RpcSession
 	mutex          sync.Mutex
 	nonceStorage   *nonceStorage
+	protocol       TlsConnectionProto
 }
 
-func newRpcConnection(conn quic.Connection, server *RpcServer, role RpcConnectionRole, nonceStorage *nonceStorage, partner *x509.Certificate) *RpcConnection {
-	return &RpcConnection{
-		Connection:     conn,
+func newRpcConnection(conn quic.Connection,
+	server *RpcServer,
+	role RpcConnectionRole,
+	nonceStorage *nonceStorage,
+	partner *x509.Certificate,
+	protocol TlsConnectionProto,
+) *rpcConnection {
+	return &rpcConnection{
+		connection:     conn,
 		server:         server,
 		partner:        partner,
 		Uuid:           uuid.New(),
@@ -51,13 +58,18 @@ func newRpcConnection(conn quic.Connection, server *RpcServer, role RpcConnectio
 		activeSessions: make(map[uuid.UUID]*RpcSession),
 		mutex:          sync.Mutex{},
 		nonceStorage:   nonceStorage,
+		protocol:       protocol,
 	}
 }
 
-func (conn *RpcConnection) serve(commands *CommandCollection) error {
+func (conn *rpcConnection) serve(commands *CommandCollection) error {
 	err := conn.EnsureState(RpcConnectionOpen)
 	if err != nil {
 		return fmt.Errorf("error ensuring RPC connection is open: %w", err)
+	}
+
+	if conn.protocol != ProtoRpc {
+		return fmt.Errorf("tried to serve RPC to non-RPC connection")
 	}
 
 	log.Printf("Connection accepted, serving RPC")
@@ -91,8 +103,8 @@ func (conn *RpcConnection) serve(commands *CommandCollection) error {
 
 }
 
-func (conn *RpcConnection) AcceptSession(context.Context) (*RpcSession, error) {
-	stream, err := conn.AcceptStream(context.Background())
+func (conn *rpcConnection) AcceptSession(context.Context) (*RpcSession, error) {
+	stream, err := conn.connection.AcceptStream(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("error accepting QUIC stream: %w", err)
 	}
@@ -118,13 +130,13 @@ func (conn *RpcConnection) AcceptSession(context.Context) (*RpcSession, error) {
 	return session, nil
 }
 
-func (conn *RpcConnection) OpenSession(ctx context.Context) (*RpcSession, error) {
+func (conn *rpcConnection) OpenSession(ctx context.Context) (*RpcSession, error) {
 	err := conn.EnsureState(RpcConnectionOpen)
 	if err != nil {
 		return nil, fmt.Errorf("error ensuring RPC connection is open: %w", err)
 	}
 
-	stream, err := conn.OpenStreamSync(ctx)
+	stream, err := conn.connection.OpenStreamSync(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error opening QUIC stream: %w", err)
 	}
@@ -132,7 +144,7 @@ func (conn *RpcConnection) OpenSession(ctx context.Context) (*RpcSession, error)
 	return newRpcSession(stream, conn), nil
 }
 
-func (conn *RpcConnection) MutateState(from RpcConnectionState, to RpcConnectionState) error {
+func (conn *rpcConnection) MutateState(from RpcConnectionState, to RpcConnectionState) error {
 	conn.mutex.Lock()
 	if conn.state != from {
 		conn.mutex.Unlock()
@@ -143,7 +155,7 @@ func (conn *RpcConnection) MutateState(from RpcConnectionState, to RpcConnection
 	return nil
 }
 
-func (conn *RpcConnection) EnsureState(state RpcConnectionState) error {
+func (conn *rpcConnection) EnsureState(state RpcConnectionState) error {
 	conn.mutex.Lock()
 	if conn.state != state {
 		conn.mutex.Unlock()
@@ -153,13 +165,13 @@ func (conn *RpcConnection) EnsureState(state RpcConnectionState) error {
 	return nil
 }
 
-func (conn *RpcConnection) removeSession(uuid uuid.UUID) {
+func (conn *rpcConnection) removeSession(uuid uuid.UUID) {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 	delete(conn.activeSessions, uuid)
 }
 
-func (conn *RpcConnection) Close(code quic.ApplicationErrorCode, msg string) error {
+func (conn *rpcConnection) Close(code quic.ApplicationErrorCode, msg string) error {
 
 	if err := conn.MutateState(RpcConnectionOpen, RpcConnectionStopped); err != nil {
 		return fmt.Errorf("error closing connection: %w", err)
@@ -195,7 +207,7 @@ func (conn *RpcConnection) Close(code quic.ApplicationErrorCode, msg string) err
 		errorList = append(errorList, err)
 	}
 
-	err := conn.Connection.CloseWithError(code, msg)
+	err := conn.connection.CloseWithError(code, msg)
 	if err != nil {
 		errorList = append(errorList, err)
 	}

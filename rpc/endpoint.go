@@ -19,7 +19,7 @@ const (
 )
 
 type RpcEndpoint struct {
-	conn  *RpcConnection
+	conn  *rpcConnection
 	state RpcEndpointState
 	mutex sync.Mutex
 }
@@ -60,7 +60,7 @@ func newRpcEndpoint(ctx context.Context, addr string, partner *x509.Certificate)
 		return nil, fmt.Errorf("error creating QUIC connection: %w", err)
 	}
 
-	rpcConn := newRpcConnection(quicConn, nil, RpcRoleClient, NewNonceStorage(), partner)
+	rpcConn := newRpcConnection(quicConn, nil, RpcRoleClient, NewNonceStorage(), partner, ProtoRpc)
 
 	return &RpcEndpoint{
 		conn:  rpcConn,

@@ -16,11 +16,11 @@ func VerifyCertificate(cert *x509.Certificate) error {
 		return fmt.Errorf("failed to load root certificate: %w", err)
 	}
 
-	// certificate is not root
-
 	if bytes.Equal(rootCert.Raw, cert.Raw) {
 		return nil
 	}
+
+	// certificate is not root
 
 	upstreamCert, err := GetUpstreamCert()
 	if err != nil {
@@ -36,7 +36,7 @@ func VerifyCertificate(cert *x509.Certificate) error {
 	return fmt.Errorf("certificate is not known")
 }
 
-func VerifyUserCertificate(cert *x509.Certificate, username string) error {
+func VerifyUserCertificate(cert *x509.Certificate) error {
 	if cert == nil {
 		return fmt.Errorf("certificate is nil")
 	}
@@ -46,12 +46,8 @@ func VerifyUserCertificate(cert *x509.Certificate, username string) error {
 		return fmt.Errorf("failed to verify certificate: %w", err)
 	}
 
-	if cert.Subject.OrganizationalUnit[0] != string(CertTypeUser) {
+	if cert.Subject.OrganizationalUnit[0] != string(CertTypeUser) && cert.Subject.OrganizationalUnit[0] != string(CertTypeRoot) {
 		return fmt.Errorf("certificate is not a user certificate")
-	}
-
-	if cert.Subject.CommonName != username {
-		return fmt.Errorf("certificate is not for user %s", username)
 	}
 
 	if !cert.IsCA {

@@ -74,12 +74,12 @@ func generateRootCert(commonName string) (*x509.Certificate, *ecdsa.PrivateKey, 
 	// Generate a new CA private key
 	caPrivateKey, err := generateKeypair()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate CA private key: %w", err)
+		return nil, nil, fmt.Errorf("failed to generate root private key: %w", err)
 	}
 
 	caTemplate, err := getTemplate(&caPrivateKey.PublicKey)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate CA template: %w", err)
+		return nil, nil, fmt.Errorf("failed to generate root template: %w", err)
 	}
 
 	caTemplate.Subject = pkix.Name{

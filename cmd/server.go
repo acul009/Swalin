@@ -71,6 +71,7 @@ to quickly create a Cobra application.`,
 		fmt.Printf("\nListening on localhost:%s\n", addr)
 		rpcCommands := rpc.NewCommandCollection()
 		rpcCommands.Add(rpc.PingHandler)
+		rpcCommands.Add(rpc.RegisterUserHandler)
 
 		server, err := rpc.NewRpcServer(addr, rpcCommands)
 		if err != nil {

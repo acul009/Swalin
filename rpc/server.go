@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"log"
@@ -30,7 +31,7 @@ type RpcServer struct {
 	listener          *quic.Listener
 	rpcCommands       *CommandCollection
 	state             RpcServerState
-	activeConnections map[uuid.UUID]*RpcConnection
+	activeConnections map[uuid.UUID]*rpcConnection
 	mutex             sync.Mutex
 	nonceStorage      *nonceStorage
 }
@@ -44,7 +45,7 @@ const (
 )
 
 func NewRpcServer(listenAddr string, rpcCommands *CommandCollection) (*RpcServer, error) {
-	tlsConf, err := GetTlsServerConfig([]TlsConnectionProto{ProtoRpc})
+	tlsConf, err := GetTlsServerConfig([]TlsConnectionProto{ProtoRpc, ProtoClientLogin})
 	if err != nil {
 		return nil, fmt.Errorf("error getting server tls config: %w", err)
 	}
@@ -59,38 +60,73 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection) (*RpcServer
 		listener:          listener,
 		rpcCommands:       rpcCommands,
 		state:             RpcServerCreated,
-		activeConnections: make(map[uuid.UUID]*RpcConnection),
+		activeConnections: make(map[uuid.UUID]*rpcConnection),
 		mutex:             sync.Mutex{},
 		nonceStorage:      NewNonceStorage(),
 	}, nil
 }
 
-func (s *RpcServer) accept() (*RpcConnection, error) {
+func (s *RpcServer) accept() (*rpcConnection, error) {
 	conn, err := s.listener.Accept(context.Background())
 	if err != nil {
+		conn.CloseWithError(400, "")
 		return nil, fmt.Errorf("error accepting QUIC connection: %w", err)
 	}
 
-	peerCertList := conn.ConnectionState().TLS.PeerCertificates
-	if len(peerCertList) == 0 {
-		return nil, fmt.Errorf("peer did not provide a certificate")
-	} else if len(peerCertList) > 1 {
+	state := conn.ConnectionState()
+
+	peerCertList := state.TLS.PeerCertificates
+	if len(peerCertList) > 1 {
+		conn.CloseWithError(400, "")
 		return nil, fmt.Errorf("peer provided multiple certificates")
 	}
 
-	peerCert := peerCertList[0]
+	var protocol TlsConnectionProto
+	var peerCert *x509.Certificate
 
-	if err := pki.VerifyCertificate(peerCert); err != nil {
-		return nil, fmt.Errorf("peer did not provide a valid certificate: %w", err)
+	if len(peerCertList) == 1 {
+		peerCert = peerCertList[0]
+	} else {
+		peerCert = nil
 	}
 
-	var connection *RpcConnection
+	switch TlsConnectionProto(state.TLS.NegotiatedProtocol) {
+	case ProtoRpc:
+
+		if peerCert == nil {
+			conn.CloseWithError(400, "")
+			return nil, fmt.Errorf("peer did not provide a any certificate")
+		}
+
+		if err := pki.VerifyCertificate(peerCert); err != nil {
+			conn.CloseWithError(400, "")
+			return nil, fmt.Errorf("peer did not provide a valid certificate: %w", err)
+		}
+
+		protocol = ProtoRpc
+
+	case ProtoClientLogin:
+
+		if peerCert != nil {
+			conn.CloseWithError(400, "")
+			return nil, fmt.Errorf("peer provided certificate for login")
+		}
+
+		protocol = ProtoClientLogin
+
+	default:
+		conn.CloseWithError(400, "")
+		return nil, fmt.Errorf("unwanted connection type: wrong tls-next protocol")
+
+	}
+
+	var connection *rpcConnection
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	for i := 0; i < 10; i++ {
-		newConnection := newRpcConnection(conn, s, RpcRoleServer, s.nonceStorage, peerCert)
+		newConnection := newRpcConnection(conn, s, RpcRoleServer, s.nonceStorage, peerCert, protocol)
 		if _, ok := s.activeConnections[newConnection.Uuid]; !ok {
 			connection = newConnection
 			break
@@ -98,6 +134,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 	}
 
 	if connection == nil {
+		conn.CloseWithError(400, "")
 		return nil, fmt.Errorf("multiple uuid collisions, this should mathematically be impossible")
 	}
 
@@ -136,8 +173,19 @@ func (s *RpcServer) Run() error {
 			continue
 		}
 
+		switch conn.protocol {
+		case ProtoRpc:
+			go conn.serve(s.rpcCommands)
+
+		case ProtoClientLogin:
+			//TODO
+
+		default:
+			log.Printf("error accepted connection has wrong protocol: %s", conn.protocol)
+			continue
+		}
+
 		// TODO: check certificate
-		go conn.serve(s.rpcCommands)
 
 	}
 }
@@ -162,7 +210,7 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 
 	for _, connection := range connectionsToClose {
 		wg.Add(1)
-		go func(connection *RpcConnection) {
+		go func(connection *rpcConnection) {
 			err := connection.Close(code, msg)
 			if err != nil {
 				errChan <- err

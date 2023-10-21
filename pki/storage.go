@@ -110,44 +110,49 @@ func SaveCertKeyToFile(filepath string, key *ecdsa.PrivateKey, password []byte) 
 		return fmt.Errorf("failed to create parent directory: %w", err)
 	}
 
-	caKeyFile, err := os.Create(filepath)
+	encoded, err := SerializePrivateKey(key, password)
 	if err != nil {
-		return fmt.Errorf("failed to create CA private key file: %w", err)
-	}
-	defer caKeyFile.Close()
-
-	caKeyBytes, err := x509.MarshalECPrivateKey(key)
-	if err != nil {
-		return fmt.Errorf("failed to marshal CA private key: %w", err)
+		return fmt.Errorf("failed to serialize private key: %w", err)
 	}
 
-	encryptedBytes, err := util.EncryptDataWithPassword(password, caKeyBytes)
-	if err != nil {
-		return fmt.Errorf("failed to encrypt CA private key: %w", err)
-	}
-
-	err = pem.Encode(
-		caKeyFile,
-		&pem.Block{Type: "EC PRIVATE KEY",
-			Bytes:   encryptedBytes,
-			Headers: map[string]string{"Proc-Type": "4,ENCRYPTED", "DEK-Info": "AES-CFB"},
-		})
-
-	if err != nil {
-		return err
-	}
+	os.WriteFile(filepath, encoded, 0600)
 
 	return nil
 }
 
+func SerializePrivateKey(key *ecdsa.PrivateKey, password []byte) ([]byte, error) {
+
+	caKeyBytes, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal private key: %w", err)
+	}
+
+	encryptedBytes, err := util.EncryptDataWithPassword(password, caKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt private key: %w", err)
+	}
+
+	return pem.EncodeToMemory(
+		&pem.Block{Type: "EC PRIVATE KEY",
+			Bytes:   encryptedBytes,
+			Headers: map[string]string{"Proc-Type": "4,ENCRYPTED", "DEK-Info": "AES-CFB"},
+		},
+	), nil
+}
+
 func LoadCertKeyFromFile(filepath string, password []byte) (*ecdsa.PrivateKey, error) {
-	caKeyPEM, err := os.ReadFile(filepath)
+	keyPEM, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, err
 	}
 
+	return DeserializePrivateKey(keyPEM, password)
+}
+
+func DeserializePrivateKey(serialized []byte, password []byte) (*ecdsa.PrivateKey, error) {
+
 	// Decode the PEM-encoded CA private key
-	block, _ := pem.Decode(caKeyPEM)
+	block, _ := pem.Decode(serialized)
 	if block == nil {
 		return nil, fmt.Errorf("failed to decode CA private key PEM")
 	}
@@ -158,12 +163,12 @@ func LoadCertKeyFromFile(filepath string, password []byte) (*ecdsa.PrivateKey, e
 	}
 
 	// Parse the CA private key
-	caKey, err := x509.ParseECPrivateKey(decryptedData)
+	key, err := x509.ParseECPrivateKey(decryptedData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CA private key: %w", err)
 	}
 
-	return caKey, nil
+	return key, nil
 }
 
 func SavePasswordToFile(filepath string, password []byte) error {
