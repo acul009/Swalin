@@ -5,10 +5,13 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 
 	"golang.org/x/crypto/argon2"
+
+	pseudorand "math/rand"
 )
 
 var encryptionInfoDelimiter = []byte("\n")
@@ -108,7 +111,14 @@ type EncryptionParameters struct {
 	IV []byte
 }
 
-func GenerateArgonParameters() (ArgonParameters, error) {
+type argonStrength byte
+
+const (
+	ArgonStrengthDefault argonStrength = iota
+	ArgonStrengthStrong  argonStrength = iota
+)
+
+func GenerateArgonParameters(strength argonStrength) (ArgonParameters, error) {
 	// Generate a random salt
 	salt := make([]byte, aes.BlockSize)
 	if _, err := rand.Read(salt); err != nil {
@@ -116,13 +126,40 @@ func GenerateArgonParameters() (ArgonParameters, error) {
 	}
 
 	return ArgonParameters{
-		ArgonOptions: defaultArgonOptions(),
-		Salt:         make([]byte, 16),
+		ArgonOptions: defaultArgonOptions(strength),
+		Salt:         salt,
 	}, nil
 }
 
+func GenerateDecoyArgonParametersFromSeed(seed []byte, salt []byte) (ArgonParameters, error) {
+	// Generate a random salt
+	key, err := deriveKeyFromPassword(seed, ArgonParameters{
+		ArgonOptions: defaultArgonOptions(ArgonStrengthDefault),
+		Salt:         salt,
+	})
+
+	if err != nil {
+		return ArgonParameters{}, fmt.Errorf("failed generating argon parameters: %w", err)
+	}
+
+	seedInt := binary.LittleEndian.Uint64(key[:8])
+
+	r := pseudorand.New(pseudorand.NewSource(int64(seedInt)))
+
+	decoySalt := make([]byte, aes.BlockSize)
+	if _, err := r.Read(salt); err != nil {
+		return ArgonParameters{}, fmt.Errorf("failed generating salt: %w", err)
+	}
+
+	return ArgonParameters{
+		ArgonOptions: defaultArgonOptions(ArgonStrengthStrong),
+		Salt:         decoySalt,
+	}, nil
+
+}
+
 func (p ArgonParameters) IsInsecure() bool {
-	min := defaultArgonOptions()
+	min := defaultArgonOptions(ArgonStrengthDefault)
 	if p.TimeCost < min.TimeCost {
 		return true
 	}
@@ -149,7 +186,7 @@ func generateEncryptionParameters() (EncryptionParameters, error) {
 		return EncryptionParameters{}, fmt.Errorf("failed generating iv: %w", err)
 	}
 
-	parameters, err := GenerateArgonParameters()
+	parameters, err := GenerateArgonParameters(ArgonStrengthStrong)
 	if err != nil {
 		return EncryptionParameters{}, fmt.Errorf("failed generating argon parameters: %w", err)
 	}
@@ -160,12 +197,22 @@ func generateEncryptionParameters() (EncryptionParameters, error) {
 	}, nil
 }
 
-func defaultArgonOptions() ArgonOptions {
-	return ArgonOptions{
-		TimeCost:    1,
-		MemoryCost:  64 * 1024,
-		Parallelism: 4,
-		KeyLength:   32,
+func defaultArgonOptions(strength argonStrength) ArgonOptions {
+	switch strength {
+	case ArgonStrengthStrong:
+		return ArgonOptions{
+			TimeCost:    4,
+			MemoryCost:  1024 * 1024,
+			Parallelism: 8,
+			KeyLength:   32,
+		}
+	default:
+		return ArgonOptions{
+			TimeCost:    1,
+			MemoryCost:  64 * 1024,
+			Parallelism: 4,
+			KeyLength:   32,
+		}
 	}
 }
 

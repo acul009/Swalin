@@ -14,7 +14,7 @@ var (
 		{Name: "username", Type: field.TypeString, Unique: true},
 		{Name: "password_client_hashing_options", Type: field.TypeJSON},
 		{Name: "password_server_hashing_options", Type: field.TypeJSON},
-		{Name: "password_double_hashed", Type: field.TypeString},
+		{Name: "password_double_hashed", Type: field.TypeBytes},
 		{Name: "certificate", Type: field.TypeString, Unique: true},
 		{Name: "public_key", Type: field.TypeString, Unique: true},
 		{Name: "encrypted_private_key", Type: field.TypeString},

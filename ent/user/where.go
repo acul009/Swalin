@@ -59,7 +59,7 @@ func Username(v string) predicate.User {
 }
 
 // PasswordDoubleHashed applies equality check predicate on the "password_double_hashed" field. It's identical to PasswordDoubleHashedEQ.
-func PasswordDoubleHashed(v string) predicate.User {
+func PasswordDoubleHashed(v []byte) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldPasswordDoubleHashed, v))
 }
 
@@ -149,68 +149,43 @@ func UsernameContainsFold(v string) predicate.User {
 }
 
 // PasswordDoubleHashedEQ applies the EQ predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedEQ(v string) predicate.User {
+func PasswordDoubleHashedEQ(v []byte) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldPasswordDoubleHashed, v))
 }
 
 // PasswordDoubleHashedNEQ applies the NEQ predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedNEQ(v string) predicate.User {
+func PasswordDoubleHashedNEQ(v []byte) predicate.User {
 	return predicate.User(sql.FieldNEQ(FieldPasswordDoubleHashed, v))
 }
 
 // PasswordDoubleHashedIn applies the In predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedIn(vs ...string) predicate.User {
+func PasswordDoubleHashedIn(vs ...[]byte) predicate.User {
 	return predicate.User(sql.FieldIn(FieldPasswordDoubleHashed, vs...))
 }
 
 // PasswordDoubleHashedNotIn applies the NotIn predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedNotIn(vs ...string) predicate.User {
+func PasswordDoubleHashedNotIn(vs ...[]byte) predicate.User {
 	return predicate.User(sql.FieldNotIn(FieldPasswordDoubleHashed, vs...))
 }
 
 // PasswordDoubleHashedGT applies the GT predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedGT(v string) predicate.User {
+func PasswordDoubleHashedGT(v []byte) predicate.User {
 	return predicate.User(sql.FieldGT(FieldPasswordDoubleHashed, v))
 }
 
 // PasswordDoubleHashedGTE applies the GTE predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedGTE(v string) predicate.User {
+func PasswordDoubleHashedGTE(v []byte) predicate.User {
 	return predicate.User(sql.FieldGTE(FieldPasswordDoubleHashed, v))
 }
 
 // PasswordDoubleHashedLT applies the LT predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedLT(v string) predicate.User {
+func PasswordDoubleHashedLT(v []byte) predicate.User {
 	return predicate.User(sql.FieldLT(FieldPasswordDoubleHashed, v))
 }
 
 // PasswordDoubleHashedLTE applies the LTE predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedLTE(v string) predicate.User {
+func PasswordDoubleHashedLTE(v []byte) predicate.User {
 	return predicate.User(sql.FieldLTE(FieldPasswordDoubleHashed, v))
-}
-
-// PasswordDoubleHashedContains applies the Contains predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedContains(v string) predicate.User {
-	return predicate.User(sql.FieldContains(FieldPasswordDoubleHashed, v))
-}
-
-// PasswordDoubleHashedHasPrefix applies the HasPrefix predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedHasPrefix(v string) predicate.User {
-	return predicate.User(sql.FieldHasPrefix(FieldPasswordDoubleHashed, v))
-}
-
-// PasswordDoubleHashedHasSuffix applies the HasSuffix predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedHasSuffix(v string) predicate.User {
-	return predicate.User(sql.FieldHasSuffix(FieldPasswordDoubleHashed, v))
-}
-
-// PasswordDoubleHashedEqualFold applies the EqualFold predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedEqualFold(v string) predicate.User {
-	return predicate.User(sql.FieldEqualFold(FieldPasswordDoubleHashed, v))
-}
-
-// PasswordDoubleHashedContainsFold applies the ContainsFold predicate on the "password_double_hashed" field.
-func PasswordDoubleHashedContainsFold(v string) predicate.User {
-	return predicate.User(sql.FieldContainsFold(FieldPasswordDoubleHashed, v))
 }
 
 // CertificateEQ applies the EQ predicate on the "certificate" field.

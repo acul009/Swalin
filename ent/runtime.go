@@ -20,7 +20,7 @@ func init() {
 	// userDescPasswordDoubleHashed is the schema descriptor for password_double_hashed field.
 	userDescPasswordDoubleHashed := userFields[3].Descriptor()
 	// user.PasswordDoubleHashedValidator is a validator for the "password_double_hashed" field. It is called by the builders before save.
-	user.PasswordDoubleHashedValidator = userDescPasswordDoubleHashed.Validators[0].(func(string) error)
+	user.PasswordDoubleHashedValidator = userDescPasswordDoubleHashed.Validators[0].(func([]byte) error)
 	// userDescCertificate is the schema descriptor for certificate field.
 	userDescCertificate := userFields[4].Descriptor()
 	// user.CertificateValidator is a validator for the "certificate" field. It is called by the builders before save.

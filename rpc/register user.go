@@ -22,7 +22,7 @@ func NewRegisterUserCmd(cert *x509.Certificate, privateKey *ecdsa.PrivateKey, pa
 		return nil, fmt.Errorf("failed to serialize private key: %w", err)
 	}
 
-	clientHashingParameters, err := util.GenerateArgonParameters()
+	clientHashingParameters, err := util.GenerateArgonParameters(util.ArgonStrengthStrong)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate hashing parameters: %w", err)
 	}
@@ -92,7 +92,7 @@ func (r *registerUserCmd) ExecuteServer(session *RpcSession) error {
 	username := cert.Subject.CommonName
 
 	// Request seems valid, hash the password again
-	hashingOpts, err := util.GenerateArgonParameters()
+	hashingOpts, err := util.GenerateArgonParameters(util.ArgonStrengthDefault)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,
@@ -138,7 +138,7 @@ func (r *registerUserCmd) ExecuteServer(session *RpcSession) error {
 		SetEncryptedPrivateKey(string(r.EncryptedPrivateKey)).
 		SetPasswordClientHashingOptions(&r.ClientHashingParameters).
 		SetPasswordServerHashingOptions(&hashingOpts).
-		SetPasswordDoubleHashed(string(double_hash)).
+		SetPasswordDoubleHashed(double_hash).
 		SetTotpSecret(r.TotpSecret).
 		Exec(session.Context())
 

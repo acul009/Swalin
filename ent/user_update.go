@@ -47,8 +47,8 @@ func (uu *UserUpdate) SetPasswordServerHashingOptions(up *util.ArgonParameters) 
 }
 
 // SetPasswordDoubleHashed sets the "password_double_hashed" field.
-func (uu *UserUpdate) SetPasswordDoubleHashed(s string) *UserUpdate {
-	uu.mutation.SetPasswordDoubleHashed(s)
+func (uu *UserUpdate) SetPasswordDoubleHashed(b []byte) *UserUpdate {
+	uu.mutation.SetPasswordDoubleHashed(b)
 	return uu
 }
 
@@ -149,7 +149,7 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		_spec.SetField(user.FieldPasswordServerHashingOptions, field.TypeJSON, value)
 	}
 	if value, ok := uu.mutation.PasswordDoubleHashed(); ok {
-		_spec.SetField(user.FieldPasswordDoubleHashed, field.TypeString, value)
+		_spec.SetField(user.FieldPasswordDoubleHashed, field.TypeBytes, value)
 	}
 	if value, ok := uu.mutation.Certificate(); ok {
 		_spec.SetField(user.FieldCertificate, field.TypeString, value)
@@ -199,8 +199,8 @@ func (uuo *UserUpdateOne) SetPasswordServerHashingOptions(up *util.ArgonParamete
 }
 
 // SetPasswordDoubleHashed sets the "password_double_hashed" field.
-func (uuo *UserUpdateOne) SetPasswordDoubleHashed(s string) *UserUpdateOne {
-	uuo.mutation.SetPasswordDoubleHashed(s)
+func (uuo *UserUpdateOne) SetPasswordDoubleHashed(b []byte) *UserUpdateOne {
+	uuo.mutation.SetPasswordDoubleHashed(b)
 	return uuo
 }
 
@@ -331,7 +331,7 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 		_spec.SetField(user.FieldPasswordServerHashingOptions, field.TypeJSON, value)
 	}
 	if value, ok := uuo.mutation.PasswordDoubleHashed(); ok {
-		_spec.SetField(user.FieldPasswordDoubleHashed, field.TypeString, value)
+		_spec.SetField(user.FieldPasswordDoubleHashed, field.TypeBytes, value)
 	}
 	if value, ok := uuo.mutation.Certificate(); ok {
 		_spec.SetField(user.FieldCertificate, field.TypeString, value)

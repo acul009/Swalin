@@ -39,8 +39,8 @@ func (uc *UserCreate) SetPasswordServerHashingOptions(up *util.ArgonParameters) 
 }
 
 // SetPasswordDoubleHashed sets the "password_double_hashed" field.
-func (uc *UserCreate) SetPasswordDoubleHashed(s string) *UserCreate {
-	uc.mutation.SetPasswordDoubleHashed(s)
+func (uc *UserCreate) SetPasswordDoubleHashed(b []byte) *UserCreate {
+	uc.mutation.SetPasswordDoubleHashed(b)
 	return uc
 }
 
@@ -190,7 +190,7 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_node.PasswordServerHashingOptions = value
 	}
 	if value, ok := uc.mutation.PasswordDoubleHashed(); ok {
-		_spec.SetField(user.FieldPasswordDoubleHashed, field.TypeString, value)
+		_spec.SetField(user.FieldPasswordDoubleHashed, field.TypeBytes, value)
 		_node.PasswordDoubleHashed = value
 	}
 	if value, ok := uc.mutation.Certificate(); ok {

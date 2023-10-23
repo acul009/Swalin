@@ -25,7 +25,7 @@ type User struct {
 	// PasswordServerHashingOptions holds the value of the "password_server_hashing_options" field.
 	PasswordServerHashingOptions *util.ArgonParameters `json:"-"`
 	// PasswordDoubleHashed holds the value of the "password_double_hashed" field.
-	PasswordDoubleHashed string `json:"-"`
+	PasswordDoubleHashed []byte `json:"-"`
 	// Certificate holds the value of the "certificate" field.
 	Certificate string `json:"certificate,omitempty"`
 	// PublicKey holds the value of the "public_key" field.
@@ -42,11 +42,11 @@ func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldPasswordClientHashingOptions, user.FieldPasswordServerHashingOptions:
+		case user.FieldPasswordClientHashingOptions, user.FieldPasswordServerHashingOptions, user.FieldPasswordDoubleHashed:
 			values[i] = new([]byte)
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldUsername, user.FieldPasswordDoubleHashed, user.FieldCertificate, user.FieldPublicKey, user.FieldEncryptedPrivateKey, user.FieldTotpSecret:
+		case user.FieldUsername, user.FieldCertificate, user.FieldPublicKey, user.FieldEncryptedPrivateKey, user.FieldTotpSecret:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -92,10 +92,10 @@ func (u *User) assignValues(columns []string, values []any) error {
 				}
 			}
 		case user.FieldPasswordDoubleHashed:
-			if value, ok := values[i].(*sql.NullString); !ok {
+			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field password_double_hashed", values[i])
-			} else if value.Valid {
-				u.PasswordDoubleHashed = value.String
+			} else if value != nil {
+				u.PasswordDoubleHashed = *value
 			}
 		case user.FieldCertificate:
 			if value, ok := values[i].(*sql.NullString); !ok {

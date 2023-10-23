@@ -58,7 +58,7 @@ var (
 	// UsernameValidator is a validator for the "username" field. It is called by the builders before save.
 	UsernameValidator func(string) error
 	// PasswordDoubleHashedValidator is a validator for the "password_double_hashed" field. It is called by the builders before save.
-	PasswordDoubleHashedValidator func(string) error
+	PasswordDoubleHashedValidator func([]byte) error
 	// CertificateValidator is a validator for the "certificate" field. It is called by the builders before save.
 	CertificateValidator func(string) error
 	// PublicKeyValidator is a validator for the "public_key" field. It is called by the builders before save.
@@ -78,11 +78,6 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByUsername orders the results by the username field.
 func ByUsername(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUsername, opts...).ToFunc()
-}
-
-// ByPasswordDoubleHashed orders the results by the password_double_hashed field.
-func ByPasswordDoubleHashed(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPasswordDoubleHashed, opts...).ToFunc()
 }
 
 // ByCertificate orders the results by the certificate field.

@@ -36,7 +36,7 @@ type UserMutation struct {
 	username                        *string
 	password_client_hashing_options **util.ArgonParameters
 	password_server_hashing_options **util.ArgonParameters
-	password_double_hashed          *string
+	password_double_hashed          *[]byte
 	certificate                     *string
 	public_key                      *string
 	encrypted_private_key           *string
@@ -254,12 +254,12 @@ func (m *UserMutation) ResetPasswordServerHashingOptions() {
 }
 
 // SetPasswordDoubleHashed sets the "password_double_hashed" field.
-func (m *UserMutation) SetPasswordDoubleHashed(s string) {
-	m.password_double_hashed = &s
+func (m *UserMutation) SetPasswordDoubleHashed(b []byte) {
+	m.password_double_hashed = &b
 }
 
 // PasswordDoubleHashed returns the value of the "password_double_hashed" field in the mutation.
-func (m *UserMutation) PasswordDoubleHashed() (r string, exists bool) {
+func (m *UserMutation) PasswordDoubleHashed() (r []byte, exists bool) {
 	v := m.password_double_hashed
 	if v == nil {
 		return
@@ -270,7 +270,7 @@ func (m *UserMutation) PasswordDoubleHashed() (r string, exists bool) {
 // OldPasswordDoubleHashed returns the old "password_double_hashed" field's value of the User entity.
 // If the User object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldPasswordDoubleHashed(ctx context.Context) (v string, err error) {
+func (m *UserMutation) OldPasswordDoubleHashed(ctx context.Context) (v []byte, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldPasswordDoubleHashed is only allowed on UpdateOne operations")
 	}
@@ -572,7 +572,7 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		m.SetPasswordServerHashingOptions(v)
 		return nil
 	case user.FieldPasswordDoubleHashed:
-		v, ok := value.(string)
+		v, ok := value.([]byte)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

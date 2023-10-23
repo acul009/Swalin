@@ -84,6 +84,9 @@ func TestPackedReadWrite(t *testing.T) {
 	}
 
 	marshalled3, err := pki.MarshalAndSign(data3, key, &key.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	marshalled := bytes.Join([][]byte{marshalled1, marshalled2, marshalled3}, nil)
 
