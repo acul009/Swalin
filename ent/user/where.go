@@ -74,7 +74,7 @@ func PublicKey(v string) predicate.User {
 }
 
 // EncryptedPrivateKey applies equality check predicate on the "encrypted_private_key" field. It's identical to EncryptedPrivateKeyEQ.
-func EncryptedPrivateKey(v string) predicate.User {
+func EncryptedPrivateKey(v []byte) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldEncryptedPrivateKey, v))
 }
 
@@ -319,68 +319,43 @@ func PublicKeyContainsFold(v string) predicate.User {
 }
 
 // EncryptedPrivateKeyEQ applies the EQ predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyEQ(v string) predicate.User {
+func EncryptedPrivateKeyEQ(v []byte) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldEncryptedPrivateKey, v))
 }
 
 // EncryptedPrivateKeyNEQ applies the NEQ predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyNEQ(v string) predicate.User {
+func EncryptedPrivateKeyNEQ(v []byte) predicate.User {
 	return predicate.User(sql.FieldNEQ(FieldEncryptedPrivateKey, v))
 }
 
 // EncryptedPrivateKeyIn applies the In predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyIn(vs ...string) predicate.User {
+func EncryptedPrivateKeyIn(vs ...[]byte) predicate.User {
 	return predicate.User(sql.FieldIn(FieldEncryptedPrivateKey, vs...))
 }
 
 // EncryptedPrivateKeyNotIn applies the NotIn predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyNotIn(vs ...string) predicate.User {
+func EncryptedPrivateKeyNotIn(vs ...[]byte) predicate.User {
 	return predicate.User(sql.FieldNotIn(FieldEncryptedPrivateKey, vs...))
 }
 
 // EncryptedPrivateKeyGT applies the GT predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyGT(v string) predicate.User {
+func EncryptedPrivateKeyGT(v []byte) predicate.User {
 	return predicate.User(sql.FieldGT(FieldEncryptedPrivateKey, v))
 }
 
 // EncryptedPrivateKeyGTE applies the GTE predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyGTE(v string) predicate.User {
+func EncryptedPrivateKeyGTE(v []byte) predicate.User {
 	return predicate.User(sql.FieldGTE(FieldEncryptedPrivateKey, v))
 }
 
 // EncryptedPrivateKeyLT applies the LT predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyLT(v string) predicate.User {
+func EncryptedPrivateKeyLT(v []byte) predicate.User {
 	return predicate.User(sql.FieldLT(FieldEncryptedPrivateKey, v))
 }
 
 // EncryptedPrivateKeyLTE applies the LTE predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyLTE(v string) predicate.User {
+func EncryptedPrivateKeyLTE(v []byte) predicate.User {
 	return predicate.User(sql.FieldLTE(FieldEncryptedPrivateKey, v))
-}
-
-// EncryptedPrivateKeyContains applies the Contains predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyContains(v string) predicate.User {
-	return predicate.User(sql.FieldContains(FieldEncryptedPrivateKey, v))
-}
-
-// EncryptedPrivateKeyHasPrefix applies the HasPrefix predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyHasPrefix(v string) predicate.User {
-	return predicate.User(sql.FieldHasPrefix(FieldEncryptedPrivateKey, v))
-}
-
-// EncryptedPrivateKeyHasSuffix applies the HasSuffix predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyHasSuffix(v string) predicate.User {
-	return predicate.User(sql.FieldHasSuffix(FieldEncryptedPrivateKey, v))
-}
-
-// EncryptedPrivateKeyEqualFold applies the EqualFold predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyEqualFold(v string) predicate.User {
-	return predicate.User(sql.FieldEqualFold(FieldEncryptedPrivateKey, v))
-}
-
-// EncryptedPrivateKeyContainsFold applies the ContainsFold predicate on the "encrypted_private_key" field.
-func EncryptedPrivateKeyContainsFold(v string) predicate.User {
-	return predicate.User(sql.FieldContainsFold(FieldEncryptedPrivateKey, v))
 }
 
 // TotpSecretEQ applies the EQ predicate on the "totp_secret" field.

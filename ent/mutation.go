@@ -39,7 +39,7 @@ type UserMutation struct {
 	password_double_hashed          *[]byte
 	certificate                     *string
 	public_key                      *string
-	encrypted_private_key           *string
+	encrypted_private_key           *[]byte
 	totp_secret                     *string
 	clearedFields                   map[string]struct{}
 	done                            bool
@@ -362,12 +362,12 @@ func (m *UserMutation) ResetPublicKey() {
 }
 
 // SetEncryptedPrivateKey sets the "encrypted_private_key" field.
-func (m *UserMutation) SetEncryptedPrivateKey(s string) {
-	m.encrypted_private_key = &s
+func (m *UserMutation) SetEncryptedPrivateKey(b []byte) {
+	m.encrypted_private_key = &b
 }
 
 // EncryptedPrivateKey returns the value of the "encrypted_private_key" field in the mutation.
-func (m *UserMutation) EncryptedPrivateKey() (r string, exists bool) {
+func (m *UserMutation) EncryptedPrivateKey() (r []byte, exists bool) {
 	v := m.encrypted_private_key
 	if v == nil {
 		return
@@ -378,7 +378,7 @@ func (m *UserMutation) EncryptedPrivateKey() (r string, exists bool) {
 // OldEncryptedPrivateKey returns the old "encrypted_private_key" field's value of the User entity.
 // If the User object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *UserMutation) OldEncryptedPrivateKey(ctx context.Context) (v string, err error) {
+func (m *UserMutation) OldEncryptedPrivateKey(ctx context.Context) (v []byte, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldEncryptedPrivateKey is only allowed on UpdateOne operations")
 	}
@@ -593,7 +593,7 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		m.SetPublicKey(v)
 		return nil
 	case user.FieldEncryptedPrivateKey:
-		v, ok := value.(string)
+		v, ok := value.([]byte)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

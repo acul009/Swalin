@@ -57,8 +57,8 @@ func (uc *UserCreate) SetPublicKey(s string) *UserCreate {
 }
 
 // SetEncryptedPrivateKey sets the "encrypted_private_key" field.
-func (uc *UserCreate) SetEncryptedPrivateKey(s string) *UserCreate {
-	uc.mutation.SetEncryptedPrivateKey(s)
+func (uc *UserCreate) SetEncryptedPrivateKey(b []byte) *UserCreate {
+	uc.mutation.SetEncryptedPrivateKey(b)
 	return uc
 }
 
@@ -202,7 +202,7 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_node.PublicKey = value
 	}
 	if value, ok := uc.mutation.EncryptedPrivateKey(); ok {
-		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeString, value)
+		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeBytes, value)
 		_node.EncryptedPrivateKey = value
 	}
 	if value, ok := uc.mutation.TotpSecret(); ok {

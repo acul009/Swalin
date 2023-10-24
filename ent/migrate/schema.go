@@ -17,7 +17,7 @@ var (
 		{Name: "password_double_hashed", Type: field.TypeBytes},
 		{Name: "certificate", Type: field.TypeString, Unique: true},
 		{Name: "public_key", Type: field.TypeString, Unique: true},
-		{Name: "encrypted_private_key", Type: field.TypeString},
+		{Name: "encrypted_private_key", Type: field.TypeBytes},
 		{Name: "totp_secret", Type: field.TypeString},
 	}
 	// UsersTable holds the schema information for the "users" table.

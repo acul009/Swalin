@@ -22,7 +22,7 @@ func (User) Fields() []ent.Field {
 		field.Bytes("password_double_hashed").NotEmpty().Sensitive(),
 		field.String("certificate").NotEmpty().Unique(),
 		field.String("public_key").NotEmpty().Unique().Immutable(),
-		field.String("encrypted_private_key").NotEmpty().Sensitive(),
+		field.Bytes("encrypted_private_key").NotEmpty().Sensitive(),
 		field.String("totp_secret").Sensitive(),
 	}
 }

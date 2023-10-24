@@ -64,7 +64,7 @@ var (
 	// PublicKeyValidator is a validator for the "public_key" field. It is called by the builders before save.
 	PublicKeyValidator func(string) error
 	// EncryptedPrivateKeyValidator is a validator for the "encrypted_private_key" field. It is called by the builders before save.
-	EncryptedPrivateKeyValidator func(string) error
+	EncryptedPrivateKeyValidator func([]byte) error
 )
 
 // OrderOption defines the ordering options for the User queries.
@@ -88,11 +88,6 @@ func ByCertificate(opts ...sql.OrderTermOption) OrderOption {
 // ByPublicKey orders the results by the public_key field.
 func ByPublicKey(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPublicKey, opts...).ToFunc()
-}
-
-// ByEncryptedPrivateKey orders the results by the encrypted_private_key field.
-func ByEncryptedPrivateKey(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldEncryptedPrivateKey, opts...).ToFunc()
 }
 
 // ByTotpSecret orders the results by the totp_secret field.

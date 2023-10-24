@@ -32,5 +32,5 @@ func init() {
 	// userDescEncryptedPrivateKey is the schema descriptor for encrypted_private_key field.
 	userDescEncryptedPrivateKey := userFields[6].Descriptor()
 	// user.EncryptedPrivateKeyValidator is a validator for the "encrypted_private_key" field. It is called by the builders before save.
-	user.EncryptedPrivateKeyValidator = userDescEncryptedPrivateKey.Validators[0].(func(string) error)
+	user.EncryptedPrivateKeyValidator = userDescEncryptedPrivateKey.Validators[0].(func([]byte) error)
 }

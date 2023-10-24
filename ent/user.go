@@ -31,7 +31,7 @@ type User struct {
 	// PublicKey holds the value of the "public_key" field.
 	PublicKey string `json:"public_key,omitempty"`
 	// EncryptedPrivateKey holds the value of the "encrypted_private_key" field.
-	EncryptedPrivateKey string `json:"-"`
+	EncryptedPrivateKey []byte `json:"-"`
 	// TotpSecret holds the value of the "totp_secret" field.
 	TotpSecret   string `json:"-"`
 	selectValues sql.SelectValues
@@ -42,11 +42,11 @@ func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldPasswordClientHashingOptions, user.FieldPasswordServerHashingOptions, user.FieldPasswordDoubleHashed:
+		case user.FieldPasswordClientHashingOptions, user.FieldPasswordServerHashingOptions, user.FieldPasswordDoubleHashed, user.FieldEncryptedPrivateKey:
 			values[i] = new([]byte)
 		case user.FieldID:
 			values[i] = new(sql.NullInt64)
-		case user.FieldUsername, user.FieldCertificate, user.FieldPublicKey, user.FieldEncryptedPrivateKey, user.FieldTotpSecret:
+		case user.FieldUsername, user.FieldCertificate, user.FieldPublicKey, user.FieldTotpSecret:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -110,10 +110,10 @@ func (u *User) assignValues(columns []string, values []any) error {
 				u.PublicKey = value.String
 			}
 		case user.FieldEncryptedPrivateKey:
-			if value, ok := values[i].(*sql.NullString); !ok {
+			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field encrypted_private_key", values[i])
-			} else if value.Valid {
-				u.EncryptedPrivateKey = value.String
+			} else if value != nil {
+				u.EncryptedPrivateKey = *value
 			}
 		case user.FieldTotpSecret:
 			if value, ok := values[i].(*sql.NullString); !ok {

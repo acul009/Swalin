@@ -63,9 +63,53 @@ func Login(addr string, username string, password []byte, totpCode string) error
 
 	params := &loginParameters{}
 
-	_, err = readMessageFromUnknown[*loginParameters](session, params)
+	serverPub, err := readMessageFromUnknown[*loginParameters](session, params)
 	if err != nil {
 		return fmt.Errorf("error reading params request: %w", err)
+	}
+
+	session.partner = serverPub
+
+	hash, err := util.HashPassword(password, params.passwordParams)
+	if err != nil {
+		return fmt.Errorf("error hashing password: %w", err)
+	}
+
+	login := &loginRequest{
+		passwordHash: hash,
+		totp:         totpCode,
+	}
+
+	err = WriteMessage[*loginRequest](session, login)
+	if err != nil {
+		return fmt.Errorf("error writing login request: %w", err)
+	}
+
+	success := &loginSuccessResponse{}
+
+	err = ReadMessage[*loginSuccessResponse](session, success)
+	if err != nil {
+		return fmt.Errorf("error reading login response: %w", err)
+	}
+
+	privateKey, err := pki.PrivateKeyFromBinary(success.EncryptedPrivateKey, password)
+	if err != nil {
+		return fmt.Errorf("error decrypting private key: %w", err)
+	}
+
+	err = pki.SaveCurrentCertAndKey(success.Cert, privateKey, password)
+	if err != nil {
+		return fmt.Errorf("error saving current cert and key: %w", err)
+	}
+
+	err = pki.SaveRootCert(success.RootCert)
+	if err != nil {
+		return fmt.Errorf("error saving root cert: %w", err)
+	}
+
+	err = pki.SaveUpstreamCert(success.UpstreamCert)
+	if err != nil {
+		return fmt.Errorf("error saving upstream cert: %w", err)
 	}
 
 	return nil
@@ -88,7 +132,7 @@ type loginSuccessResponse struct {
 	RootCert            *pki.Certificate
 	UpstreamCert        *pki.Certificate
 	Cert                *pki.Certificate
-	EncryptedPrivateKey string
+	EncryptedPrivateKey []byte
 }
 
 func acceptLoginRequest(conn *rpcConnection) error {

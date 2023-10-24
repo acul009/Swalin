@@ -114,7 +114,7 @@ func (r *registerUserCmd) ExecuteServer(session *RpcSession) error {
 		SetUsername(username).
 		SetCertificate(string(cert.PemEncode())).
 		SetPublicKey(encodedPub).
-		SetEncryptedPrivateKey(string(r.EncryptedPrivateKey)).
+		SetEncryptedPrivateKey(r.EncryptedPrivateKey).
 		SetPasswordClientHashingOptions(&r.ClientHashingParameters).
 		SetPasswordServerHashingOptions(&hashingOpts).
 		SetPasswordDoubleHashed(double_hash).

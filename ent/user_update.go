@@ -59,8 +59,8 @@ func (uu *UserUpdate) SetCertificate(s string) *UserUpdate {
 }
 
 // SetEncryptedPrivateKey sets the "encrypted_private_key" field.
-func (uu *UserUpdate) SetEncryptedPrivateKey(s string) *UserUpdate {
-	uu.mutation.SetEncryptedPrivateKey(s)
+func (uu *UserUpdate) SetEncryptedPrivateKey(b []byte) *UserUpdate {
+	uu.mutation.SetEncryptedPrivateKey(b)
 	return uu
 }
 
@@ -155,7 +155,7 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		_spec.SetField(user.FieldCertificate, field.TypeString, value)
 	}
 	if value, ok := uu.mutation.EncryptedPrivateKey(); ok {
-		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeString, value)
+		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeBytes, value)
 	}
 	if value, ok := uu.mutation.TotpSecret(); ok {
 		_spec.SetField(user.FieldTotpSecret, field.TypeString, value)
@@ -211,8 +211,8 @@ func (uuo *UserUpdateOne) SetCertificate(s string) *UserUpdateOne {
 }
 
 // SetEncryptedPrivateKey sets the "encrypted_private_key" field.
-func (uuo *UserUpdateOne) SetEncryptedPrivateKey(s string) *UserUpdateOne {
-	uuo.mutation.SetEncryptedPrivateKey(s)
+func (uuo *UserUpdateOne) SetEncryptedPrivateKey(b []byte) *UserUpdateOne {
+	uuo.mutation.SetEncryptedPrivateKey(b)
 	return uuo
 }
 
@@ -337,7 +337,7 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 		_spec.SetField(user.FieldCertificate, field.TypeString, value)
 	}
 	if value, ok := uuo.mutation.EncryptedPrivateKey(); ok {
-		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeString, value)
+		_spec.SetField(user.FieldEncryptedPrivateKey, field.TypeBytes, value)
 	}
 	if value, ok := uuo.mutation.TotpSecret(); ok {
 		_spec.SetField(user.FieldTotpSecret, field.TypeString, value)
