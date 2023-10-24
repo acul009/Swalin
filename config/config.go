@@ -15,6 +15,7 @@ func SetSubdir(s string) error {
 	if err != nil {
 		return fmt.Errorf("failed to update viper: %w", err)
 	}
+
 	return nil
 }
 

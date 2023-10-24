@@ -26,10 +26,12 @@ func (pub *PublicKey) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("failed to unmarshal certificate: %w", err)
 	}
 
-	pub, err = PublicKeyFromBinary(pubBytes)
+	newPub, err := PublicKeyFromBinary(pubBytes)
 	if err != nil {
 		return fmt.Errorf("failed to decode certificate: %w", err)
 	}
+
+	*pub = *newPub
 
 	return nil
 }
@@ -83,12 +85,18 @@ func (pub *PublicKey) ToEcdsa() *ecdsa.PublicKey {
 }
 
 func ImportPublicKey(pub any) (*PublicKey, error) {
-	typed, ok := pub.(*ecdsa.PublicKey)
-	if !ok {
+	switch typed := pub.(type) {
+	case *ecdsa.PublicKey:
+		pubRef := PublicKey(*typed)
+		return &pubRef, nil
+
+	case ecdsa.PublicKey:
+		pubRef := PublicKey(typed)
+		return &pubRef, nil
+
+	default:
 		return nil, fmt.Errorf("public key is not of type *ecdsa.PublicKey")
 	}
-	pubRef := PublicKey(*typed)
-	return &pubRef, nil
 }
 
 func (pub *PublicKey) Equal(compare *PublicKey) bool {

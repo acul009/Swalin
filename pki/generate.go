@@ -66,7 +66,7 @@ func getTemplate(pub *PublicKey) (*x509.Certificate, error) {
 		return nil, fmt.Errorf("failed to generate serial number: %w", err)
 	}
 	return &x509.Certificate{
-		PublicKey:             pub,
+		PublicKey:             pub.ToEcdsa(),
 		SerialNumber:          serial,
 		SignatureAlgorithm:    x509.ECDSAWithSHA512,
 		NotBefore:             time.Now(),
@@ -106,7 +106,7 @@ func generateRootCert(commonName string) (*Certificate, *PrivateKey, error) {
 }
 
 func signCert(template *x509.Certificate, caKey *PrivateKey, caCert *x509.Certificate) (*Certificate, error) {
-	certDER, err := x509.CreateCertificate(rand.Reader, template, caCert, template.PublicKey, caKey)
+	certDER, err := x509.CreateCertificate(rand.Reader, template, caCert, template.PublicKey, caKey.ToEcdsa())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create certificate: %w", err)
 	}

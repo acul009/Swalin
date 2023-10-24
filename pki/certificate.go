@@ -21,10 +21,12 @@ func (cert *Certificate) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("failed to unmarshal certificate: %w", err)
 	}
 
-	cert, err = CertificateFromBinary(certBytes)
+	newCert, err := CertificateFromBinary(certBytes)
 	if err != nil {
 		return fmt.Errorf("failed to decode certificate: %w", err)
 	}
+
+	*cert = *newCert
 
 	return nil
 }

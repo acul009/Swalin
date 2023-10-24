@@ -150,7 +150,7 @@ func GetCurrentTlsCert() (*tls.Certificate, error) {
 
 	tlsCert := &tls.Certificate{
 		Certificate: [][]byte{cert.Raw},
-		PrivateKey:  currentKey,
+		PrivateKey:  currentKey.ToEcdsa(),
 	}
 
 	return tlsCert, nil
