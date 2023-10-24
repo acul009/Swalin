@@ -21,7 +21,7 @@ var ErrNotSigned = NotSignedError{}
 
 type SignatureVerificationError struct {
 	Signature []byte
-	PublicKey *ecdsa.PublicKey
+	PublicKey *PublicKey
 }
 
 func (e SignatureVerificationError) Error() string {
@@ -45,7 +45,7 @@ func (e NotSignedError) Is(target error) bool {
 	return ok
 }
 
-func MarshalAndSign(v any, key *ecdsa.PrivateKey, pub *ecdsa.PublicKey) ([]byte, error) {
+func MarshalAndSign(v any, key *PrivateKey, pub *PublicKey) ([]byte, error) {
 	if key == nil {
 		return nil, fmt.Errorf("private key cannot be nil")
 	}
@@ -67,7 +67,7 @@ func MarshalAndSign(v any, key *ecdsa.PrivateKey, pub *ecdsa.PublicKey) ([]byte,
 	return msg, nil
 }
 
-func UnmarshalAndVerify(signedData []byte, v any) (*ecdsa.PublicKey, error) {
+func UnmarshalAndVerify(signedData []byte, v any) (*PublicKey, error) {
 	if len(signedData) == 0 {
 		return nil, fmt.Errorf("empty signed data")
 	}
@@ -82,7 +82,7 @@ func UnmarshalAndVerify(signedData []byte, v any) (*ecdsa.PublicKey, error) {
 	return pub, nil
 }
 
-func ReadAndUnmarshalAndVerify(reader io.Reader, v any) (*ecdsa.PublicKey, error) {
+func ReadAndUnmarshalAndVerify(reader io.Reader, v any) (*PublicKey, error) {
 	der, err := ReadSingleDer(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read asn1 block: %w", err)
@@ -138,14 +138,14 @@ type PackedData struct {
 	PublicKey []byte `asn1:"tag:2"`
 }
 
-func packAndSign(data []byte, key *ecdsa.PrivateKey, pub *ecdsa.PublicKey) ([]byte, error) {
+func packAndSign(data []byte, key *PrivateKey, pub *PublicKey) ([]byte, error) {
 
 	signature, err := signBytes(data, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign data: %w", err)
 	}
 
-	pubData, err := EncodePubToBytes(pub)
+	pubData, err := pub.BinaryEncode()
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode public key: %w", err)
 	}
@@ -164,7 +164,7 @@ func packAndSign(data []byte, key *ecdsa.PrivateKey, pub *ecdsa.PublicKey) ([]by
 	return packed, nil
 }
 
-func unpackAndVerify(packed []byte) ([]byte, *ecdsa.PublicKey, error) {
+func unpackAndVerify(packed []byte) ([]byte, *PublicKey, error) {
 	d := &PackedData{}
 
 	rest, err := asn1.Unmarshal(packed, d)
@@ -175,7 +175,7 @@ func unpackAndVerify(packed []byte) ([]byte, *ecdsa.PublicKey, error) {
 		return nil, nil, fmt.Errorf("found rest after unmarshaling data: %v", rest)
 	}
 
-	pub, err := DecodePubFromBytes(d.PublicKey)
+	pub, err := PublicKeyFromBinary(d.PublicKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode public key: %w", err)
 	}
@@ -188,7 +188,7 @@ func unpackAndVerify(packed []byte) ([]byte, *ecdsa.PublicKey, error) {
 	return d.Data, pub, nil
 }
 
-func signBytes(data []byte, key *ecdsa.PrivateKey) ([]byte, error) {
+func signBytes(data []byte, key *PrivateKey) ([]byte, error) {
 	if key == nil {
 		return nil, fmt.Errorf("private key cannot be nil")
 	}
@@ -198,7 +198,7 @@ func signBytes(data []byte, key *ecdsa.PrivateKey) ([]byte, error) {
 		return nil, fmt.Errorf("failed to hash data: %w", err)
 	}
 
-	signature, err := ecdsa.SignASN1(rand.Reader, key, hash)
+	signature, err := ecdsa.SignASN1(rand.Reader, key.ToEcdsa(), hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign data: %w", err)
 	}
@@ -206,7 +206,7 @@ func signBytes(data []byte, key *ecdsa.PrivateKey) ([]byte, error) {
 	return signature, nil
 }
 
-func verifyBytes(data []byte, signature []byte, pub *ecdsa.PublicKey) error {
+func verifyBytes(data []byte, signature []byte, pub *PublicKey) error {
 	if pub == nil {
 		return fmt.Errorf("public key cannot be nil")
 	}
@@ -216,7 +216,7 @@ func verifyBytes(data []byte, signature []byte, pub *ecdsa.PublicKey) error {
 		return fmt.Errorf("failed to hash data: %w", err)
 	}
 
-	ok := ecdsa.VerifyASN1(pub, hash, signature)
+	ok := ecdsa.VerifyASN1(pub.ToEcdsa(), hash, signature)
 
 	if !ok {
 		return SignatureVerificationError{

@@ -1,19 +1,18 @@
 package pki
 
 import (
-	"crypto/x509"
 	"fmt"
 	"rahnit-rmm/config"
 )
 
 const upstremCertFile = "upstream.crt"
 
-var upstream *x509.Certificate
+var upstream *Certificate
 
-func GetUpstreamCert() (*x509.Certificate, error) {
+func GetUpstreamCert() (*Certificate, error) {
 	if upstream == nil {
 		var err error
-		upstream, err = LoadCertFromFile(config.GetFilePath(upstremCertFile))
+		upstream, err = LoadCertificateFromFile(config.GetFilePath(upstremCertFile))
 		if err != nil {
 			return nil, fmt.Errorf("failed to load upstream certificate: %w", err)
 		}
@@ -21,12 +20,12 @@ func GetUpstreamCert() (*x509.Certificate, error) {
 	return upstream, nil
 }
 
-func SaveUpstreamCert(cert *x509.Certificate) error {
+func SaveUpstreamCert(cert *Certificate) error {
 	if cert == nil {
 		return fmt.Errorf("certificate is nil")
 	}
 
-	err := SaveCertToFile(config.GetFilePath(upstremCertFile), cert)
+	err := cert.SaveToFile(config.GetFilePath(upstremCertFile))
 	if err != nil {
 		return fmt.Errorf("failed to save upstream certificate: %w", err)
 	}

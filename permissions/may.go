@@ -2,7 +2,6 @@ package permissions
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
 	"rahnit-rmm/config"
 	"rahnit-rmm/ent"
@@ -13,7 +12,7 @@ import (
 var ErrPermissionDenied = PermissionDeniedError{}
 
 type PermissionDeniedError struct {
-	PublicKey *ecdsa.PublicKey
+	PublicKey *pki.PublicKey
 	Reason    string
 }
 
@@ -26,7 +25,7 @@ func (e PermissionDeniedError) Is(target error) bool {
 	return ok
 }
 
-func MayStartCommand(sender *ecdsa.PublicKey, command string) error {
+func MayStartCommand(sender *pki.PublicKey, command string) error {
 	isRoot, err := pki.IsRootPublicKey(sender)
 	if err != nil {
 		return fmt.Errorf("failed to check if public key is CA: %w", err)
@@ -38,7 +37,7 @@ func MayStartCommand(sender *ecdsa.PublicKey, command string) error {
 
 	db := config.DB()
 
-	encoded, err := pki.EncodePubToString(sender)
+	encoded, err := sender.Encode()
 	if err != nil {
 		return fmt.Errorf("failed to encode public key: %w", err)
 	}

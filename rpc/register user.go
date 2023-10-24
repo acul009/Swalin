@@ -1,8 +1,6 @@
 package rpc
 
 import (
-	"crypto/ecdsa"
-	"crypto/x509"
 	"fmt"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
@@ -13,11 +11,9 @@ func RegisterUserHandler() RpcCommand {
 	return &registerUserCmd{}
 }
 
-func NewRegisterUserCmd(cert *x509.Certificate, privateKey *ecdsa.PrivateKey, password []byte, totpSecret string, currentTotp string) (*registerUserCmd, error) {
+func NewRegisterUserCmd(cert *pki.Certificate, privateKey *pki.PrivateKey, password []byte, totpSecret string, currentTotp string) (*registerUserCmd, error) {
 
-	encodedCert := pki.EncodeCertificate(cert)
-
-	encryptedPrivateKey, err := pki.SerializePrivateKey(privateKey, password)
+	encryptedPrivateKey, err := privateKey.BinaryEncode(password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize private key: %w", err)
 	}
@@ -33,7 +29,7 @@ func NewRegisterUserCmd(cert *x509.Certificate, privateKey *ecdsa.PrivateKey, pa
 	}
 
 	return &registerUserCmd{
-		Cert:                    encodedCert,
+		Cert:                    cert,
 		EncryptedPrivateKey:     encryptedPrivateKey,
 		ClientHashingParameters: clientHashingParameters,
 		PasswordHash:            passwordHash,
@@ -43,7 +39,7 @@ func NewRegisterUserCmd(cert *x509.Certificate, privateKey *ecdsa.PrivateKey, pa
 }
 
 type registerUserCmd struct {
-	Cert                    []byte
+	Cert                    *pki.Certificate
 	EncryptedPrivateKey     []byte
 	ClientHashingParameters util.ArgonParameters
 	PasswordHash            []byte
@@ -61,16 +57,6 @@ func (r *registerUserCmd) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("insecure Argon Parameters")
 	}
 
-	// check if certificate is ok
-	cert, err := pki.DecodeCertificate(r.Cert)
-	if err != nil {
-		session.WriteResponseHeader(SessionResponseHeader{
-			Code: 400,
-			Msg:  "Invalid certificate",
-		})
-		return fmt.Errorf("invalid certificate: %w", err)
-	}
-
 	// check if totp secret is ok and current totp is valid
 	if !util.ValidateTotp(r.TotpSecret, r.CurrentTotp) {
 		session.WriteResponseHeader(SessionResponseHeader{
@@ -80,7 +66,9 @@ func (r *registerUserCmd) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("invalid TOTP")
 	}
 
-	err = pki.VerifyUserCertificate(cert)
+	cert := r.Cert
+
+	err := pki.VerifyUserCertificate(cert)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 400,
@@ -110,16 +98,7 @@ func (r *registerUserCmd) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	pubKey, ok := cert.PublicKey.(*ecdsa.PublicKey)
-	if !ok {
-		session.WriteResponseHeader(SessionResponseHeader{
-			Code: 500,
-			Msg:  "invalid public key type",
-		})
-		return fmt.Errorf("invalid public key type")
-	}
-
-	encodedPub, err := pki.EncodePubToString(pubKey)
+	encodedPub, err := cert.GetPublicKey()
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,
@@ -133,7 +112,7 @@ func (r *registerUserCmd) ExecuteServer(session *RpcSession) error {
 
 	err = db.User.Create().
 		SetUsername(username).
-		SetCertificate(string(r.Cert)).
+		SetCertificate(string(cert.PemEncode())).
 		SetPublicKey(encodedPub).
 		SetEncryptedPrivateKey(string(r.EncryptedPrivateKey)).
 		SetPasswordClientHashingOptions(&r.ClientHashingParameters).

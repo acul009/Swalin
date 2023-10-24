@@ -62,12 +62,12 @@ func WaitForServerSetup(listenAddr string) error {
 var initNonceStorage *nonceStorage = nil
 
 type serverInitRequest struct {
-	ServerPubKey string
+	ServerPubKey *pki.PublicKey
 }
 
 type serverInitResponse struct {
-	RootCa     string
-	ServerCert string
+	RootCa     *pki.Certificate
+	ServerCert *pki.Certificate
 }
 
 func acceptServerInitialization(quicConn quic.Connection) error {
@@ -87,15 +87,10 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 
 	log.Printf("Session opened, reading public key...")
 
-	pubRootMarshalled := ""
-	sender, err := pki.ReadAndUnmarshalAndVerify(session, &pubRootMarshalled)
+	var pubRoot *pki.PublicKey = nil
+	sender, err := pki.ReadAndUnmarshalAndVerify(session, &pubRoot)
 	if err != nil {
 		return fmt.Errorf("error reading public key: %w", err)
-	}
-
-	pubRoot, err := pki.DecodePubFromString(pubRootMarshalled)
-	if err != nil {
-		return fmt.Errorf("error decoding public key: %w", err)
 	}
 
 	if !sender.Equal(pubRoot) {
@@ -111,13 +106,8 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 		return fmt.Errorf("error getting current public key: %w", err)
 	}
 
-	pubMeMarshalled, err := pki.EncodePubToString(pubMe)
-	if err != nil {
-		return fmt.Errorf("error marshalling public key: %w", err)
-	}
-
 	initRequest := &serverInitRequest{
-		ServerPubKey: pubMeMarshalled,
+		ServerPubKey: pubMe,
 	}
 
 	log.Printf("Sending init request...")
@@ -130,30 +120,20 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 	log.Printf("Awaiting init response...")
 
 	response := &serverInitResponse{}
-	sender, err = readMessageFromUnknown[*serverInitResponse](session, response)
+	err = ReadMessage[*serverInitResponse](session, response)
 	if err != nil {
 		return fmt.Errorf("error reading message: %w", err)
 	}
 
 	log.Printf("Init response received")
 
-	if !pubRoot.Equal(sender) {
-		return fmt.Errorf("root public key does not match sender")
-	}
+	rootCert := response.RootCa
 
-	rootCert, err := pki.DecodeCertificate([]byte(response.RootCa))
-	if err != nil {
-		return fmt.Errorf("error decoding root certificate: %w", err)
-	}
-
-	if !pubRoot.Equal(rootCert.PublicKey) {
+	if !pubRoot.Equal(rootCert.GetPublicKey()) {
 		return fmt.Errorf("root public key does not match certificate")
 	}
 
-	serverCert, err := pki.DecodeCertificate([]byte(response.ServerCert))
-	if err != nil {
-		return fmt.Errorf("error decoding server certificate: %w", err)
-	}
+	serverCert := response.ServerCert
 
 	err = pki.SaveCurrentCert(serverCert)
 	if err != nil {
@@ -218,12 +198,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 		return fmt.Errorf("error getting current key: %w", err)
 	}
 
-	pubMarshalled, err := pki.EncodePubToString(pubKey)
-	if err != nil {
-		return fmt.Errorf("error marshalling public key: %w", err)
-	}
-
-	payload, err := pki.MarshalAndSign(pubMarshalled, key, pubKey)
+	payload, err := pki.MarshalAndSign(pubKey, key, pubKey)
 	if err != nil {
 		return fmt.Errorf("error marshalling message: %w", err)
 	}
@@ -245,25 +220,20 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 		return fmt.Errorf("error reading message: %w", err)
 	}
 
-	serverPubKey, err := pki.DecodePubFromString(req.ServerPubKey)
-	if err != nil {
-		return fmt.Errorf("error decoding server public key: %w", err)
-	}
-
-	if !sender.Equal(serverPubKey) {
+	if !sender.Equal(req.ServerPubKey) {
 		return fmt.Errorf("server public key does not match sender")
 	}
 
-	session.partner = sender
+	session.partner = req.ServerPubKey
 
 	log.Printf("Received request with pubkey: %s\n", req.ServerPubKey)
 
-	serverHostCert, err := pki.CreateServerCertWithCurrent(nameForServer, serverPubKey)
+	serverHostCert, err := pki.CreateServerCertWithCurrent(nameForServer, req.ServerPubKey)
 	if err != nil {
 		return fmt.Errorf("error creating server certificate: %w", err)
 	}
 
-	log.Printf("Created server certificate:\n%s\n\n", string(pki.EncodeCertificate(serverHostCert)))
+	log.Printf("Created server certificate:\n%s\n\n", string(serverHostCert.PemEncode()))
 
 	rootCert, err := pki.GetRootCert()
 	if err != nil {
@@ -271,8 +241,8 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 	}
 
 	response := &serverInitResponse{
-		RootCa:     string(pki.EncodeCertificate(rootCert)),
-		ServerCert: string(pki.EncodeCertificate(serverHostCert)),
+		RootCa:     rootCert,
+		ServerCert: serverHostCert,
 	}
 
 	err = WriteMessage[*serverInitResponse](session, response)

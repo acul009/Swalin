@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"log"
@@ -82,10 +81,14 @@ func (s *RpcServer) accept() (*rpcConnection, error) {
 	}
 
 	var protocol TlsConnectionProto
-	var peerCert *x509.Certificate
+	var peerCert *pki.Certificate
 
 	if len(peerCertList) == 1 {
-		peerCert = peerCertList[0]
+		peerCert, err = pki.ImportCertificate(peerCertList[0])
+		if err != nil {
+			conn.CloseWithError(400, "")
+			return nil, fmt.Errorf("error parsing peer certificate: %w", err)
+		}
 	} else {
 		peerCert = nil
 	}

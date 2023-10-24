@@ -18,7 +18,7 @@ func updateRootPool() {
 		return
 	}
 
-	rootPool.AddCert(caCert)
+	rootPool.AddCert(caCert.ToX509())
 }
 
 func GetRootPool() *x509.CertPool {

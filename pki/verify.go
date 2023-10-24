@@ -2,11 +2,10 @@ package pki
 
 import (
 	"bytes"
-	"crypto/x509"
 	"fmt"
 )
 
-func VerifyCertificate(cert *x509.Certificate) error {
+func VerifyCertificate(cert *Certificate) error {
 	if cert == nil {
 		return fmt.Errorf("certificate is nil")
 	}
@@ -36,7 +35,7 @@ func VerifyCertificate(cert *x509.Certificate) error {
 	return fmt.Errorf("certificate is not known")
 }
 
-func VerifyUserCertificate(cert *x509.Certificate) error {
+func VerifyUserCertificate(cert *Certificate) error {
 	if cert == nil {
 		return fmt.Errorf("certificate is nil")
 	}

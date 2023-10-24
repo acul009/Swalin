@@ -1,9 +1,7 @@
 package rpc
 
 import (
-	"crypto/ecdsa"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -30,21 +28,15 @@ type RpcSession struct {
 	Uuid       uuid.UUID
 	state      RpcSessionState
 	mutex      sync.Mutex
-	partner    *ecdsa.PublicKey
+	partner    *pki.PublicKey
 }
 
 func newRpcSession(stream quic.Stream, conn *rpcConnection) *RpcSession {
 
-	var pubkey *ecdsa.PublicKey = nil
+	var pubkey *pki.PublicKey = nil
 
 	if conn.partner != nil {
-		var ok bool
-		pubkey, ok = conn.partner.PublicKey.(*ecdsa.PublicKey)
-
-		if !ok {
-			err := errors.New("invalid public key type")
-			panic(err)
-		}
+		pubkey = conn.partner.GetPublicKey()
 	}
 
 	return &RpcSession{
@@ -153,7 +145,7 @@ func (s *RpcSession) Read(p []byte) (n int, err error) {
 	return s.Stream.Read(p)
 }
 
-func readMessageFromUnknown[P any](s *RpcSession, payload P) (*ecdsa.PublicKey, error) {
+func readMessageFromUnknown[P any](s *RpcSession, payload P) (*pki.PublicKey, error) {
 	log.Printf("Reading message from unknown sender")
 
 	message := &RpcMessage[P]{
@@ -362,7 +354,7 @@ type SessionResponseHeader struct {
 	Info interface{} `json:"info"`
 }
 
-func (s *RpcSession) readRequestHeader() (SessionRequestHeader, *ecdsa.PublicKey, error) {
+func (s *RpcSession) readRequestHeader() (SessionRequestHeader, *pki.PublicKey, error) {
 	header := SessionRequestHeader{}
 	from, err := readMessageFromUnknown[*SessionRequestHeader](s, &header)
 	if err != nil {

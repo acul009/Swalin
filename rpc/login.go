@@ -1,15 +1,72 @@
 package rpc
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"rahnit-rmm/config"
 	"rahnit-rmm/ent"
 	"rahnit-rmm/ent/user"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/util"
+
+	"github.com/quic-go/quic-go"
 )
 
 func Login(addr string, username string, password []byte, totpCode string) error {
+	err := pki.UnlockWithTempKeys()
+	if err != nil {
+		return fmt.Errorf("error unlocking with temp keys: %w", err)
+	}
+
+	tlsConf := GetTlsClientConfig(ProtoClientLogin)
+
+	quicConf := &quic.Config{}
+
+	quicConn, err := quic.DialAddr(context.Background(), addr, tlsConf, quicConf)
+	if err != nil {
+		qErr, ok := err.(*quic.TransportError)
+		if ok && uint8(qErr.ErrorCode) == 120 {
+			return fmt.Errorf("server not ready for login: %w", err)
+		}
+		return fmt.Errorf("error creating QUIC connection: %w", err)
+	}
+
+	initNonceStorage = NewNonceStorage()
+
+	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoServerInit)
+
+	defer conn.Close(500, "")
+
+	log.Printf("Connection opened to %s\n", addr)
+
+	session, err := conn.OpenSession(context.Background())
+	if err != nil {
+		return fmt.Errorf("error opening QUIC stream: %w", err)
+	}
+
+	defer session.Close()
+
+	err = session.mutateState(RpcSessionCreated, RpcSessionOpen)
+	if err != nil {
+		return fmt.Errorf("error mutating session state: %w", err)
+	}
+
+	paramRequest := &loginParameterRequest{
+		username: username,
+	}
+
+	err = WriteMessage[*loginParameterRequest](session, paramRequest)
+	if err != nil {
+		return fmt.Errorf("error writing params request: %w", err)
+	}
+
+	params := &loginParameters{}
+
+	sender, err := readMessageFromUnknown[*loginParameters](session, params)
+	if err != nil {
+		return fmt.Errorf("error reading params request: %w", err)
+	}
 
 }
 
@@ -27,6 +84,8 @@ type loginRequest struct {
 }
 
 type loginSuccessResponse struct {
+	RootCert            string
+	UpstreamCert        string
 	Cert                string
 	EncryptedPrivateKey string
 }

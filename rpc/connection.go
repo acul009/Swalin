@@ -2,10 +2,10 @@ package rpc
 
 import (
 	"context"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"log"
+	"rahnit-rmm/pki"
 	"sync"
 
 	"github.com/google/uuid"
@@ -31,7 +31,7 @@ const (
 type rpcConnection struct {
 	connection     quic.Connection
 	server         *RpcServer
-	partner        *x509.Certificate
+	partner        *pki.Certificate
 	Uuid           uuid.UUID
 	state          RpcConnectionState
 	role           RpcConnectionRole
@@ -45,7 +45,7 @@ func newRpcConnection(conn quic.Connection,
 	server *RpcServer,
 	role RpcConnectionRole,
 	nonceStorage *nonceStorage,
-	partner *x509.Certificate,
+	partner *pki.Certificate,
 	protocol TlsConnectionProto,
 ) *rpcConnection {
 	return &rpcConnection{

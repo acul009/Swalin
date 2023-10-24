@@ -1,8 +1,6 @@
 package pki
 
 import (
-	"crypto/ecdsa"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -43,7 +41,7 @@ func UnlockHost() error {
 		if err != nil {
 			return fmt.Errorf("failed to generate new keypair: %w", err)
 		}
-		SaveCurrentKeyPair(key, &key.PublicKey, password)
+		SaveCurrentKeyPair(key, key.GetPublicKey(), password)
 	}
 
 	err = Unlock(password)
@@ -54,7 +52,7 @@ func UnlockHost() error {
 	return nil
 }
 
-func CreateServerCertWithCurrent(name string, pub *ecdsa.PublicKey) (*x509.Certificate, error) {
+func CreateServerCertWithCurrent(name string, pub *PublicKey) (*Certificate, error) {
 	cert, err := GetCurrentCert()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load current cert: %w", err)

@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"crypto/x509"
 	"fmt"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
@@ -38,7 +37,7 @@ func ConnectToUpstream(ctx context.Context) (*RpcEndpoint, error) {
 	return newRpcEndpoint(ctx, upstreamAddr, upstreamCert)
 }
 
-func newRpcEndpoint(ctx context.Context, addr string, partner *x509.Certificate) (*RpcEndpoint, error) {
+func newRpcEndpoint(ctx context.Context, addr string, partner *pki.Certificate) (*RpcEndpoint, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("address cannot be empty")
 	}

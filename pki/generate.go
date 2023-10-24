@@ -18,8 +18,13 @@ const userValidFor = 10 * 365 * 24 * time.Hour
 const serverValidFor = 10 * 365 * 24 * time.Hour
 const agentValidFor = 2 * 365 * 24 * time.Hour
 
-func generateKeypair() (*ecdsa.PrivateKey, error) {
-	return ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+func generateKeypair() (*PrivateKey, error) {
+	rawKey, err := ecdsa.GenerateKey(CurveToUse, rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate keypair: %w", err)
+	}
+	keyRef := PrivateKey(*rawKey)
+	return &keyRef, nil
 }
 
 const passwordLength = 64
@@ -55,7 +60,7 @@ func generateSerialNumber() (*big.Int, error) {
 	return serialNumber, nil
 }
 
-func getTemplate(pub *ecdsa.PublicKey) (*x509.Certificate, error) {
+func getTemplate(pub *PublicKey) (*x509.Certificate, error) {
 	serial, err := generateSerialNumber()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate serial number: %w", err)
@@ -70,14 +75,14 @@ func getTemplate(pub *ecdsa.PublicKey) (*x509.Certificate, error) {
 	}, nil
 }
 
-func generateRootCert(commonName string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func generateRootCert(commonName string) (*Certificate, *PrivateKey, error) {
 	// Generate a new CA private key
-	caPrivateKey, err := generateKeypair()
+	rootPrivateKey, err := generateKeypair()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate root private key: %w", err)
 	}
 
-	caTemplate, err := getTemplate(&caPrivateKey.PublicKey)
+	caTemplate, err := getTemplate(rootPrivateKey.GetPublicKey())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate root template: %w", err)
 	}
@@ -92,15 +97,15 @@ func generateRootCert(commonName string) (*x509.Certificate, *ecdsa.PrivateKey, 
 	caTemplate.BasicConstraintsValid = true
 
 	// Create and save the self-signed CA certificate
-	caCert, err := signCert(caTemplate, caPrivateKey, caTemplate)
+	rootCert, err := signCert(caTemplate, rootPrivateKey, caTemplate)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to sign CA certificate: %w", err)
 	}
 
-	return caCert, caPrivateKey, nil
+	return rootCert, rootPrivateKey, nil
 }
 
-func signCert(template *x509.Certificate, caKey *ecdsa.PrivateKey, caCert *x509.Certificate) (*x509.Certificate, error) {
+func signCert(template *x509.Certificate, caKey *PrivateKey, caCert *x509.Certificate) (*Certificate, error) {
 	certDER, err := x509.CreateCertificate(rand.Reader, template, caCert, template.PublicKey, caKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create certificate: %w", err)
@@ -111,7 +116,9 @@ func signCert(template *x509.Certificate, caKey *ecdsa.PrivateKey, caCert *x509.
 		return nil, fmt.Errorf("failed to parse certificate: %w", err)
 	}
 
-	return cert, nil
+	certRef := Certificate(*cert)
+
+	return &certRef, nil
 }
 
 type CertType string
@@ -123,14 +130,14 @@ const (
 	CertTypeAgent  CertType = "agents"
 )
 
-func generateUserCert(username string, caKey *ecdsa.PrivateKey, caCert *x509.Certificate) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func generateUserCert(username string, caKey *PrivateKey, caCert *Certificate) (*Certificate, *PrivateKey, error) {
 	// Generate a new user private key
 	userPrivateKey, err := generateKeypair()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate user private key: %w", err)
 	}
 
-	userTemplate, err := getTemplate(&userPrivateKey.PublicKey)
+	userTemplate, err := getTemplate(userPrivateKey.GetPublicKey())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate CA template: %w", err)
 	}
@@ -144,7 +151,9 @@ func generateUserCert(username string, caKey *ecdsa.PrivateKey, caCert *x509.Cer
 	userTemplate.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign
 	userTemplate.IsCA = true
 
-	cert, err := signCert(userTemplate, caKey, caCert)
+	typedCert := x509.Certificate(*caCert)
+
+	cert, err := signCert(userTemplate, caKey, &typedCert)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to sign user certificate: %w", err)
 	}
@@ -152,7 +161,7 @@ func generateUserCert(username string, caKey *ecdsa.PrivateKey, caCert *x509.Cer
 	return cert, userPrivateKey, nil
 }
 
-func createServerCert(name string, pub *ecdsa.PublicKey, caKey *ecdsa.PrivateKey, caCert *x509.Certificate) (*x509.Certificate, error) {
+func createServerCert(name string, pub *PublicKey, caKey *PrivateKey, caCert *Certificate) (*Certificate, error) {
 	serverTemplate, err := getTemplate(pub)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate server template: %w", err)
@@ -166,7 +175,7 @@ func createServerCert(name string, pub *ecdsa.PublicKey, caKey *ecdsa.PrivateKey
 	serverTemplate.NotAfter = time.Now().Add(serverValidFor)
 	serverTemplate.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature
 
-	cert, err := signCert(serverTemplate, caKey, caCert)
+	cert, err := signCert(serverTemplate, caKey, caCert.ToX509())
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign server certificate: %w", err)
 	}

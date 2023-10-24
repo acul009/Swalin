@@ -40,7 +40,7 @@ func getServerCert() (*tls.Certificate, error) {
 
 	// Encode the certificate and private key in PEM format
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	keyPEM, err := pki.EncodePrivateKeyToPEM(key)
+	keyPEM, err := x509.MarshalPKCS8PrivateKey(key)
 	if err != nil {
 		return nil, err
 	}

@@ -1,8 +1,6 @@
 package pki
 
 import (
-	"crypto/ecdsa"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -34,19 +32,19 @@ const (
 	rootKeyFilePath  = "root.key"
 )
 
-func GetRoot(password []byte) (*x509.Certificate, *ecdsa.PrivateKey, error) {
-	caCert, err := GetRootCert()
+func GetRoot(password []byte) (*Certificate, *PrivateKey, error) {
+	rootCert, err := GetRootCert()
 	if err != nil {
-		return caCert, nil, fmt.Errorf("failed to load CA: %w", err)
+		return rootCert, nil, fmt.Errorf("failed to load CA: %w", err)
 	}
-	caKey, err := GetRootKey(password)
+	rootKey, err := GetRootKey(password)
 	if err != nil {
-		return caCert, caKey, fmt.Errorf("failed to load CA: %w", err)
+		return rootCert, rootKey, fmt.Errorf("failed to load CA: %w", err)
 	}
-	return caCert, caKey, nil
+	return rootCert, rootKey, nil
 }
 
-func SaveRootCert(caCert *x509.Certificate) error {
+func SaveRootCert(rootCert *Certificate) error {
 	_, err := GetRootCert()
 	if err == nil {
 		return fmt.Errorf("root certificate already exists")
@@ -56,7 +54,7 @@ func SaveRootCert(caCert *x509.Certificate) error {
 		return fmt.Errorf("failed to load existing root certificate: %w", err)
 	}
 
-	err = SaveCertToFile(config.GetFilePath(rootCertFilePath), caCert)
+	err = rootCert.SaveToFile(config.GetFilePath(rootCertFilePath))
 	if err != nil {
 		return fmt.Errorf("failed to save root certificate: %w", err)
 	}
@@ -66,32 +64,32 @@ func SaveRootCert(caCert *x509.Certificate) error {
 	return nil
 }
 
-func GetRootCert() (*x509.Certificate, error) {
-	caCert, err := LoadCertFromFile(config.GetFilePath(rootCertFilePath))
+func GetRootCert() (*Certificate, error) {
+	rootCert, err := LoadCertificateFromFile(config.GetFilePath(rootCertFilePath))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return caCert, noRootCertError{cause: err}
+			return rootCert, noRootCertError{cause: err}
 		}
-		return caCert, err
+		return rootCert, err
 	}
-	return caCert, nil
+	return rootCert, nil
 }
 
-func GetRootKey(password []byte) (*ecdsa.PrivateKey, error) {
-	caKey, err := LoadCertKeyFromFile(config.GetFilePath(rootKeyFilePath), password)
+func GetRootKey(password []byte) (*PrivateKey, error) {
+	rootKey, err := LoadPrivateKeyFromFile(config.GetFilePath(rootKeyFilePath), password)
 	if err != nil {
-		return caKey, fmt.Errorf("failed to load CA certificate: %w", err)
+		return rootKey, fmt.Errorf("failed to load CA certificate: %w", err)
 	}
-	return caKey, nil
+	return rootKey, nil
 }
 
-func IsRootPublicKey(pub *ecdsa.PublicKey) (bool, error) {
+func IsRootPublicKey(pub *PublicKey) (bool, error) {
 	caCert, err := GetRootCert()
 	if err != nil {
 		return false, fmt.Errorf("failed to load CA certificate: %w", err)
 	}
 
-	return pub.Equal(caCert.PublicKey), nil
+	return pub.Equal(caCert.GetPublicKey()), nil
 }
 
 func InitRoot(rootName string, password []byte) error {
@@ -101,17 +99,17 @@ func InitRoot(rootName string, password []byte) error {
 		return fmt.Errorf("failed to load existing root certificate: %w", err)
 	}
 
-	caCert, caKey, err := generateRootCert(rootName)
+	rootCert, rootKey, err := generateRootCert(rootName)
 	if err != nil {
 		return fmt.Errorf("failed to generate root certificate: %w", err)
 	}
 
-	err = SaveCertToFile(config.GetFilePath(rootCertFilePath), caCert)
+	err = rootCert.SaveToFile(config.GetFilePath(rootCertFilePath))
 	if err != nil {
 		return fmt.Errorf("failed to save root certificate: %w", err)
 	}
 
-	err = SaveCertKeyToFile(config.GetFilePath(rootKeyFilePath), caKey, password)
+	err = rootKey.SaveToFile(config.GetFilePath(rootKeyFilePath), password)
 	if err != nil {
 		return fmt.Errorf("failed to save root certificate: %w", err)
 	}

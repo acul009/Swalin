@@ -18,7 +18,7 @@ type testData struct {
 }
 
 func TestSignBytes(t *testing.T) {
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	generatedKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,10 @@ func TestSignBytes(t *testing.T) {
 		Flt:  1.0,
 	}
 
-	marshalled, err := pki.MarshalAndSign(data, key, &key.PublicKey)
+	key := pki.PrivateKey(*generatedKey)
+	pubKeyGen := pki.PublicKey(key.PublicKey)
+
+	marshalled, err := pki.MarshalAndSign(data, &key, &pubKeyGen)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,10 +54,13 @@ func TestSignBytes(t *testing.T) {
 }
 
 func TestPackedReadWrite(t *testing.T) {
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	generatedKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	key := pki.PrivateKey(*generatedKey)
+	pubKeyGen := pki.PublicKey(key.PublicKey)
 
 	data1 := testData{
 		Text: "test",
@@ -73,17 +79,17 @@ func TestPackedReadWrite(t *testing.T) {
 		data3[i] = byte(i)
 	}
 
-	marshalled1, err := pki.MarshalAndSign(data1, key, &key.PublicKey)
+	marshalled1, err := pki.MarshalAndSign(data1, &key, &pubKeyGen)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	marshalled2, err := pki.MarshalAndSign(data2, key, &key.PublicKey)
+	marshalled2, err := pki.MarshalAndSign(data2, &key, &pubKeyGen)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	marshalled3, err := pki.MarshalAndSign(data3, key, &key.PublicKey)
+	marshalled3, err := pki.MarshalAndSign(data3, &key, &pubKeyGen)
 	if err != nil {
 		t.Fatal(err)
 	}

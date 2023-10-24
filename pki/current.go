@@ -1,9 +1,7 @@
 package pki
 
 import (
-	"crypto/ecdsa"
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -23,9 +21,9 @@ func (e NotUnlockedError) Is(target error) bool {
 	return ok
 }
 
-var currentKey *ecdsa.PrivateKey = nil
-var currentPub *ecdsa.PublicKey = nil
-var currentCert *x509.Certificate = nil
+var currentKey *PrivateKey = nil
+var currentPub *PublicKey = nil
+var currentCert *Certificate = nil
 
 const currentKeyFilePath = "current.key"
 const currentCertFilePath = "current.crt"
@@ -54,7 +52,7 @@ func CurrentPublicKeyAvailable() (bool, error) {
 }
 
 func CurrentAvailableUser() (string, error) {
-	cert, err := LoadCertFromFile(config.GetFilePath(currentCertFilePath))
+	cert, err := LoadCertificateFromFile(config.GetFilePath(currentCertFilePath))
 	if err != nil {
 		return "", fmt.Errorf("failed to load current cert: %w", err)
 	}
@@ -69,8 +67,8 @@ func CurrentAvailableUser() (string, error) {
 }
 
 func Unlock(password []byte) error {
-	cert, err := LoadCertFromFile(config.GetFilePath(currentCertFilePath))
-	var pub *ecdsa.PublicKey
+	cert, err := LoadCertificateFromFile(config.GetFilePath(currentCertFilePath))
+	var pub *PublicKey
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("failed to load current cert: %w", err)
@@ -81,14 +79,10 @@ func Unlock(password []byte) error {
 			return fmt.Errorf("failed to load current public key: %w", err)
 		}
 	} else {
-		var ok bool
-		pub, ok = cert.PublicKey.(*ecdsa.PublicKey)
-		if !ok {
-			return fmt.Errorf("public key is not of type *ecdsa.PublicKey")
-		}
+		pub = cert.GetPublicKey()
 	}
 
-	key, err := LoadCertKeyFromFile(config.GetFilePath(currentKeyFilePath), password)
+	key, err := LoadPrivateKeyFromFile(config.GetFilePath(currentKeyFilePath), password)
 	if err != nil {
 		return fmt.Errorf("failed to load current key: %w", err)
 	}
@@ -106,33 +100,42 @@ func UnlockAsRoot(password []byte) error {
 		return fmt.Errorf("failed to load CA: %w", err)
 	}
 
-	pub, ok := rootCert.PublicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return fmt.Errorf("public key is not of type *ecdsa.PublicKey")
-	}
-
 	currentKey = rootKey
 	currentCert = rootCert
-	currentPub = pub
+	currentPub = rootCert.GetPublicKey()
 
 	return nil
 }
 
-func GetCurrentKey() (*ecdsa.PrivateKey, error) {
+func UnlockWithTempKeys() error {
+	key, err := generateKeypair()
+	if err != nil {
+		return fmt.Errorf("failed to generate new keypair: %w", err)
+	}
+
+	keyRef := PrivateKey(*key)
+	currentKey = &keyRef
+	pubRef := PublicKey(key.PublicKey)
+	currentPub = &pubRef
+
+	return nil
+}
+
+func GetCurrentKey() (*PrivateKey, error) {
 	if currentKey == nil {
 		return nil, NotUnlockedError{}
 	}
 	return currentKey, nil
 }
 
-func GetCurrentCert() (*x509.Certificate, error) {
+func GetCurrentCert() (*Certificate, error) {
 	if currentCert == nil {
 		return nil, NotUnlockedError{}
 	}
 	return currentCert, nil
 }
 
-func GetCurrentPublicKey() (*ecdsa.PublicKey, error) {
+func GetCurrentPublicKey() (*PublicKey, error) {
 	if currentPub == nil {
 		return nil, NotUnlockedError{}
 	}
@@ -153,32 +156,36 @@ func GetCurrentTlsCert() (*tls.Certificate, error) {
 	return tlsCert, nil
 }
 
-func SaveCurrentCertAndKey(cert *x509.Certificate, key *ecdsa.PrivateKey, password []byte) error {
+func SaveCurrentCertAndKey(cert *Certificate, key *PrivateKey, password []byte) error {
 	err := SaveCurrentCert(cert)
 	if err != nil {
 		return fmt.Errorf("failed to save current cert: %w", err)
 	}
-	err = SaveCertKeyToFile(config.GetFilePath(currentKeyFilePath), key, password)
+
+	err = key.SaveToFile(config.GetFilePath(currentKeyFilePath), password)
 	if err != nil {
 		return fmt.Errorf("failed to save current key: %w", err)
 	}
+
 	return nil
 }
 
-func SaveCurrentKeyPair(key *ecdsa.PrivateKey, pub *ecdsa.PublicKey, password []byte) error {
-	err := SaveCertKeyToFile(config.GetFilePath(currentKeyFilePath), key, password)
+func SaveCurrentKeyPair(key *PrivateKey, pub *PublicKey, password []byte) error {
+	err := key.SaveToFile(config.GetFilePath(currentKeyFilePath), password)
 	if err != nil {
 		return fmt.Errorf("failed to save current key: %w", err)
 	}
-	err = SavePublicKeyToFile(config.GetFilePath(currentPubFilePath), pub)
+
+	err = pub.SaveToFile(config.GetFilePath(currentPubFilePath))
 	if err != nil {
 		return fmt.Errorf("failed to save current public key: %w", err)
 	}
+
 	return nil
 }
 
-func SaveCurrentCert(cert *x509.Certificate) error {
-	err := SaveCertToFile(config.GetFilePath(currentCertFilePath), cert)
+func SaveCurrentCert(cert *Certificate) error {
+	err := cert.SaveToFile(config.GetFilePath(currentCertFilePath))
 	if err != nil {
 		return fmt.Errorf("failed to save current cert: %w", err)
 	}
