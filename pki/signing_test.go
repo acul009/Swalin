@@ -48,7 +48,7 @@ func TestSignBytes(t *testing.T) {
 		t.Errorf("expected %v, got %v", data, unmarshalled)
 	}
 
-	if !reflect.DeepEqual(key.PublicKey, *pub) {
+	if !pub.Equal(key.GetPublicKey()) {
 		t.Errorf("expected %v, got %v", key.PublicKey, pub)
 	}
 }
@@ -135,15 +135,15 @@ func TestPackedReadWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !key.PublicKey.Equal(pub1) {
+	if !key.GetPublicKey().Equal(pub1) {
 		t.Errorf("expected %v, got %v", key.PublicKey, pub1)
 	}
 
-	if !key.PublicKey.Equal(pub2) {
+	if !key.GetPublicKey().Equal(pub2) {
 		t.Errorf("expected %v, got %v", key.PublicKey, pub2)
 	}
 
-	if !key.PublicKey.Equal(pub3) {
+	if !key.GetPublicKey().Equal(pub3) {
 		t.Errorf("expected %v, got %v", key.PublicKey, pub3)
 	}
 
