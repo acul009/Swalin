@@ -63,11 +63,12 @@ func Login(addr string, username string, password []byte, totpCode string) error
 
 	params := &loginParameters{}
 
-	sender, err := readMessageFromUnknown[*loginParameters](session, params)
+	_, err = readMessageFromUnknown[*loginParameters](session, params)
 	if err != nil {
 		return fmt.Errorf("error reading params request: %w", err)
 	}
 
+	return nil
 }
 
 type loginParameterRequest struct {
@@ -84,9 +85,9 @@ type loginRequest struct {
 }
 
 type loginSuccessResponse struct {
-	RootCert            string
-	UpstreamCert        string
-	Cert                string
+	RootCert            *pki.Certificate
+	UpstreamCert        *pki.Certificate
+	Cert                *pki.Certificate
 	EncryptedPrivateKey string
 }
 
@@ -177,9 +178,25 @@ func acceptLoginRequest(conn *rpcConnection) error {
 	}
 
 	// login successful, return the certificate and encrypted private key
+	cert, err := pki.CertificateFromPem([]byte(user.Certificate))
+	if err != nil {
+		return fmt.Errorf("error parsing user certificate: %w", err)
+	}
+
+	rootCert, err := pki.GetRootCert()
+	if err != nil {
+		return fmt.Errorf("error loading root certificate: %w", err)
+	}
+
+	serverCert, err := pki.GetCurrentCert()
+	if err != nil {
+		return fmt.Errorf("error loading current certificate: %w", err)
+	}
 
 	success := &loginSuccessResponse{
-		Cert:                user.Certificate,
+		RootCert:            rootCert,
+		UpstreamCert:        serverCert,
+		Cert:                cert,
 		EncryptedPrivateKey: user.EncryptedPrivateKey,
 	}
 

@@ -3,6 +3,7 @@ package pki
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -66,6 +67,14 @@ func PublicKeyFromPem(certPEM []byte) (*PublicKey, error) {
 	}
 
 	return PublicKeyFromBinary(block.Bytes)
+}
+
+func (pub *PublicKey) Base64Encode() (string, error) {
+	bytes, err := pub.BinaryEncode()
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal public key: %w", err)
+	}
+	return base64.StdEncoding.EncodeToString(bytes), nil
 }
 
 func (pub *PublicKey) ToEcdsa() *ecdsa.PublicKey {

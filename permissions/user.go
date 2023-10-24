@@ -12,7 +12,7 @@ import (
 func GetUserFromPublicKey(pub *pki.PublicKey) (*ent.User, error) {
 	db := config.DB()
 
-	encoded, err := pub.Encode()
+	encoded, err := pub.Base64Encode()
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode public key: %w", err)
 	}

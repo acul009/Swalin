@@ -98,7 +98,7 @@ func (r *registerUserCmd) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	encodedPub, err := cert.GetPublicKey()
+	encodedPub, err := cert.GetPublicKey().Base64Encode()
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,

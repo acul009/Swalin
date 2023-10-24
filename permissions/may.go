@@ -37,7 +37,7 @@ func MayStartCommand(sender *pki.PublicKey, command string) error {
 
 	db := config.DB()
 
-	encoded, err := sender.Encode()
+	encoded, err := sender.Base64Encode()
 	if err != nil {
 		return fmt.Errorf("failed to encode public key: %w", err)
 	}
