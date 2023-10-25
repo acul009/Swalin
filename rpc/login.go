@@ -52,7 +52,7 @@ func Login(addr string, username string, password []byte, totpCode string) error
 		return fmt.Errorf("error mutating session state: %w", err)
 	}
 
-	session.partner, err = receivePartnerKey(session)
+	err = receivePartnerKey(session)
 	if err != nil {
 		return fmt.Errorf("error receiving partner key: %w", err)
 	}

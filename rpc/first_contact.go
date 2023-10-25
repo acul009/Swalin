@@ -6,18 +6,20 @@ import (
 	"rahnit-rmm/pki"
 )
 
-func receivePartnerKey(session *RpcSession) (*pki.PublicKey, error) {
+func receivePartnerKey(session *RpcSession) error {
 	var pubRoot *pki.PublicKey = nil
 	sender, err := pki.ReadAndUnmarshalAndVerify(session, &pubRoot)
 	if err != nil {
-		return nil, fmt.Errorf("error reading public key: %w", err)
+		return fmt.Errorf("error reading public key: %w", err)
 	}
 
 	if !sender.Equal(pubRoot) {
-		return nil, fmt.Errorf("root public key does not match sender")
+		return fmt.Errorf("root public key does not match sender")
 	}
 
-	return pubRoot, nil
+	session.partner = pubRoot
+
+	return nil
 }
 
 func sendMyKey(session *RpcSession) error {

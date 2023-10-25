@@ -86,12 +86,10 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 
 	log.Printf("Session opened, reading public key...")
 
-	pubRoot, err := receivePartnerKey(session)
+	err = receivePartnerKey(session)
 	if err != nil {
 		return fmt.Errorf("error receiving partner key: %w", err)
 	}
-
-	session.partner = pubRoot
 
 	log.Printf("preparing init request...")
 
@@ -123,7 +121,7 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 
 	rootCert := response.RootCa
 
-	if !pubRoot.Equal(rootCert.GetPublicKey()) {
+	if !session.partner.Equal(rootCert.GetPublicKey()) {
 		return fmt.Errorf("root public key does not match certificate")
 	}
 
