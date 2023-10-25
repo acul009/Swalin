@@ -181,7 +181,12 @@ func (s *RpcServer) Run() error {
 			go conn.serve(s.rpcCommands)
 
 		case ProtoClientLogin:
-			//TODO
+			go func() {
+				err := acceptLoginRequest(conn)
+				if err != nil {
+					log.Printf("error accepting login request: %v", err)
+				}
+			}()
 
 		default:
 			log.Printf("error accepted connection has wrong protocol: %s", conn.protocol)

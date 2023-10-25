@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"rahnit-rmm/config"
 	"rahnit-rmm/rpc"
 	"rahnit-rmm/util"
 
@@ -22,6 +23,11 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+
+		err := config.SetSubdir("cli")
+		if err != nil {
+			panic(err)
+		}
 
 		// address is required
 		addr := cmd.Flag("addr").Value.String()

@@ -40,7 +40,7 @@ func Login(addr string, username string, password []byte, totpCode string) error
 
 	log.Printf("Connection opened to %s\n", addr)
 
-	session, err := conn.OpenSession(context.Background())
+	session, err := conn.AcceptSession(context.Background())
 	if err != nil {
 		return fmt.Errorf("error opening QUIC stream: %w", err)
 	}
@@ -58,7 +58,7 @@ func Login(addr string, username string, password []byte, totpCode string) error
 	}
 
 	paramRequest := &loginParameterRequest{
-		username: username,
+		Username: username,
 	}
 
 	err = WriteMessage[*loginParameterRequest](session, paramRequest)
@@ -66,21 +66,21 @@ func Login(addr string, username string, password []byte, totpCode string) error
 		return fmt.Errorf("error writing params request: %w", err)
 	}
 
-	params := &loginParameters{}
+	params := loginParameters{}
 
-	err = ReadMessage[*loginParameters](session, params)
+	err = ReadMessage[*loginParameters](session, &params)
 	if err != nil {
 		return fmt.Errorf("error reading params request: %w", err)
 	}
 
-	hash, err := util.HashPassword(password, params.passwordParams)
+	hash, err := util.HashPassword(password, params.PasswordParams)
 	if err != nil {
 		return fmt.Errorf("error hashing password: %w", err)
 	}
 
 	login := &loginRequest{
-		passwordHash: hash,
-		totp:         totpCode,
+		PasswordHash: hash,
+		Totp:         totpCode,
 	}
 
 	err = WriteMessage[*loginRequest](session, login)
@@ -88,9 +88,9 @@ func Login(addr string, username string, password []byte, totpCode string) error
 		return fmt.Errorf("error writing login request: %w", err)
 	}
 
-	success := &loginSuccessResponse{}
+	success := loginSuccessResponse{}
 
-	err = ReadMessage[*loginSuccessResponse](session, success)
+	err = ReadMessage[*loginSuccessResponse](session, &success)
 	if err != nil {
 		return fmt.Errorf("error reading login response: %w", err)
 	}
@@ -115,20 +115,33 @@ func Login(addr string, username string, password []byte, totpCode string) error
 		return fmt.Errorf("error saving upstream cert: %w", err)
 	}
 
+	config.V().Set("upstream.address", addr)
+	err = config.Save()
+	if err != nil {
+		return fmt.Errorf("error saving config: %w", err)
+	}
+
+	err = session.Close()
+	if err != nil {
+		return fmt.Errorf("error closing session: %w", err)
+	}
+
+	conn.Close(200, "done")
+
 	return nil
 }
 
 type loginParameterRequest struct {
-	username string
+	Username string
 }
 
 type loginParameters struct {
-	passwordParams util.ArgonParameters
+	PasswordParams util.ArgonParameters
 }
 
 type loginRequest struct {
-	passwordHash []byte
-	totp         string
+	PasswordHash []byte
+	Totp         string
 }
 
 type loginSuccessResponse struct {
@@ -141,7 +154,16 @@ type loginSuccessResponse struct {
 func acceptLoginRequest(conn *rpcConnection) error {
 	// prepare session
 	ctx := conn.connection.Context()
-	defer conn.Close(500, "")
+
+	var err error
+
+	defer func() {
+		if err != nil {
+			conn.Close(500, "")
+		}
+	}()
+
+	log.Printf("Incoming login request...")
 
 	session, err := conn.OpenSession(ctx)
 	if err != nil {
@@ -155,6 +177,8 @@ func acceptLoginRequest(conn *rpcConnection) error {
 		return fmt.Errorf("error mutating session state: %w", err)
 	}
 
+	log.Printf("Session opened, sending public key")
+
 	err = sendMyKey(session)
 	if err != nil {
 		return fmt.Errorf("error sending public key: %w", err)
@@ -162,16 +186,20 @@ func acceptLoginRequest(conn *rpcConnection) error {
 
 	// read the parameter request for the username
 
-	paramsRequest := &loginParameterRequest{}
+	log.Printf("reading params request...")
 
-	sender, err := readMessageFromUnknown[*loginParameterRequest](session, paramsRequest)
+	paramsRequest := loginParameterRequest{}
+
+	sender, err := readMessageFromUnknown[*loginParameterRequest](session, &paramsRequest)
 	if err != nil {
 		return fmt.Errorf("error reading params request: %w", err)
 	}
 
-	username := paramsRequest.username
+	username := paramsRequest.Username
 
 	session.partner = sender
+
+	log.Printf("Received params request with username: %s\n", username)
 
 	// check if the user exists
 
@@ -192,40 +220,42 @@ func acceptLoginRequest(conn *rpcConnection) error {
 
 	var clientHashing util.ArgonParameters
 	if failed {
+		log.Printf("User %s does not exist, generating decoy", username)
 		clientHashing, err = util.GenerateDecoyArgonParametersFromSeed([]byte(username), pki.GetSeed())
 		if err != nil {
 			return fmt.Errorf("error generating argon parameters: %w", err)
 		}
 	} else {
+		log.Printf("User %s exists, using existing parameters %+v", username, user.PasswordClientHashingOptions)
 		clientHashing = *user.PasswordClientHashingOptions
 	}
 
-	loginParams := &loginParameters{
-		passwordParams: clientHashing,
+	loginParams := loginParameters{
+		PasswordParams: clientHashing,
 	}
 
-	err = WriteMessage[*loginParameters](session, loginParams)
+	err = WriteMessage[*loginParameters](session, &loginParams)
 	if err != nil {
 		return fmt.Errorf("error writing login parameters: %w", err)
 	}
 
 	// read the login request
 
-	login := &loginRequest{}
+	login := loginRequest{}
 
-	err = ReadMessage[*loginRequest](session, login)
+	err = ReadMessage[*loginRequest](session, &login)
 	if err != nil {
 		return fmt.Errorf("error reading login request: %w", err)
 	}
 
 	// check the password hash
-	err = util.VerifyPassword(login.passwordHash, user.PasswordDoubleHashed, *user.PasswordServerHashingOptions)
+	err = util.VerifyPassword(login.PasswordHash, user.PasswordDoubleHashed, *user.PasswordServerHashingOptions)
 	if err != nil {
 		return fmt.Errorf("error verifying password: %w", err)
 	}
 
 	// check the totp code
-	if !util.ValidateTotp(user.TotpSecret, login.totp) {
+	if !util.ValidateTotp(user.TotpSecret, login.Totp) {
 		return fmt.Errorf("error validating totp: %w", err)
 	}
 
@@ -258,8 +288,6 @@ func acceptLoginRequest(conn *rpcConnection) error {
 	}
 
 	session.Close()
-
-	conn.Close(200, "")
 
 	return nil
 }

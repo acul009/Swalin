@@ -3,10 +3,14 @@ package rpc
 import (
 	"fmt"
 	"io"
+	"log"
 	"rahnit-rmm/pki"
 )
 
 func receivePartnerKey(session *RpcSession) error {
+
+	log.Printf("Receiving partner public key...")
+
 	var pubRoot *pki.PublicKey = nil
 	sender, err := pki.ReadAndUnmarshalAndVerify(session, &pubRoot)
 	if err != nil {
@@ -14,10 +18,12 @@ func receivePartnerKey(session *RpcSession) error {
 	}
 
 	if !sender.Equal(pubRoot) {
-		return fmt.Errorf("root public key does not match sender")
+		return fmt.Errorf("partner public key does not match sender")
 	}
 
 	session.partner = pubRoot
+
+	log.Printf("Received partner public key")
 
 	return nil
 }
@@ -45,6 +51,8 @@ func sendMyKey(session *RpcSession) error {
 	if n != len(payload) {
 		return fmt.Errorf("error writing message: %w", io.ErrShortWrite)
 	}
+
+	log.Printf("Sent my public key")
 
 	return nil
 }
