@@ -87,6 +87,9 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 	log.Printf("Session opened, reading public key...")
 
 	pubRoot, err := receivePartnerKey(session)
+	if err != nil {
+		return fmt.Errorf("error receiving partner key: %w", err)
+	}
 
 	session.partner = pubRoot
 
