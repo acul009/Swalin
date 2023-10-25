@@ -44,7 +44,7 @@ const (
 )
 
 func NewRpcServer(listenAddr string, rpcCommands *CommandCollection) (*RpcServer, error) {
-	tlsConf, err := GetTlsServerConfig([]TlsConnectionProto{ProtoRpc, ProtoClientLogin})
+	tlsConf, err := getTlsServerConfig([]TlsConnectionProto{ProtoRpc, ProtoClientLogin})
 	if err != nil {
 		return nil, fmt.Errorf("error getting server tls config: %w", err)
 	}

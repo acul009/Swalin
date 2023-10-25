@@ -19,7 +19,7 @@ func Login(addr string, username string, password []byte, totpCode string) error
 		return fmt.Errorf("error unlocking with temp keys: %w", err)
 	}
 
-	tlsConf := GetTlsClientConfig(ProtoClientLogin)
+	tlsConf := getTlsTempClientConfig(ProtoClientLogin)
 
 	quicConf := &quic.Config{}
 
@@ -52,6 +52,11 @@ func Login(addr string, username string, password []byte, totpCode string) error
 		return fmt.Errorf("error mutating session state: %w", err)
 	}
 
+	session.partner, err = receivePartnerKey(session)
+	if err != nil {
+		return fmt.Errorf("error receiving partner key: %w", err)
+	}
+
 	paramRequest := &loginParameterRequest{
 		username: username,
 	}
@@ -63,12 +68,10 @@ func Login(addr string, username string, password []byte, totpCode string) error
 
 	params := &loginParameters{}
 
-	serverPub, err := readMessageFromUnknown[*loginParameters](session, params)
+	err = ReadMessage[*loginParameters](session, params)
 	if err != nil {
 		return fmt.Errorf("error reading params request: %w", err)
 	}
-
-	session.partner = serverPub
 
 	hash, err := util.HashPassword(password, params.passwordParams)
 	if err != nil {
@@ -150,6 +153,11 @@ func acceptLoginRequest(conn *rpcConnection) error {
 	err = session.mutateState(RpcSessionCreated, RpcSessionOpen)
 	if err != nil {
 		return fmt.Errorf("error mutating session state: %w", err)
+	}
+
+	err = sendMyKey(session)
+	if err != nil {
+		return fmt.Errorf("error sending public key: %w", err)
 	}
 
 	// read the parameter request for the username

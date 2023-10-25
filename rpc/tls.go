@@ -15,7 +15,16 @@ const (
 	ProtoClientLogin TlsConnectionProto = "rahnit-rmm-client-login"
 )
 
-func GetTlsClientConfig(proto TlsConnectionProto) *tls.Config {
+func getTlsTempClientConfig(proto TlsConnectionProto) *tls.Config {
+	return &tls.Config{
+		// TODO: implement ACME certificate request and remove the InsecureSkipVerify option
+		InsecureSkipVerify:   true,
+		NextProtos:           []string{string(proto)},
+		GetClientCertificate: nil,
+	}
+}
+
+func getTlsClientConfig(proto TlsConnectionProto) *tls.Config {
 	return &tls.Config{
 		// TODO: implement ACME certificate request and remove the InsecureSkipVerify option
 		InsecureSkipVerify: true,
@@ -35,7 +44,7 @@ func GetTlsClientConfig(proto TlsConnectionProto) *tls.Config {
 	}
 }
 
-func GetTlsServerConfig(protos []TlsConnectionProto) (*tls.Config, error) {
+func getTlsServerConfig(protos []TlsConnectionProto) (*tls.Config, error) {
 
 	tlsCert, err := getServerCert()
 	if err != nil {

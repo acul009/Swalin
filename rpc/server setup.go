@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
@@ -21,7 +20,7 @@ func WaitForServerSetup(listenAddr string) error {
 		// Server already initialized
 		return nil
 	}
-	tlsConf, err := GetTlsServerConfig([]TlsConnectionProto{ProtoServerInit})
+	tlsConf, err := getTlsServerConfig([]TlsConnectionProto{ProtoServerInit})
 	if err != nil {
 		return fmt.Errorf("error getting server tls config: %w", err)
 	}
@@ -87,15 +86,7 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 
 	log.Printf("Session opened, reading public key...")
 
-	var pubRoot *pki.PublicKey = nil
-	sender, err := pki.ReadAndUnmarshalAndVerify(session, &pubRoot)
-	if err != nil {
-		return fmt.Errorf("error reading public key: %w", err)
-	}
-
-	if !sender.Equal(pubRoot) {
-		return fmt.Errorf("root public key does not match sender")
-	}
+	pubRoot, err := receivePartnerKey(session)
 
 	session.partner = pubRoot
 
@@ -157,7 +148,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 		return fmt.Errorf("error unlocking root cert: %w", err)
 	}
 
-	tlsConf := GetTlsClientConfig(ProtoServerInit)
+	tlsConf := getTlsClientConfig(ProtoServerInit)
 
 	quicConf := &quic.Config{}
 
@@ -188,27 +179,9 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 
 	log.Printf("Session opened, sending public key")
 
-	pubKey, err := pki.GetCurrentPublicKey()
+	err = sendMyKey(session)
 	if err != nil {
-		return fmt.Errorf("error getting current public key: %w", err)
-	}
-
-	key, err := pki.GetCurrentKey()
-	if err != nil {
-		return fmt.Errorf("error getting current key: %w", err)
-	}
-
-	payload, err := pki.MarshalAndSign(pubKey, key, pubKey)
-	if err != nil {
-		return fmt.Errorf("error marshalling message: %w", err)
-	}
-
-	n, err := session.Write(payload)
-	if err != nil {
-		return fmt.Errorf("error writing message: %w", err)
-	}
-	if n != len(payload) {
-		return fmt.Errorf("error writing message: %w", io.ErrShortWrite)
+		return fmt.Errorf("error sending public key: %w", err)
 	}
 
 	log.Printf("reading initialization request^...")

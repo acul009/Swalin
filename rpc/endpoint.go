@@ -46,7 +46,7 @@ func newRpcEndpoint(ctx context.Context, addr string, partner *pki.Certificate) 
 		return nil, fmt.Errorf("partner cannot be nil")
 	}
 
-	tlsConf := GetTlsClientConfig(ProtoRpc)
+	tlsConf := getTlsClientConfig(ProtoRpc)
 
 	quicConf := &quic.Config{}
 
