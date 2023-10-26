@@ -1,22 +1,26 @@
 package pki
 
-import "fmt"
+import (
+	"rahnit-rmm/config"
+)
 
-func CreateAndApplyCurrentUserCert(username string, userPassword []byte, caPassword []byte) error {
-	cert, key, err := GetRoot(caPassword)
-	if err != nil {
-		return fmt.Errorf("failed to load CA: %w", err)
+type userCredentials struct {
+	Username    string
+	certStorage *storedCertificate
+}
+
+func GetUserCredentials(username string, password []byte) (*userCredentials, error) {
+	certStorage := &storedCertificate{
+		allowOverride: false,
+		path:          config.GetFilePath("users", username+".crt"),
 	}
 
-	userCert, userKey, err := generateUserCert(username, key, cert)
-	if err != nil {
-		return fmt.Errorf("failed to generate user certificate: %w", err)
-	}
+	return &userCredentials{
+		Username:    username,
+		certStorage: certStorage,
+	}, nil
+}
 
-	err = SaveCurrentCertAndKey(userCert, userKey, userPassword)
-	if err != nil {
-		return fmt.Errorf("failed to save current cert and key: %w", err)
-	}
-
-	return nil
+func (u *userCredentials) GetCertificate() (*Certificate, error) {
+	return u.certStorage.Get()
 }

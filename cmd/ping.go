@@ -29,7 +29,7 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			panic(err)
 		}
-		err = pki.UnlockAsRoot(password)
+		err = pki.Unlock(password)
 		if err != nil {
 			panic(err)
 		}

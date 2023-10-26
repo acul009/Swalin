@@ -105,7 +105,7 @@ func Login(addr string, username string, password []byte, totpCode string) error
 		return fmt.Errorf("error saving current cert and key: %w", err)
 	}
 
-	err = pki.SaveRootCert(success.RootCert)
+	err = pki.Root.Set(success.RootCert)
 	if err != nil {
 		return fmt.Errorf("error saving root cert: %w", err)
 	}
@@ -265,7 +265,7 @@ func acceptLoginRequest(conn *rpcConnection) error {
 		return fmt.Errorf("error parsing user certificate: %w", err)
 	}
 
-	rootCert, err := pki.GetRootCert()
+	rootCert, err := pki.Root.Get()
 	if err != nil {
 		return fmt.Errorf("error loading root certificate: %w", err)
 	}

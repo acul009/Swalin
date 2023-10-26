@@ -132,7 +132,7 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 		return fmt.Errorf("error saving server certificate: %w", err)
 	}
 
-	err = pki.SaveRootCert(rootCert)
+	err = pki.Root.Set(rootCert)
 	if err != nil {
 		return fmt.Errorf("error saving root certificate: %w", err)
 	}
@@ -144,7 +144,7 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 }
 
 func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
-	err := pki.UnlockAsRoot(rootPassword)
+	err := pki.Unlock(rootPassword)
 	if err != nil {
 		return fmt.Errorf("error unlocking root cert: %w", err)
 	}
@@ -209,7 +209,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 
 	log.Printf("Created server certificate:\n%s\n\n", string(serverHostCert.PemEncode()))
 
-	rootCert, err := pki.GetRootCert()
+	rootCert, err := pki.Root.Get()
 	if err != nil {
 		return fmt.Errorf("error getting root certificate: %w", err)
 	}

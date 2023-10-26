@@ -52,7 +52,7 @@ func CurrentPublicKeyAvailable() (bool, error) {
 }
 
 func CurrentAvailableUser() (string, error) {
-	cert, err := LoadCertificateFromFile(config.GetFilePath(currentCertFilePath))
+	cert, err := loadCertificateFromFile(config.GetFilePath(currentCertFilePath))
 	if err != nil {
 		return "", fmt.Errorf("failed to load current cert: %w", err)
 	}
@@ -67,14 +67,14 @@ func CurrentAvailableUser() (string, error) {
 }
 
 func Unlock(password []byte) error {
-	cert, err := LoadCertificateFromFile(config.GetFilePath(currentCertFilePath))
+	cert, err := loadCertificateFromFile(config.GetFilePath(currentCertFilePath))
 	var pub *PublicKey
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("failed to load current cert: %w", err)
 		}
 
-		pub, err = LoadPublicKeyFromFile(config.GetFilePath(currentPubFilePath))
+		pub, err = loadPublicKeyFromFile(config.GetFilePath(currentPubFilePath))
 		if err != nil {
 			return fmt.Errorf("failed to load current public key: %w", err)
 		}
@@ -82,7 +82,7 @@ func Unlock(password []byte) error {
 		pub = cert.GetPublicKey()
 	}
 
-	key, err := LoadPrivateKeyFromFile(config.GetFilePath(currentKeyFilePath), password)
+	key, err := loadPrivateKeyFromFile(config.GetFilePath(currentKeyFilePath), password)
 	if err != nil {
 		return fmt.Errorf("failed to load current key: %w", err)
 	}
@@ -90,19 +90,6 @@ func Unlock(password []byte) error {
 	currentCert = cert
 	currentPub = pub
 	currentKey = key
-
-	return nil
-}
-
-func UnlockAsRoot(password []byte) error {
-	rootCert, rootKey, err := GetRoot(password)
-	if err != nil {
-		return fmt.Errorf("failed to load CA: %w", err)
-	}
-
-	currentKey = rootKey
-	currentCert = rootCert
-	currentPub = rootCert.GetPublicKey()
 
 	return nil
 }
@@ -162,7 +149,7 @@ func SaveCurrentCertAndKey(cert *Certificate, key *PrivateKey, password []byte) 
 		return fmt.Errorf("failed to save current cert: %w", err)
 	}
 
-	err = key.SaveToFile(config.GetFilePath(currentKeyFilePath), password)
+	err = key.saveToFile(config.GetFilePath(currentKeyFilePath), password)
 	if err != nil {
 		return fmt.Errorf("failed to save current key: %w", err)
 	}
@@ -171,12 +158,12 @@ func SaveCurrentCertAndKey(cert *Certificate, key *PrivateKey, password []byte) 
 }
 
 func SaveCurrentKeyPair(key *PrivateKey, pub *PublicKey, password []byte) error {
-	err := key.SaveToFile(config.GetFilePath(currentKeyFilePath), password)
+	err := key.saveToFile(config.GetFilePath(currentKeyFilePath), password)
 	if err != nil {
 		return fmt.Errorf("failed to save current key: %w", err)
 	}
 
-	err = pub.SaveToFile(config.GetFilePath(currentPubFilePath))
+	err = pub.saveToFile(config.GetFilePath(currentPubFilePath))
 	if err != nil {
 		return fmt.Errorf("failed to save current public key: %w", err)
 	}
@@ -185,7 +172,7 @@ func SaveCurrentKeyPair(key *PrivateKey, pub *PublicKey, password []byte) error 
 }
 
 func SaveCurrentCert(cert *Certificate) error {
-	err := cert.SaveToFile(config.GetFilePath(currentCertFilePath))
+	err := cert.saveToFile(config.GetFilePath(currentCertFilePath))
 	if err != nil {
 		return fmt.Errorf("failed to save current cert: %w", err)
 	}

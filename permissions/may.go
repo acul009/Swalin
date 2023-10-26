@@ -26,7 +26,7 @@ func (e PermissionDeniedError) Is(target error) bool {
 }
 
 func MayStartCommand(sender *pki.PublicKey, command string) error {
-	isRoot, err := pki.IsRootPublicKey(sender)
+	isRoot, err := pki.Root.MatchesKey(sender)
 	if err != nil {
 		return fmt.Errorf("failed to check if public key is CA: %w", err)
 	}

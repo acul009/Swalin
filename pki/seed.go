@@ -25,12 +25,12 @@ func init() {
 		if _, err := rand.Read(seed); err != nil {
 			panic(err)
 		}
-		err = SavePasswordToFile(config.GetFilePath(seedFilePath), seed)
+		err = savePasswordToFile(config.GetFilePath(seedFilePath), seed)
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		seed, err = LoadPasswordFromFile(config.GetFilePath(seedFilePath))
+		seed, err = loadPasswordFromFile(config.GetFilePath(seedFilePath))
 		if err != nil {
 			panic(err)
 		}

@@ -49,7 +49,7 @@ to quickly create a Cobra application.`,
 		// create root user if missing
 		var rootPassword []byte
 
-		_, err = pki.GetRootCert()
+		_, err = pki.Root.Get()
 		if err != nil {
 			if errors.Is(err, pki.ErrNoRootCert) {
 				fmt.Println("No root certificate found, generating one")
@@ -79,19 +79,19 @@ to quickly create a Cobra application.`,
 			}
 		}
 
-		pki.UnlockAsRoot(rootPassword)
+		pki.Unlock(rootPassword)
 
 		err = rpc.SetupServer(addr, rootPassword, nameForServer)
 		if err != nil {
 			panic(err)
 		}
 
-		rootCert, err := pki.GetRootCert()
+		rootCert, err := pki.Root.Get()
 		if err != nil {
 			panic(err)
 		}
 
-		rootKey, err := pki.GetRootKey(rootPassword)
+		rootKey, err := pki.GetCurrentKey()
 		if err != nil {
 			panic(err)
 		}
@@ -117,44 +117,6 @@ to quickly create a Cobra application.`,
 		}
 
 		err = session.SendCommand(reg)
-		if err != nil {
-			panic(err)
-		}
-
-		return
-		// create user if missing
-
-		var userPassword []byte
-
-		ok, err := pki.CurrentAvailable()
-		if err != nil {
-			panic(err)
-		}
-
-		if !ok {
-			newUser, err := util.AskForString("Enter username for new user")
-			if err != nil {
-				panic(err)
-			}
-
-			userPassword, err = util.AskForNewPassword("Enter password to encrypt the user certificate")
-			if err != nil {
-				panic(err)
-			}
-
-			err = pki.CreateAndApplyCurrentUserCert(newUser, userPassword, rootPassword)
-			if err != nil {
-				panic(err)
-			}
-		} else {
-			fmt.Println("User certificate found, skipping user creation")
-			userPassword, err = util.AskForPassword("Enter password for the user")
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		pki.Unlock(userPassword)
 		if err != nil {
 			panic(err)
 		}

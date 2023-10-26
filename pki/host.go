@@ -15,7 +15,7 @@ const (
 // since this needs to happen autonomously, it uses a password loaded from a file
 // if there is no keypair or certificate, it creates a newpair by itself.
 func UnlockHost() error {
-	password, err := LoadPasswordFromFile(config.GetFilePath(passwordFilePath))
+	password, err := loadPasswordFromFile(config.GetFilePath(passwordFilePath))
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("failed to load password: %w", err)
@@ -25,7 +25,7 @@ func UnlockHost() error {
 		if err != nil {
 			return fmt.Errorf("failed to generate password: %w", err)
 		}
-		err = SavePasswordToFile(config.GetFilePath(passwordFilePath), password)
+		err = savePasswordToFile(config.GetFilePath(passwordFilePath), password)
 		if err != nil {
 			return fmt.Errorf("failed to save password: %w", err)
 		}

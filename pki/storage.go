@@ -7,7 +7,7 @@ import (
 	"rahnit-rmm/util"
 )
 
-func (pub *PublicKey) SaveToFile(filepath string) error {
+func (pub *PublicKey) saveToFile(filepath string) error {
 	err := util.CreateParentDir(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to create parent directory: %w", err)
@@ -26,7 +26,7 @@ func (pub *PublicKey) SaveToFile(filepath string) error {
 	return nil
 }
 
-func LoadPublicKeyFromFile(filepath string) (*PublicKey, error) {
+func loadPublicKeyFromFile(filepath string) (*PublicKey, error) {
 	// Read the public key file
 	pubPEM, err := os.ReadFile(filepath)
 	if err != nil {
@@ -41,7 +41,7 @@ func LoadPublicKeyFromFile(filepath string) (*PublicKey, error) {
 	return pubKey, nil
 }
 
-func (cert *Certificate) SaveToFile(filepath string) error {
+func (cert *Certificate) saveToFile(filepath string) error {
 	err := util.CreateParentDir(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to create parent directory: %w", err)
@@ -55,7 +55,7 @@ func (cert *Certificate) SaveToFile(filepath string) error {
 	return nil
 }
 
-func LoadCertificateFromFile(filepath string) (*Certificate, error) {
+func loadCertificateFromFile(filepath string) (*Certificate, error) {
 	// Read the certificate file
 	certPEM, err := os.ReadFile(filepath)
 
@@ -71,7 +71,7 @@ func LoadCertificateFromFile(filepath string) (*Certificate, error) {
 	return cert, nil
 }
 
-func (key *PrivateKey) SaveToFile(filepath string, password []byte) error {
+func (key *PrivateKey) saveToFile(filepath string, password []byte) error {
 	err := util.CreateParentDir(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to create parent directory: %w", err)
@@ -90,7 +90,7 @@ func (key *PrivateKey) SaveToFile(filepath string, password []byte) error {
 	return nil
 }
 
-func LoadPrivateKeyFromFile(filepath string, password []byte) (*PrivateKey, error) {
+func loadPrivateKeyFromFile(filepath string, password []byte) (*PrivateKey, error) {
 	keyPEM, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func LoadPrivateKeyFromFile(filepath string, password []byte) (*PrivateKey, erro
 	return PrivateKeyFromPem(keyPEM, password)
 }
 
-func SavePasswordToFile(filepath string, password []byte) error {
+func savePasswordToFile(filepath string, password []byte) error {
 	err := util.CreateParentDir(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to create parent directory: %w", err)
@@ -118,7 +118,7 @@ func SavePasswordToFile(filepath string, password []byte) error {
 	return nil
 }
 
-func LoadPasswordFromFile(filepath string) ([]byte, error) {
+func loadPasswordFromFile(filepath string) ([]byte, error) {
 	// Read the certificate file
 	certPEM, err := os.ReadFile(filepath)
 

@@ -10,7 +10,7 @@ func VerifyCertificate(cert *Certificate) error {
 		return fmt.Errorf("certificate is nil")
 	}
 
-	rootCert, err := GetRootCert()
+	rootCert, err := Root.Get()
 	if err != nil {
 		return fmt.Errorf("failed to load root certificate: %w", err)
 	}
