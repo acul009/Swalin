@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"rahnit-rmm/ent/device"
 	"rahnit-rmm/ent/schema"
 	"rahnit-rmm/ent/user"
 )
@@ -11,6 +12,16 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	deviceFields := schema.Device{}.Fields()
+	_ = deviceFields
+	// deviceDescPublicKey is the schema descriptor for public_key field.
+	deviceDescPublicKey := deviceFields[0].Descriptor()
+	// device.PublicKeyValidator is a validator for the "public_key" field. It is called by the builders before save.
+	device.PublicKeyValidator = deviceDescPublicKey.Validators[0].(func(string) error)
+	// deviceDescCertificate is the schema descriptor for certificate field.
+	deviceDescCertificate := deviceFields[1].Descriptor()
+	// device.CertificateValidator is a validator for the "certificate" field. It is called by the builders before save.
+	device.CertificateValidator = deviceDescCertificate.Validators[0].(func(string) error)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescUsername is the schema descriptor for username field.
