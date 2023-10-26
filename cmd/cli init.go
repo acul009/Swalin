@@ -41,7 +41,7 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		err := config.SetSubdir("cli")
+		err := config.SetSubdir("client")
 		if err != nil {
 			panic(err)
 		}

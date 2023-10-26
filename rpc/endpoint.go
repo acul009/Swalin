@@ -29,7 +29,7 @@ func ConnectToUpstream(ctx context.Context) (*RpcEndpoint, error) {
 		return nil, fmt.Errorf("upstream address is missing")
 	}
 
-	upstreamCert, err := pki.GetUpstreamCert()
+	upstreamCert, err := pki.Upstream.Get()
 	if err != nil {
 		return nil, fmt.Errorf("error parsing upstream certificate: %w", err)
 	}

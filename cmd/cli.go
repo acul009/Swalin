@@ -12,7 +12,7 @@ import (
 
 // cliCmd represents the cli command
 var cliCmd = &cobra.Command{
-	Use:   "cli",
+	Use:   "client",
 	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
@@ -23,7 +23,7 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("cli called")
 
-		err := config.SetSubdir("cli")
+		err := config.SetSubdir("client")
 		if err != nil {
 			panic(err)
 		}

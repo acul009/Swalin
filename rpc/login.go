@@ -110,7 +110,7 @@ func Login(addr string, username string, password []byte, totpCode string) error
 		return fmt.Errorf("error saving root cert: %w", err)
 	}
 
-	err = pki.SaveUpstreamCert(success.UpstreamCert)
+	err = pki.Upstream.Set(success.UpstreamCert)
 	if err != nil {
 		return fmt.Errorf("error saving upstream cert: %w", err)
 	}

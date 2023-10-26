@@ -21,7 +21,7 @@ func VerifyCertificate(cert *Certificate) error {
 
 	// certificate is not root
 
-	upstreamCert, err := GetUpstreamCert()
+	upstreamCert, err := Upstream.Get()
 	if err != nil {
 		return fmt.Errorf("failed to load upstream certificate: %w", err)
 	}

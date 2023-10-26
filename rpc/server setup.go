@@ -233,7 +233,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 		return fmt.Errorf("error saving config: %w", err)
 	}
 
-	err = pki.SaveUpstreamCert(serverHostCert)
+	err = pki.Upstream.Set(serverHostCert)
 	if err != nil {
 		return fmt.Errorf("error saving upstream certificate: %w", err)
 	}
