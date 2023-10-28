@@ -140,3 +140,12 @@ func (u *PermanentCredentials) GetTlsCert() (*tls.Certificate, error) {
 
 	return tlsCert, nil
 }
+
+func (u *PermanentCredentials) GetName() (string, error) {
+	cert, err := u.GetCertificate()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current cert: %w", err)
+	}
+
+	return cert.GetName(), nil
+}

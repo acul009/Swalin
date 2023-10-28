@@ -97,3 +97,7 @@ func (cert *Certificate) GetType() (CertType, error) {
 	return CertTypeError, fmt.Errorf("unknown certificate type")
 
 }
+
+func (cert *Certificate) GetName() string {
+	return cert.Subject.CommonName
+}
