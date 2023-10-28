@@ -15,11 +15,17 @@ const (
 	ProtoClientLogin TlsConnectionProto = "rahnit-rmm-client-login"
 )
 
-func getTlsTempClientConfig(proto TlsConnectionProto) *tls.Config {
+func getTlsTempClientConfig(protos []TlsConnectionProto) *tls.Config {
+	tlsProtos := make([]string, len(protos))
+
+	for i, proto := range protos {
+		tlsProtos[i] = string(proto)
+	}
+
 	return &tls.Config{
 		// TODO: implement ACME certificate request and remove the InsecureSkipVerify option
 		InsecureSkipVerify:   true,
-		NextProtos:           []string{string(proto)},
+		NextProtos:           tlsProtos,
 		GetClientCertificate: nil,
 	}
 }

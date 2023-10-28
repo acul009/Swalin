@@ -7,6 +7,7 @@ import (
 	"log"
 	"rahnit-rmm/pki"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/quic-go/quic-go"
@@ -30,7 +31,7 @@ type RpcServer struct {
 	listener          *quic.Listener
 	rpcCommands       *CommandCollection
 	state             RpcServerState
-	activeConnections map[uuid.UUID]*rpcConnection
+	activeConnections map[uuid.UUID]*RpcConnection
 	mutex             sync.Mutex
 	nonceStorage      *nonceStorage
 }
@@ -49,7 +50,9 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection) (*RpcServer
 		return nil, fmt.Errorf("error getting server tls config: %w", err)
 	}
 
-	quicConf := &quic.Config{}
+	quicConf := &quic.Config{
+		KeepAlivePeriod: 30 * time.Second,
+	}
 	listener, err := quic.ListenAddr(listenAddr, tlsConf, quicConf)
 	if err != nil {
 		return nil, fmt.Errorf("error creating QUIC server: %w", err)
@@ -59,13 +62,13 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection) (*RpcServer
 		listener:          listener,
 		rpcCommands:       rpcCommands,
 		state:             RpcServerCreated,
-		activeConnections: make(map[uuid.UUID]*rpcConnection),
+		activeConnections: make(map[uuid.UUID]*RpcConnection),
 		mutex:             sync.Mutex{},
 		nonceStorage:      NewNonceStorage(),
 	}, nil
 }
 
-func (s *RpcServer) accept() (*rpcConnection, error) {
+func (s *RpcServer) accept() (*RpcConnection, error) {
 	conn, err := s.listener.Accept(context.Background())
 	if err != nil {
 		conn.CloseWithError(400, "")
@@ -123,14 +126,14 @@ func (s *RpcServer) accept() (*rpcConnection, error) {
 
 	}
 
-	var connection *rpcConnection
+	var connection *RpcConnection
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	for i := 0; i < 10; i++ {
 		newConnection := newRpcConnection(conn, s, RpcRoleServer, s.nonceStorage, peerCert, protocol)
-		if _, ok := s.activeConnections[newConnection.Uuid]; !ok {
+		if _, ok := s.activeConnections[newConnection.uuid]; !ok {
 			connection = newConnection
 			break
 		}
@@ -141,7 +144,7 @@ func (s *RpcServer) accept() (*rpcConnection, error) {
 		return nil, fmt.Errorf("multiple uuid collisions, this should mathematically be impossible")
 	}
 
-	s.activeConnections[connection.Uuid] = connection
+	s.activeConnections[connection.uuid] = connection
 
 	return connection, nil
 }
@@ -218,7 +221,7 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 
 	for _, connection := range connectionsToClose {
 		wg.Add(1)
-		go func(connection *rpcConnection) {
+		go func(connection *RpcConnection) {
 			err := connection.Close(code, msg)
 			if err != nil {
 				errChan <- err

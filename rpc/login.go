@@ -9,36 +9,15 @@ import (
 	"rahnit-rmm/ent/user"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/util"
-
-	"github.com/quic-go/quic-go"
 )
 
-func Login(addr string, username string, password []byte, totpCode string) error {
+func Login(conn *RpcConnection, username string, password []byte, totpCode string) error {
 	err := pki.UnlockWithTempKeys()
 	if err != nil {
 		return fmt.Errorf("error unlocking with temp keys: %w", err)
 	}
 
-	tlsConf := getTlsTempClientConfig(ProtoClientLogin)
-
-	quicConf := &quic.Config{}
-
-	quicConn, err := quic.DialAddr(context.Background(), addr, tlsConf, quicConf)
-	if err != nil {
-		qErr, ok := err.(*quic.TransportError)
-		if ok && uint8(qErr.ErrorCode) == 120 {
-			return fmt.Errorf("server not ready for login: %w", err)
-		}
-		return fmt.Errorf("error creating QUIC connection: %w", err)
-	}
-
-	initNonceStorage = NewNonceStorage()
-
-	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoServerInit)
-
 	defer conn.Close(500, "")
-
-	log.Printf("Connection opened to %s\n", addr)
 
 	session, err := conn.AcceptSession(context.Background())
 	if err != nil {
@@ -115,7 +94,7 @@ func Login(addr string, username string, password []byte, totpCode string) error
 		return fmt.Errorf("error saving upstream cert: %w", err)
 	}
 
-	config.V().Set("upstream.address", addr)
+	config.V().Set("upstream.address", conn.connection.RemoteAddr().String())
 	err = config.Save()
 	if err != nil {
 		return fmt.Errorf("error saving config: %w", err)
@@ -151,7 +130,7 @@ type loginSuccessResponse struct {
 	EncryptedPrivateKey []byte
 }
 
-func acceptLoginRequest(conn *rpcConnection) error {
+func acceptLoginRequest(conn *RpcConnection) error {
 	// prepare session
 	ctx := conn.connection.Context()
 
@@ -246,6 +225,10 @@ func acceptLoginRequest(conn *rpcConnection) error {
 	err = ReadMessage[*loginRequest](session, &login)
 	if err != nil {
 		return fmt.Errorf("error reading login request: %w", err)
+	}
+
+	if failed {
+		return fmt.Errorf("user does not exist")
 	}
 
 	// check the password hash

@@ -6,6 +6,7 @@ import (
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
 	"sync"
+	"time"
 
 	"github.com/quic-go/quic-go"
 )
@@ -18,7 +19,7 @@ const (
 )
 
 type RpcEndpoint struct {
-	conn  *rpcConnection
+	conn  *RpcConnection
 	state RpcEndpointState
 	mutex sync.Mutex
 }
@@ -48,7 +49,9 @@ func newRpcEndpoint(ctx context.Context, addr string, partner *pki.Certificate) 
 
 	tlsConf := getTlsClientConfig(ProtoRpc)
 
-	quicConf := &quic.Config{}
+	quicConf := &quic.Config{
+		KeepAlivePeriod: 30 * time.Second,
+	}
 
 	quicConn, err := quic.DialAddr(context.Background(), addr, tlsConf, quicConf)
 	if err != nil {

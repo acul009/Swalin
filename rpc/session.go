@@ -24,14 +24,14 @@ const (
 
 type RpcSession struct {
 	quic.Stream
-	Connection *rpcConnection
+	Connection *RpcConnection
 	Uuid       uuid.UUID
 	state      RpcSessionState
 	mutex      sync.Mutex
 	partner    *pki.PublicKey
 }
 
-func newRpcSession(stream quic.Stream, conn *rpcConnection) *RpcSession {
+func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 
 	var pubkey *pki.PublicKey = nil
 

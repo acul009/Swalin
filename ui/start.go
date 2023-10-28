@@ -1,17 +1,23 @@
 package ui
 
 import (
+	"crypto/rand"
 	"fmt"
+	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
 	"regexp"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/cmd/fyne_demo/data"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/data/validation"
 	"fyne.io/fyne/v2/widget"
+	"github.com/pquerna/otp"
+	"github.com/pquerna/otp/totp"
 )
 
 var master fyne.Window
@@ -25,7 +31,7 @@ func StartUI() {
 
 	master = w
 
-	if pki.Root.Available() {
+	if config.V().GetString("upstream.address") != "" {
 		unlock()
 	} else {
 		setup()
@@ -81,22 +87,47 @@ func unlock() {
 }
 
 func setup() {
+	addressBind := binding.NewString()
+	addressInput := widget.NewEntryWithData(addressBind)
+	addressInput.PlaceHolder = "localhost:1234"
+
+	form := widget.NewForm(
+		widget.NewFormItem("Server Address", addressInput),
+	)
+
+	form.SubmitText = "Connect"
+
+	form.OnSubmit = func() {
+
+		address, err := addressBind.Get()
+		if err != nil {
+			return
+		}
+
+		conn, err := rpc.FirstClientConnect(address)
+		if err != nil {
+			return
+		}
+
+		switch conn.GetProtocol() {
+		case rpc.ProtoClientLogin:
+			setupLoginForm(conn)
+
+		case rpc.ProtoServerInit:
+			setupServerForm(conn)
+
+		default:
+			conn.Close(400, "")
+			return
+		}
+	}
 
 	master.SetContent(
-		container.NewAppTabs(
-			container.NewTabItem("Setup Server", container.NewVBox(
-				setupServerForm(),
-			)),
-			container.NewTabItem("Login", container.NewVBox(
-				setupLoginForm(),
-			)),
-		),
+		form,
 	)
 }
 
-func setupLoginForm() *widget.Form {
-	addressBind := binding.NewString()
-	addressInput := widget.NewEntryWithData(addressBind)
+func setupLoginForm(conn *rpc.RpcConnection) {
 
 	userBind := binding.NewString()
 	userInput := widget.NewEntryWithData(userBind)
@@ -125,17 +156,12 @@ func setupLoginForm() *widget.Form {
 	}
 
 	form := widget.NewForm(
-		widget.NewFormItem("Address", addressInput),
 		widget.NewFormItem("User", userInput),
 		widget.NewFormItem("Password", passwordInput),
 		widget.NewFormItem("TOTP", totpInput),
 	)
 
 	form.OnSubmit = func() {
-		addr, err := addressBind.Get()
-		if err != nil {
-			return
-		}
 
 		username, err := userBind.Get()
 		if err != nil {
@@ -152,18 +178,18 @@ func setupLoginForm() *widget.Form {
 			return
 		}
 
-		err = rpc.Login(addr, username, []byte(password), totpCode)
+		err = rpc.Login(conn, username, []byte(password), totpCode)
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
 
-	return form
+	master.SetContent(
+		form,
+	)
 }
 
-func setupServerForm() *widget.Form {
-	addressBind := binding.NewString()
-	addressInput := widget.NewEntryWithData(addressBind)
+func setupServerForm(conn *rpc.RpcConnection) {
 
 	userBind := binding.NewString()
 	userInput := widget.NewEntryWithData(userBind)
@@ -195,52 +221,92 @@ func setupServerForm() *widget.Form {
 		return nil
 	}
 
-	totpCodeBind := binding.NewString()
-	totpInput := widget.NewEntryWithData(totpCodeBind)
-	totpInput.PlaceHolder = "00000000"
-	totpInput.Validator = func(s string) error {
-		regexp := regexp.MustCompile(`^[0-9]{8}$`)
-		if !regexp.MatchString(s) {
-			return fmt.Errorf("invalid TOTP code")
-		}
-
-		return nil
-	}
-
 	form := widget.NewForm(
-		widget.NewFormItem("Address", addressInput),
 		widget.NewFormItem("Root User", userInput),
 		widget.NewFormItem("Password", passwordInput),
 		widget.NewFormItem("Repeat Password", passwordRepeatInput),
-		widget.NewFormItem("TOTP", totpInput),
 	)
 
 	form.OnSubmit = func() {
-		addr, err := addressBind.Get()
+		totpCode, totpSecret, err := askForNewTotp(userInput.Text, master.Canvas())
 		if err != nil {
 			return
 		}
 
-		username, err := userBind.Get()
-		if err != nil {
-			return
-		}
+		fmt.Println(totpCode, totpSecret)
+		// username, err := userBind.Get()
+		// if err != nil {
+		// 	return
+		// }
 
-		password, err := passwordBind.Get()
-		if err != nil {
-			return
-		}
+		// password, err := passwordBind.Get()
+		// if err != nil {
+		// 	return
+		// }
 
-		totpCode, err := totpCodeBind.Get()
-		if err != nil {
-			return
-		}
-
-		err = rpc.Login(addr, username, []byte(password), totpCode)
-		if err != nil {
-			fmt.Println(err)
-		}
+		// totpCode, err := totpCodeBind.Get()
+		// if err != nil {
+		// 	return
+		// }
 	}
 
-	return form
+	master.SetContent(
+		form,
+	)
+}
+
+func askForNewTotp(accountName string, targetCanvas fyne.Canvas) (code string, secret string, err error) {
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "rahnit-rmm",
+		AccountName: accountName,
+		SecretSize:  32,
+		Rand:        rand.Reader,
+		Period:      30,
+		Digits:      otp.DigitsEight,
+	})
+
+	if err != nil {
+		return "", "", fmt.Errorf("error generating totp: %w", err)
+	}
+
+	secret = key.URL()
+
+	image, err := key.Image(400, 400)
+	if err != nil {
+		return "", "", fmt.Errorf("error generating totp image: %w", err)
+	}
+
+	codeBinding := binding.NewString()
+	codeInput := widget.NewEntryWithData(codeBinding)
+	codeInput.PlaceHolder = "00000000"
+	codeInput.Validator = validation.NewRegexp(`^[0-9]{8}$`, "invalid TOTP code")
+
+	form := widget.NewForm(
+		widget.NewFormItem("Code", codeInput),
+	)
+
+	qrCode := canvas.NewImageFromImage(image)
+	qrCode.FillMode = canvas.ImageFillContain
+	qrCode.SetMinSize(fyne.NewSize(200, 200))
+
+	secretEntry := &widget.Entry{
+		Text:      secret,
+		MultiLine: true,
+		Wrapping:  fyne.TextWrapBreak,
+	}
+	secretEntry.OnChanged = func(s string) {
+		secretEntry.SetText(secret)
+	}
+
+	widget.NewModalPopUp(
+		container.NewVBox(
+			qrCode,
+			secretEntry,
+			widget.NewLabel(secret),
+			form,
+		),
+		master.Canvas(),
+	).Show()
+
+	return
 }

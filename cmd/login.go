@@ -4,11 +4,6 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
-	"rahnit-rmm/config"
-	"rahnit-rmm/rpc"
-	"rahnit-rmm/util"
-
 	"github.com/spf13/cobra"
 )
 
@@ -24,37 +19,37 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		err := config.SetSubdir("client")
-		if err != nil {
-			panic(err)
-		}
+		// err := config.SetSubdir("client")
+		// if err != nil {
+		// 	panic(err)
+		// }
 
-		// address is required
-		addr := cmd.Flag("addr").Value.String()
-		if len(addr) == 0 {
-			fmt.Println("Address is required (--addr)")
-			return
-		}
+		// // address is required
+		// addr := cmd.Flag("addr").Value.String()
+		// if len(addr) == 0 {
+		// 	fmt.Println("Address is required (--addr)")
+		// 	return
+		// }
 
-		username, err := util.AskForString("Enter username")
-		if err != nil {
-			panic(err)
-		}
+		// username, err := util.AskForString("Enter username")
+		// if err != nil {
+		// 	panic(err)
+		// }
 
-		password, err := util.AskForPassword("Enter password")
-		if err != nil {
-			panic(err)
-		}
+		// password, err := util.AskForPassword("Enter password")
+		// if err != nil {
+		// 	panic(err)
+		// }
 
-		totpCode, err := util.AskForTotpCode(username)
-		if err != nil {
-			panic(err)
-		}
+		// totpCode, err := util.AskForTotpCode(username)
+		// if err != nil {
+		// 	panic(err)
+		// }
 
-		err = rpc.Login(addr, username, password, totpCode)
-		if err != nil {
-			panic(err)
-		}
+		// err = rpc.Login(addr, username, password, totpCode)
+		// if err != nil {
+		// 	panic(err)
+		// }
 
 	},
 }
