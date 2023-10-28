@@ -11,31 +11,31 @@ import (
 	"rahnit-rmm/util"
 )
 
-func Login(conn *RpcConnection, username string, password []byte, totpCode string) error {
+func Login(conn *RpcConnection, username string, password []byte, totpCode string) (*pki.PermanentCredentials, error) {
 	defer conn.Close(500, "")
 
 	credentials, err := pki.GenerateCredentials()
 	if err != nil {
-		return fmt.Errorf("error generating temp credentials: %w", err)
+		return nil, fmt.Errorf("error generating temp credentials: %w", err)
 	}
 
 	conn.credentials = credentials
 
 	session, err := conn.AcceptSession(context.Background())
 	if err != nil {
-		return fmt.Errorf("error opening QUIC stream: %w", err)
+		return nil, fmt.Errorf("error opening QUIC stream: %w", err)
 	}
 
 	defer session.Close()
 
 	err = session.mutateState(RpcSessionCreated, RpcSessionOpen)
 	if err != nil {
-		return fmt.Errorf("error mutating session state: %w", err)
+		return nil, fmt.Errorf("error mutating session state: %w", err)
 	}
 
 	err = receivePartnerKey(session)
 	if err != nil {
-		return fmt.Errorf("error receiving partner key: %w", err)
+		return nil, fmt.Errorf("error receiving partner key: %w", err)
 	}
 
 	paramRequest := &loginParameterRequest{
@@ -44,19 +44,19 @@ func Login(conn *RpcConnection, username string, password []byte, totpCode strin
 
 	err = WriteMessage[*loginParameterRequest](session, paramRequest)
 	if err != nil {
-		return fmt.Errorf("error writing params request: %w", err)
+		return nil, fmt.Errorf("error writing params request: %w", err)
 	}
 
 	params := loginParameters{}
 
 	err = ReadMessage[*loginParameters](session, &params)
 	if err != nil {
-		return fmt.Errorf("error reading params request: %w", err)
+		return nil, fmt.Errorf("error reading params request: %w", err)
 	}
 
 	hash, err := util.HashPassword(password, params.PasswordParams)
 	if err != nil {
-		return fmt.Errorf("error hashing password: %w", err)
+		return nil, fmt.Errorf("error hashing password: %w", err)
 	}
 
 	login := &loginRequest{
@@ -66,50 +66,52 @@ func Login(conn *RpcConnection, username string, password []byte, totpCode strin
 
 	err = WriteMessage[*loginRequest](session, login)
 	if err != nil {
-		return fmt.Errorf("error writing login request: %w", err)
+		return nil, fmt.Errorf("error writing login request: %w", err)
 	}
 
 	success := loginSuccessResponse{}
 
 	err = ReadMessage[*loginSuccessResponse](session, &success)
 	if err != nil {
-		return fmt.Errorf("error reading login response: %w", err)
+		return nil, fmt.Errorf("error reading login response: %w", err)
 	}
 
 	privateKey, err := pki.PrivateKeyFromBinary(success.EncryptedPrivateKey, password)
 	if err != nil {
-		return fmt.Errorf("error decrypting private key: %w", err)
+		return nil, fmt.Errorf("error decrypting private key: %w", err)
 	}
 
 	err = pki.SaveUserCredentials(username, password, success.Cert, privateKey)
 	if err != nil {
-		return fmt.Errorf("error saving user credentials: %w", err)
+		return nil, fmt.Errorf("error saving user credentials: %w", err)
 	}
 
 	err = pki.Root.Set(success.RootCert)
 	if err != nil {
-		return fmt.Errorf("error saving root cert: %w", err)
+		return nil, fmt.Errorf("error saving root cert: %w", err)
 	}
 
 	err = pki.Upstream.Set(success.UpstreamCert)
 	if err != nil {
-		return fmt.Errorf("error saving upstream cert: %w", err)
+		return nil, fmt.Errorf("error saving upstream cert: %w", err)
 	}
 
 	config.V().Set("upstream.address", conn.connection.RemoteAddr().String())
 	err = config.Save()
 	if err != nil {
-		return fmt.Errorf("error saving config: %w", err)
+		return nil, fmt.Errorf("error saving config: %w", err)
 	}
 
 	err = session.Close()
 	if err != nil {
-		return fmt.Errorf("error closing session: %w", err)
+		return nil, fmt.Errorf("error closing session: %w", err)
 	}
+
+	userCredentials, err := pki.GetUserCredentials(username, password)
 
 	conn.Close(200, "done")
 
-	return nil
+	return userCredentials, nil
 }
 
 type loginParameterRequest struct {

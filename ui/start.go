@@ -8,8 +8,8 @@ import (
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
+	mainview "rahnit-rmm/ui/main_view"
 	"rahnit-rmm/util"
-	"regexp"
 	"sync"
 
 	"fyne.io/fyne/v2"
@@ -24,8 +24,6 @@ import (
 	"github.com/pquerna/otp/totp"
 )
 
-var master fyne.Window
-
 func StartUI() {
 	err := config.SetSubdir("client")
 	if err != nil {
@@ -36,64 +34,62 @@ func StartUI() {
 	a.SetIcon(data.FyneLogo)
 	w := a.NewWindow("Fyne Demo")
 
-	w.SetMaster()
-
-	master = w
-
 	if config.V().GetString("upstream.address") != "" {
-		unlock()
+		unlock(w)
 	} else {
-		setup()
+		setup(w)
 	}
 
 	w.Resize(fyne.NewSize(800, 600))
 	w.ShowAndRun()
 }
 
-func unlock() {
+func unlock(w fyne.Window) {
 	infoLabel := widget.NewLabel("Please login")
 
+	availableUsers, err := pki.ListAvailableUserCredentials()
+	if err != nil {
+		panic(err)
+	}
+
+	userSelect := widget.NewSelect(availableUsers, nil)
+
 	passwordField := widget.NewPasswordEntry()
-
-	minLength := 8
-
-	loginCallback := func(s string) {
-		if len(s) < minLength {
-			return
+	passwordField.Validator = func(s string) error {
+		if len(s) < 8 {
+			return fmt.Errorf("password must be at least 8 characters")
 		}
 
-		infoLabel.SetText("Login Successful")
-
+		return nil
 	}
 
-	loginButton := widget.NewButton("Login", func() {
-		loginCallback(passwordField.Text)
-	})
-	loginButton.Disable()
+	form := widget.NewForm(
+		widget.NewFormItem("User", userSelect),
+		widget.NewFormItem("Password", passwordField),
+	)
+	form.SubmitText = "Login"
 
-	passwordField.OnChanged = func(s string) {
-		if len(s) < minLength {
-			loginButton.Disable()
-		} else {
-			loginButton.Enable()
+	form.OnSubmit = func() {
+		username := userSelect.Selected
+		password := passwordField.Text
+
+		credentials, err := pki.GetUserCredentials(username, []byte(password))
+		if err != nil {
+			panic(err)
 		}
+
+		mainview.DisplayMainView(w, credentials)
 	}
 
-	passwordField.OnSubmitted = func(s string) {
-		loginCallback(s)
-	}
-
-	master.SetContent(container.NewVBox(
+	w.SetContent(container.NewVBox(
 		infoLabel,
-		passwordField,
-		loginButton,
+		form,
 	))
 }
 
-func setup() {
-	addressBind := binding.NewString()
-	addressBind.Set("localhost:1234")
-	addressInput := widget.NewEntryWithData(addressBind)
+func setup(w fyne.Window) {
+	addressInput := widget.NewEntry()
+	addressInput.Text = "localhost:1234"
 
 	form := widget.NewForm(
 		widget.NewFormItem("Server Address", addressInput),
@@ -103,44 +99,36 @@ func setup() {
 
 	form.OnSubmit = func() {
 
-		address, err := addressBind.Get()
-		if err != nil {
-			log.Printf("failed to get address: %v", err)
-			return
-		}
+		address := addressInput.Text
 
 		conn, err := rpc.FirstClientConnect(address)
 		if err != nil {
-			log.Printf("failed to connect: %v", err)
-			return
+			panic(err)
 		}
 
 		switch conn.GetProtocol() {
 		case rpc.ProtoClientLogin:
-			setupLoginForm(conn)
+			setupLoginForm(w, conn)
 
 		case rpc.ProtoServerInit:
-			setupServerForm(conn)
+			setupServerForm(w, conn)
 
 		default:
 			conn.Close(400, "")
-			return
+			panic(fmt.Errorf("unknown protocol %v", conn.GetProtocol()))
 		}
 	}
 
-	master.SetContent(
+	w.SetContent(
 		form,
 	)
 }
 
-func setupLoginForm(conn *rpc.RpcConnection) {
+func setupLoginForm(w fyne.Window, conn *rpc.RpcConnection) {
 
-	userBind := binding.NewString()
-	userInput := widget.NewEntryWithData(userBind)
+	userInput := widget.NewEntry()
 
-	passwordBind := binding.NewString()
 	passwordInput := widget.NewPasswordEntry()
-	passwordInput.Bind(passwordBind)
 	passwordInput.Validator = func(s string) error {
 		if len(s) < 8 {
 			return fmt.Errorf("password must be at least 8 characters")
@@ -149,17 +137,9 @@ func setupLoginForm(conn *rpc.RpcConnection) {
 		return nil
 	}
 
-	totpCodeBind := binding.NewString()
-	totpInput := widget.NewEntryWithData(totpCodeBind)
+	totpInput := widget.NewEntry()
 	totpInput.PlaceHolder = "00000000"
-	totpInput.Validator = func(s string) error {
-		regexp := regexp.MustCompile(`^[0-9]{8}$`)
-		if !regexp.MatchString(s) {
-			return fmt.Errorf("invalid TOTP code")
-		}
-
-		return nil
-	}
+	totpInput.Validator = validation.NewRegexp("^[0-9]{8}$", "invalid TOTP code")
 
 	form := widget.NewForm(
 		widget.NewFormItem("User", userInput),
@@ -169,46 +149,32 @@ func setupLoginForm(conn *rpc.RpcConnection) {
 
 	form.OnSubmit = func() {
 
-		username, err := userBind.Get()
+		username := userInput.Text
+
+		password := passwordInput.Text
+
+		totpCode := totpInput.Text
+
+		credentials, err := rpc.Login(conn, username, []byte(password), totpCode)
 		if err != nil {
-			log.Printf("failed to get username: %v", err)
-			return
+			panic(err)
 		}
 
-		password, err := passwordBind.Get()
-		if err != nil {
-			log.Printf("failed to get password: %v", err)
-			return
-		}
-
-		totpCode, err := totpCodeBind.Get()
-		if err != nil {
-			log.Printf("failed to get TOTP code: %v", err)
-			return
-		}
-
-		err = rpc.Login(conn, username, []byte(password), totpCode)
-		if err != nil {
-			log.Printf("login failed: %v", err)
-		}
+		mainview.DisplayMainView(w, credentials)
 	}
 
-	master.SetContent(
+	w.SetContent(
 		form,
 	)
 }
 
-func setupServerForm(conn *rpc.RpcConnection) {
+func setupServerForm(w fyne.Window, conn *rpc.RpcConnection) {
 
-	serverNameBind := binding.NewString()
-	serverNameInput := widget.NewEntryWithData(serverNameBind)
+	serverNameInput := widget.NewEntry()
 
-	userBind := binding.NewString()
-	userInput := widget.NewEntryWithData(userBind)
+	userInput := widget.NewEntry()
 
-	passwordBind := binding.NewString()
 	passwordInput := widget.NewPasswordEntry()
-	passwordInput.Bind(passwordBind)
 	passwordInput.Validator = func(s string) error {
 		if len(s) < 8 {
 			return fmt.Errorf("password must be at least 8 characters")
@@ -217,14 +183,9 @@ func setupServerForm(conn *rpc.RpcConnection) {
 		return nil
 	}
 
-	passwordRepeatBind := binding.NewString()
 	passwordRepeatInput := widget.NewPasswordEntry()
-	passwordRepeatInput.Bind(passwordRepeatBind)
 	passwordRepeatInput.Validator = func(s string) error {
-		password, err := passwordBind.Get()
-		if err != nil {
-			return err
-		}
+		password := passwordInput.Text
 
 		if password != s {
 			return fmt.Errorf("passwords do not match")
@@ -242,7 +203,7 @@ func setupServerForm(conn *rpc.RpcConnection) {
 
 	form.OnSubmit = func() {
 		go func() {
-			totpCode, totpSecret, err := askForNewTotp(userInput.Text, master.Canvas())
+			totpCode, totpSecret, err := askForNewTotp(userInput.Text, w.Canvas())
 			if err != nil {
 				log.Printf("error generating totp: %v", err)
 				return
@@ -250,23 +211,11 @@ func setupServerForm(conn *rpc.RpcConnection) {
 
 			fmt.Printf("\ntotp secret: %s\ntotp code: %s\n", totpSecret, totpCode)
 
-			serverName, err := serverNameBind.Get()
-			if err != nil {
-				log.Printf("failed to get server name: %v", err)
-				return
-			}
+			serverName := serverNameInput.Text
 
-			username, err := userBind.Get()
-			if err != nil {
-				log.Printf("failed to get username: %v", err)
-				return
-			}
+			username := userInput.Text
 
-			password, err := passwordBind.Get()
-			if err != nil {
-				log.Printf("failed to get password: %v", err)
-				return
-			}
+			password := passwordInput.Text
 
 			err = pki.InitRoot(username, []byte(password))
 			if err != nil {
@@ -304,10 +253,12 @@ func setupServerForm(conn *rpc.RpcConnection) {
 			if err != nil {
 				panic(err)
 			}
+
+			mainview.DisplayMainView(w, credentials)
 		}()
 	}
 
-	master.SetContent(
+	w.SetContent(
 		form,
 	)
 }
@@ -383,7 +334,7 @@ func askForNewTotp(accountName string, targetCanvas fyne.Canvas) (code string, s
 			widget.NewRichText(errorLabel),
 			form,
 		),
-		master.Canvas(),
+		targetCanvas,
 	)
 	popup.Resize(fyne.NewSize(500, 500))
 	popup.Show()

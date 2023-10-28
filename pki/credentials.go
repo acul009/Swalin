@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"path/filepath"
+	"rahnit-rmm/config"
 )
 
 type Credentials interface {
@@ -33,6 +34,25 @@ func SaveUserCredentials(username string, password []byte, cert *Certificate, ke
 	}
 
 	return nil
+}
+
+func ListAvailableUserCredentials() ([]string, error) {
+	userFolder := config.GetFilePath("users", "*.key")
+
+	matches, err := filepath.Glob(userFolder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list user credentials: %w", err)
+	}
+
+	users := make([]string, 0, len(matches))
+
+	for _, match := range matches {
+		newUser := filepath.Base(match)
+		ext := filepath.Ext(match)
+		users = append(users, newUser[0:len(newUser)-len(ext)])
+	}
+
+	return users, nil
 }
 
 func getCredentials(password []byte, filename string, path ...string) *PermanentCredentials {
