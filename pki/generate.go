@@ -111,14 +111,12 @@ func signCert(template *x509.Certificate, caKey *PrivateKey, caCert *x509.Certif
 		return nil, fmt.Errorf("failed to create certificate: %w", err)
 	}
 
-	cert, err := x509.ParseCertificate(certDER)
+	cert, err := CertificateFromBinary(certDER)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse certificate: %w", err)
 	}
 
-	certRef := Certificate(*cert)
-
-	return &certRef, nil
+	return cert, nil
 }
 
 type CertType string

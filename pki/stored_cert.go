@@ -6,12 +6,13 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"rahnit-rmm/config"
 )
 
 type storedCertificate struct {
 	certificate   *Certificate
 	allowOverride bool
-	path          string
+	filename      string
 }
 
 // Custom go error to indicate that the CA certificate is missing
@@ -30,7 +31,7 @@ func (e certMissingError) Unwrap() error {
 var ErrCertMissing = certMissingError{}
 
 func (s *storedCertificate) Available() bool {
-	_, err := os.Stat(s.path)
+	_, err := os.Stat(s.filename)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false
@@ -41,9 +42,13 @@ func (s *storedCertificate) Available() bool {
 	return true
 }
 
+func (s *storedCertificate) path() string {
+	return config.GetFilePath(s.filename)
+}
+
 func (s *storedCertificate) Get() (*Certificate, error) {
 	if s.certificate == nil {
-		cert, err := loadCertificateFromFile(s.path)
+		cert, err := loadCertificateFromFile(s.path())
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
 				return nil, &certMissingError{
@@ -64,7 +69,7 @@ func (s *storedCertificate) Set(cert *Certificate) error {
 		return errors.New("cannot override certificate")
 	}
 
-	err := s.certificate.saveToFile(s.path)
+	err := cert.saveToFile(s.path())
 	if err != nil {
 		return fmt.Errorf("failed to save certificate: %w", err)
 	}

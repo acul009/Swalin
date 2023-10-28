@@ -81,10 +81,10 @@ to quickly create a Cobra application.`,
 
 		pki.Unlock(rootPassword)
 
-		err = rpc.SetupServer(addr, rootPassword, nameForServer)
-		if err != nil {
-			panic(err)
-		}
+		// err = rpc.SetupServer(addr, rootPassword, nameForServer)
+		// if err != nil {
+		// 	panic(err)
+		// }
 
 		rootCert, err := pki.Root.Get()
 		if err != nil {

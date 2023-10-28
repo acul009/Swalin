@@ -12,7 +12,7 @@ type userCredentials struct {
 func GetUserCredentials(username string, password []byte) (*userCredentials, error) {
 	certStorage := &storedCertificate{
 		allowOverride: false,
-		path:          config.GetFilePath("users", username+".crt"),
+		filename:      config.GetFilePath("users", username+".crt"),
 	}
 
 	return &userCredentials{

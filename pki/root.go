@@ -2,11 +2,10 @@ package pki
 
 import (
 	"fmt"
-	"rahnit-rmm/config"
 )
 
 var Root = &storedCertificate{
-	path:          config.GetFilePath(rootCertFilePath),
+	filename:      rootCertFilePath,
 	allowOverride: false,
 }
 
@@ -44,7 +43,9 @@ func InitRoot(rootName string, password []byte) error {
 		return fmt.Errorf("failed to generate root certificate: %w", err)
 	}
 
-	err = rootCert.saveToFile(config.GetFilePath(rootCertFilePath))
+	fmt.Printf("root certificate: %+v\n", rootCert)
+
+	err = Root.Set(rootCert)
 	if err != nil {
 		return fmt.Errorf("failed to save root certificate: %w", err)
 	}

@@ -143,30 +143,12 @@ func acceptServerInitialization(quicConn quic.Connection) error {
 	return nil
 }
 
-func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
+func SetupServer(conn *RpcConnection, rootPassword []byte, nameForServer string) error {
+
 	err := pki.Unlock(rootPassword)
 	if err != nil {
 		return fmt.Errorf("error unlocking root cert: %w", err)
 	}
-
-	tlsConf := getTlsClientConfig(ProtoServerInit)
-
-	quicConf := &quic.Config{}
-
-	quicConn, err := quic.DialAddr(context.Background(), addr, tlsConf, quicConf)
-	if err != nil {
-		qErr, ok := err.(*quic.TransportError)
-		if ok && uint8(qErr.ErrorCode) == 120 {
-			return fmt.Errorf("server not in init mode: %w", err)
-		}
-		return fmt.Errorf("error creating QUIC connection: %w", err)
-	}
-
-	initNonceStorage = NewNonceStorage()
-
-	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoServerInit)
-
-	log.Printf("Connection opened to %s\n", addr)
 
 	session, err := conn.OpenSession(context.Background())
 	if err != nil {
@@ -227,7 +209,7 @@ func SetupServer(addr string, rootPassword []byte, nameForServer string) error {
 	session.Close()
 	conn.Close(200, "done")
 
-	config.V().Set("upstream.address", addr)
+	config.V().Set("upstream.address", conn.connection.RemoteAddr().String())
 	err = config.Save()
 	if err != nil {
 		return fmt.Errorf("error saving config: %w", err)

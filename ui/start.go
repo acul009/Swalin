@@ -3,10 +3,13 @@ package ui
 import (
 	"crypto/rand"
 	"fmt"
+	"log"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
+	"rahnit-rmm/util"
 	"regexp"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -23,6 +26,11 @@ import (
 var master fyne.Window
 
 func StartUI() {
+	err := config.SetSubdir("client")
+	if err != nil {
+		panic(err)
+	}
+
 	a := app.NewWithID("io.fyne.demo")
 	a.SetIcon(data.FyneLogo)
 	w := a.NewWindow("Fyne Demo")
@@ -37,7 +45,7 @@ func StartUI() {
 		setup()
 	}
 
-	w.Resize(fyne.NewSize(640, 460))
+	w.Resize(fyne.NewSize(800, 600))
 	w.ShowAndRun()
 }
 
@@ -88,8 +96,8 @@ func unlock() {
 
 func setup() {
 	addressBind := binding.NewString()
+	addressBind.Set("localhost:1234")
 	addressInput := widget.NewEntryWithData(addressBind)
-	addressInput.PlaceHolder = "localhost:1234"
 
 	form := widget.NewForm(
 		widget.NewFormItem("Server Address", addressInput),
@@ -101,11 +109,13 @@ func setup() {
 
 		address, err := addressBind.Get()
 		if err != nil {
+			log.Printf("failed to get address: %v", err)
 			return
 		}
 
 		conn, err := rpc.FirstClientConnect(address)
 		if err != nil {
+			log.Printf("failed to connect: %v", err)
 			return
 		}
 
@@ -165,22 +175,25 @@ func setupLoginForm(conn *rpc.RpcConnection) {
 
 		username, err := userBind.Get()
 		if err != nil {
+			log.Printf("failed to get username: %v", err)
 			return
 		}
 
 		password, err := passwordBind.Get()
 		if err != nil {
+			log.Printf("failed to get password: %v", err)
 			return
 		}
 
 		totpCode, err := totpCodeBind.Get()
 		if err != nil {
+			log.Printf("failed to get TOTP code: %v", err)
 			return
 		}
 
 		err = rpc.Login(conn, username, []byte(password), totpCode)
 		if err != nil {
-			fmt.Println(err)
+			log.Printf("login failed: %v", err)
 		}
 	}
 
@@ -190,6 +203,9 @@ func setupLoginForm(conn *rpc.RpcConnection) {
 }
 
 func setupServerForm(conn *rpc.RpcConnection) {
+
+	serverNameBind := binding.NewString()
+	serverNameInput := widget.NewEntryWithData(serverNameBind)
 
 	userBind := binding.NewString()
 	userInput := widget.NewEntryWithData(userBind)
@@ -222,32 +238,51 @@ func setupServerForm(conn *rpc.RpcConnection) {
 	}
 
 	form := widget.NewForm(
+		widget.NewFormItem("Server Name", serverNameInput),
 		widget.NewFormItem("Root User", userInput),
 		widget.NewFormItem("Password", passwordInput),
 		widget.NewFormItem("Repeat Password", passwordRepeatInput),
 	)
 
 	form.OnSubmit = func() {
-		totpCode, totpSecret, err := askForNewTotp(userInput.Text, master.Canvas())
-		if err != nil {
-			return
-		}
+		go func() {
+			totpCode, totpSecret, err := askForNewTotp(userInput.Text, master.Canvas())
+			if err != nil {
+				log.Printf("error generating totp: %v", err)
+				return
+			}
 
-		fmt.Println(totpCode, totpSecret)
-		// username, err := userBind.Get()
-		// if err != nil {
-		// 	return
-		// }
+			fmt.Printf("\ntotp secret: %s\ntotp code: %s\n", totpSecret, totpCode)
 
-		// password, err := passwordBind.Get()
-		// if err != nil {
-		// 	return
-		// }
+			serverName, err := serverNameBind.Get()
+			if err != nil {
+				log.Printf("failed to get server name: %v", err)
+				return
+			}
 
-		// totpCode, err := totpCodeBind.Get()
-		// if err != nil {
-		// 	return
-		// }
+			username, err := userBind.Get()
+			if err != nil {
+				log.Printf("failed to get username: %v", err)
+				return
+			}
+
+			password, err := passwordBind.Get()
+			if err != nil {
+				log.Printf("failed to get password: %v", err)
+				return
+			}
+
+			err = pki.InitRoot(username, []byte(password))
+			if err != nil {
+				log.Printf("failed to init root: %v", err)
+				return
+			}
+
+			err = rpc.SetupServer(conn, []byte(password), serverName)
+			if err != nil {
+				log.Printf("failed to setup server: %v", err)
+			}
+		}()
 	}
 
 	master.SetContent(
@@ -298,15 +333,42 @@ func askForNewTotp(accountName string, targetCanvas fyne.Canvas) (code string, s
 		secretEntry.SetText(secret)
 	}
 
-	widget.NewModalPopUp(
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	errorLabel := &widget.TextSegment{Style: widget.RichTextStyle{ColorName: "red"}, Text: ""}
+
+	form.OnSubmit = func() {
+		var err error
+		code, err = codeBinding.Get()
+		if err != nil {
+			log.Printf("error getting code: %v", err)
+			return
+		}
+
+		if util.ValidateTotp(secret, code) {
+			wg.Done()
+			return
+		} else {
+			errorLabel.Text = "Invalid code"
+		}
+	}
+
+	popup := widget.NewModalPopUp(
 		container.NewVBox(
 			qrCode,
 			secretEntry,
-			widget.NewLabel(secret),
+			widget.NewRichText(errorLabel),
 			form,
 		),
 		master.Canvas(),
-	).Show()
+	)
+	popup.Resize(fyne.NewSize(500, 500))
+	popup.Show()
+
+	wg.Wait()
+
+	popup.Hide()
 
 	return
 }
