@@ -70,9 +70,9 @@ func (s *storedPrivateKey) Set(privateKey *PrivateKey) error {
 		return errors.New("cannot override certificate")
 	}
 
-	err := s.privateKey.saveToFile(s.path(), s.password)
+	err := privateKey.saveToFile(s.path(), s.password)
 	if err != nil {
-		return fmt.Errorf("failed to save certificate: %w", err)
+		return fmt.Errorf("failed to save private key: %w", err)
 	}
 
 	s.privateKey = privateKey

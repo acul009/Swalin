@@ -9,68 +9,67 @@ import (
 
 const (
 	passwordFilePath = "password.pem"
+	hostFilname      = "host"
 )
 
-// UnlockHost tries to unlock the machine certificate.
-// since this needs to happen autonomously, it uses a password loaded from a file
-// if there is no keypair or certificate, it creates a newpair by itself.
-func UnlockHost() error {
+var ErrNotInitialized = serverNotInitializedError{}
+
+type serverNotInitializedError struct {
+}
+
+func (e serverNotInitializedError) Error() string {
+	return "server not yet initialized"
+}
+
+func (e serverNotInitializedError) Is(target error) bool {
+	_, ok := target.(serverNotInitializedError)
+	return ok
+}
+
+func getHostPassword() ([]byte, error) {
 	password, err := loadPasswordFromFile(config.GetFilePath(passwordFilePath))
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("failed to load password: %w", err)
+			return nil, fmt.Errorf("failed to load password: %w", err)
 		}
 
 		password, err = generatePassword()
 		if err != nil {
-			return fmt.Errorf("failed to generate password: %w", err)
+			return nil, fmt.Errorf("failed to generate password: %w", err)
 		}
 		err = savePasswordToFile(config.GetFilePath(passwordFilePath), password)
 		if err != nil {
-			return fmt.Errorf("failed to save password: %w", err)
+			return nil, fmt.Errorf("failed to save password: %w", err)
 		}
 	}
 
-	ready, err := CurrentAvailable()
-	if err != nil {
-		return fmt.Errorf("failed to check if current cert exists: %w", err)
-	}
-
-	if !ready {
-		key, err := generateKeypair()
-		if err != nil {
-			return fmt.Errorf("failed to generate new keypair: %w", err)
-		}
-		SaveCurrentKeyPair(key, key.GetPublicKey(), password)
-	}
-
-	err = Unlock(password)
-	if err != nil {
-		return fmt.Errorf("failed to unlock: %w", err)
-	}
-
-	return nil
+	return password, nil
 }
 
-func CreateServerCertWithCurrent(name string, pub *PublicKey) (*Certificate, error) {
-	cert, err := GetCurrentCert()
+func GetHostCredentials() (*PermanentCredentials, error) {
+	password, err := getHostPassword()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load current cert: %w", err)
+		return nil, fmt.Errorf("failed to get host credentials: %w", err)
 	}
 
-	key, err := GetCurrentKey()
+	credentials := getCredentials(password, hostFilname)
+	if !credentials.Available() {
+		return nil, serverNotInitializedError{}
+	}
+
+	return credentials, nil
+}
+
+func (t *TempCredentials) UpgradeToHostCredentials(cert *Certificate) (*PermanentCredentials, error) {
+	password, err := getHostPassword()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load current key: %w", err)
+		return nil, fmt.Errorf("failed to get host credentials: %w", err)
 	}
 
-	if !cert.IsCA {
-		return nil, fmt.Errorf("current cert is not a CA")
-	}
-
-	serverCert, err := createServerCert(name, pub, key, cert)
+	permanent, err := t.toPermanentCredentials(password, cert, hostFilname)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create server cert: %w", err)
+		return nil, fmt.Errorf("failed to upgrade credentials: %w", err)
 	}
 
-	return serverCert, nil
+	return permanent, nil
 }

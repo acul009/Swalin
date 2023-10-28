@@ -39,6 +39,7 @@ type RpcConnection struct {
 	mutex          sync.Mutex
 	nonceStorage   *nonceStorage
 	protocol       TlsConnectionProto
+	credentials    pki.Credentials
 }
 
 func newRpcConnection(conn quic.Connection,
@@ -47,6 +48,7 @@ func newRpcConnection(conn quic.Connection,
 	nonceStorage *nonceStorage,
 	partner *pki.Certificate,
 	protocol TlsConnectionProto,
+	credentials pki.Credentials,
 ) *RpcConnection {
 	return &RpcConnection{
 		connection:     conn,
@@ -59,6 +61,7 @@ func newRpcConnection(conn quic.Connection,
 		mutex:          sync.Mutex{},
 		nonceStorage:   nonceStorage,
 		protocol:       protocol,
+		credentials:    credentials,
 	}
 }
 

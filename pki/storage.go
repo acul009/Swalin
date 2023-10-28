@@ -7,40 +7,6 @@ import (
 	"rahnit-rmm/util"
 )
 
-func (pub *PublicKey) saveToFile(filepath string) error {
-	err := util.CreateParentDir(filepath)
-	if err != nil {
-		return fmt.Errorf("failed to create parent directory: %w", err)
-	}
-
-	encoded, err := pub.PemEncode()
-	if err != nil {
-		return fmt.Errorf("failed to serialize public key: %w", err)
-	}
-
-	err = os.WriteFile(filepath, []byte(encoded), 0600)
-	if err != nil {
-		return fmt.Errorf("failed to write public key file: %w", err)
-	}
-
-	return nil
-}
-
-func loadPublicKeyFromFile(filepath string) (*PublicKey, error) {
-	// Read the public key file
-	pubPEM, err := os.ReadFile(filepath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read public key file: %w", err)
-	}
-
-	pubKey, err := PublicKeyFromPem(pubPEM)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode public key: %w", err)
-	}
-
-	return pubKey, nil
-}
-
 func (cert *Certificate) saveToFile(filepath string) error {
 	err := util.CreateParentDir(filepath)
 	if err != nil {

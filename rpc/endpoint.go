@@ -24,7 +24,7 @@ type RpcEndpoint struct {
 	mutex sync.Mutex
 }
 
-func ConnectToUpstream(ctx context.Context) (*RpcEndpoint, error) {
+func ConnectToUpstream(ctx context.Context, credentials pki.Credentials) (*RpcEndpoint, error) {
 	upstreamAddr := config.V().GetString("upstream.address")
 	if upstreamAddr == "" {
 		return nil, fmt.Errorf("upstream address is missing")
@@ -35,10 +35,10 @@ func ConnectToUpstream(ctx context.Context) (*RpcEndpoint, error) {
 		return nil, fmt.Errorf("error parsing upstream certificate: %w", err)
 	}
 
-	return newRpcEndpoint(ctx, upstreamAddr, upstreamCert)
+	return newRpcEndpoint(ctx, upstreamAddr, credentials, upstreamCert)
 }
 
-func newRpcEndpoint(ctx context.Context, addr string, partner *pki.Certificate) (*RpcEndpoint, error) {
+func newRpcEndpoint(ctx context.Context, addr string, credentials pki.Credentials, partner *pki.Certificate) (*RpcEndpoint, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("address cannot be empty")
 	}
@@ -47,7 +47,7 @@ func newRpcEndpoint(ctx context.Context, addr string, partner *pki.Certificate) 
 		return nil, fmt.Errorf("partner cannot be nil")
 	}
 
-	tlsConf := getTlsClientConfig(ProtoRpc)
+	tlsConf := getTlsClientConfig(ProtoRpc, credentials)
 
 	quicConf := &quic.Config{
 		KeepAlivePeriod: 30 * time.Second,
@@ -62,7 +62,7 @@ func newRpcEndpoint(ctx context.Context, addr string, partner *pki.Certificate) 
 		return nil, fmt.Errorf("error creating QUIC connection: %w", err)
 	}
 
-	rpcConn := newRpcConnection(quicConn, nil, RpcRoleClient, NewNonceStorage(), partner, ProtoRpc)
+	rpcConn := newRpcConnection(quicConn, nil, RpcRoleClient, NewNonceStorage(), partner, ProtoRpc, credentials)
 
 	return &RpcEndpoint{
 		conn:  rpcConn,

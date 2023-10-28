@@ -78,3 +78,22 @@ func (cert *Certificate) GetPublicKey() *PublicKey {
 	pub := PublicKey(*certTyped)
 	return &pub
 }
+
+func (cert *Certificate) GetType() (CertType, error) {
+	if len(cert.Subject.OrganizationalUnit) == 0 {
+		return CertTypeError, fmt.Errorf("organizational unit is empty")
+	}
+	ou := cert.Subject.OrganizationalUnit[0]
+	ct := CertType(ou)
+
+	switch ct {
+	case CertTypeUser:
+		if !cert.IsCA {
+			return CertTypeError, fmt.Errorf("user certificate is not a CA")
+		}
+
+	}
+
+	return CertTypeError, fmt.Errorf("unknown certificate type")
+
+}

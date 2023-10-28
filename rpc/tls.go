@@ -30,13 +30,16 @@ func getTlsTempClientConfig(protos []TlsConnectionProto) *tls.Config {
 	}
 }
 
-func getTlsClientConfig(proto TlsConnectionProto) *tls.Config {
-	return &tls.Config{
-		// TODO: implement ACME certificate request and remove the InsecureSkipVerify option
-		InsecureSkipVerify: true,
-		NextProtos:         []string{string(proto)},
-		GetClientCertificate: func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
-			tlsCert, err := pki.GetCurrentTlsCert()
+func getTlsClientConfig(proto TlsConnectionProto, credentials pki.Credentials) *tls.Config {
+	var certGetter func(*tls.CertificateRequestInfo) (*tls.Certificate, error) = nil
+
+	tlsCredentials, ok := credentials.(interface {
+		GetTlsCert() (*tls.Certificate, error)
+	})
+
+	if ok {
+		certGetter = func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			tlsCert, err := tlsCredentials.GetTlsCert()
 			if err != nil {
 				return nil, fmt.Errorf("error getting current certificate: %w", err)
 			}
@@ -46,7 +49,14 @@ func getTlsClientConfig(proto TlsConnectionProto) *tls.Config {
 				return nil, fmt.Errorf("error checking certificate: %w", err)
 			}
 			return tlsCert, nil
-		},
+		}
+	}
+
+	return &tls.Config{
+		// TODO: implement ACME certificate request and remove the InsecureSkipVerify option
+		InsecureSkipVerify:   true,
+		NextProtos:           []string{string(proto)},
+		GetClientCertificate: certGetter,
 	}
 }
 

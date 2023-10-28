@@ -4,14 +4,6 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"rahnit-rmm/config"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/rpc"
-	"rahnit-rmm/util"
-
 	"github.com/spf13/cobra"
 )
 
@@ -27,99 +19,99 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		// address is required
-		addr := cmd.Flag("addr").Value.String()
-		if len(addr) == 0 {
-			fmt.Println("Address is required (--addr)")
-			return
-		}
+		// // address is required
+		// addr := cmd.Flag("addr").Value.String()
+		// if len(addr) == 0 {
+		// 	fmt.Println("Address is required (--addr)")
+		// 	return
+		// }
 
-		// server-name is required
-		nameForServer := cmd.Flag("server-name").Value.String()
-		if len(nameForServer) == 0 {
-			fmt.Println("Server name is required (--server-name)")
-			return
-		}
+		// // server-name is required
+		// nameForServer := cmd.Flag("server-name").Value.String()
+		// if len(nameForServer) == 0 {
+		// 	fmt.Println("Server name is required (--server-name)")
+		// 	return
+		// }
 
-		err := config.SetSubdir("client")
-		if err != nil {
-			panic(err)
-		}
-
-		// create root user if missing
-		var rootPassword []byte
-
-		_, err = pki.Root.Get()
-		if err != nil {
-			if errors.Is(err, pki.ErrNoRootCert) {
-				fmt.Println("No root certificate found, generating one")
-
-				rootUser, err := util.AskForString("Enter username for root")
-				if err != nil {
-					panic(err)
-				}
-
-				rootPassword, err = util.AskForNewPassword("Enter password to encrypt the root certificate")
-				if err != nil {
-					panic(err)
-				}
-
-				err = pki.InitRoot(rootUser, rootPassword)
-				if err != nil {
-					panic(err)
-				}
-			} else {
-				panic(err)
-			}
-		} else {
-			fmt.Println("Root certificate found, skipping CA generation")
-			rootPassword, err = util.AskForPassword("Enter password to decrypt the root certificate")
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		pki.Unlock(rootPassword)
-
-		// err = rpc.SetupServer(addr, rootPassword, nameForServer)
+		// err := config.SetSubdir("client")
 		// if err != nil {
 		// 	panic(err)
 		// }
 
-		rootCert, err := pki.Root.Get()
-		if err != nil {
-			panic(err)
-		}
+		// // create root user if missing
+		// var rootPassword []byte
 
-		rootKey, err := pki.GetCurrentKey()
-		if err != nil {
-			panic(err)
-		}
+		// _, err = pki.Root.Get()
+		// if err != nil {
+		// 	if errors.Is(err, pki.ErrNoRootCert) {
+		// 		fmt.Println("No root certificate found, generating one")
 
-		rootTotp, current, err := util.AskForNewTotp(rootCert.Subject.CommonName)
-		if err != nil {
-			panic(err)
-		}
+		// 		rootUser, err := util.AskForString("Enter username for root")
+		// 		if err != nil {
+		// 			panic(err)
+		// 		}
 
-		reg, err := rpc.NewRegisterUserCmd(rootCert, rootKey, rootPassword, rootTotp, current)
-		if err != nil {
-			panic(err)
-		}
+		// 		rootPassword, err = util.AskForNewPassword("Enter password to encrypt the root certificate")
+		// 		if err != nil {
+		// 			panic(err)
+		// 		}
 
-		ep, err := rpc.ConnectToUpstream(context.Background())
-		if err != nil {
-			panic(err)
-		}
+		// 		err = pki.InitRoot(rootUser, rootPassword)
+		// 		if err != nil {
+		// 			panic(err)
+		// 		}
+		// 	} else {
+		// 		panic(err)
+		// 	}
+		// } else {
+		// 	fmt.Println("Root certificate found, skipping CA generation")
+		// 	rootPassword, err = util.AskForPassword("Enter password to decrypt the root certificate")
+		// 	if err != nil {
+		// 		panic(err)
+		// 	}
+		// }
 
-		session, err := ep.Session(context.Background())
-		if err != nil {
-			panic(err)
-		}
+		// pki.Unlock(rootPassword)
 
-		err = session.SendCommand(reg)
-		if err != nil {
-			panic(err)
-		}
+		// // err = rpc.SetupServer(addr, rootPassword, nameForServer)
+		// // if err != nil {
+		// // 	panic(err)
+		// // }
+
+		// // rootCert, err := pki.Root.Get()
+		// if err != nil {
+		// 	panic(err)
+		// }
+
+		// // rootKey, err := pki.GetCurrentKey()
+		// if err != nil {
+		// 	panic(err)
+		// }
+
+		// // rootTotp, current, err := util.AskForNewTotp(rootCert.Subject.CommonName)
+		// if err != nil {
+		// 	panic(err)
+		// }
+
+		// // reg, err := rpc.NewRegisterUserCmd(rootCert, rootKey, rootPassword, rootTotp, current)
+		// if err != nil {
+		// 	panic(err)
+		// }
+
+		// // ep, err := rpc.ConnectToUpstream(context.Background())
+		// if err != nil {
+		// 	panic(err)
+		// }
+
+		// // session, err := ep.Session(context.Background())
+		// if err != nil {
+		// 	panic(err)
+		// }
+
+		// // err = session.SendCommand(reg)
+		// if err != nil {
+		// 	panic(err)
+		// }
 
 	},
 }

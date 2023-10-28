@@ -12,12 +12,14 @@ import (
 )
 
 func Login(conn *RpcConnection, username string, password []byte, totpCode string) error {
-	err := pki.UnlockWithTempKeys()
+	defer conn.Close(500, "")
+
+	credentials, err := pki.GenerateCredentials()
 	if err != nil {
-		return fmt.Errorf("error unlocking with temp keys: %w", err)
+		return fmt.Errorf("error generating temp credentials: %w", err)
 	}
 
-	defer conn.Close(500, "")
+	conn.credentials = credentials
 
 	session, err := conn.AcceptSession(context.Background())
 	if err != nil {
@@ -79,9 +81,9 @@ func Login(conn *RpcConnection, username string, password []byte, totpCode strin
 		return fmt.Errorf("error decrypting private key: %w", err)
 	}
 
-	err = pki.SaveCurrentCertAndKey(success.Cert, privateKey, password)
+	err = pki.SaveUserCredentials(username, password, success.Cert, privateKey)
 	if err != nil {
-		return fmt.Errorf("error saving current cert and key: %w", err)
+		return fmt.Errorf("error saving user credentials: %w", err)
 	}
 
 	err = pki.Root.Set(success.RootCert)
@@ -253,7 +255,12 @@ func acceptLoginRequest(conn *RpcConnection) error {
 		return fmt.Errorf("error loading root certificate: %w", err)
 	}
 
-	serverCert, err := pki.GetCurrentCert()
+	hostcredentials, err := pki.GetHostCredentials()
+	if err != nil {
+		return fmt.Errorf("error loading host credentials: %w", err)
+	}
+
+	serverCert, err := hostcredentials.GetCertificate()
 	if err != nil {
 		return fmt.Errorf("error loading current certificate: %w", err)
 	}

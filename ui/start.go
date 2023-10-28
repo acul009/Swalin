@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"log"
@@ -58,11 +59,6 @@ func unlock() {
 
 	loginCallback := func(s string) {
 		if len(s) < minLength {
-			return
-		}
-		err := pki.Unlock([]byte(s))
-		if err != nil {
-			infoLabel.SetText("Incorrect Password")
 			return
 		}
 
@@ -278,9 +274,35 @@ func setupServerForm(conn *rpc.RpcConnection) {
 				return
 			}
 
-			err = rpc.SetupServer(conn, []byte(password), serverName)
+			credentials, err := pki.GetUserCredentials(username, []byte(password))
+			if err != nil {
+				log.Printf("failed to get user credentials: %v", err)
+				return
+			}
+
+			err = rpc.SetupServer(conn, credentials, serverName)
 			if err != nil {
 				log.Printf("failed to setup server: %v", err)
+			}
+
+			reg, err := rpc.NewRegisterUserCmd(credentials, []byte(password), totpSecret, totpCode)
+			if err != nil {
+				panic(err)
+			}
+
+			ep, err := rpc.ConnectToUpstream(context.Background(), credentials)
+			if err != nil {
+				panic(err)
+			}
+
+			session, err := ep.Session(context.Background())
+			if err != nil {
+				panic(err)
+			}
+
+			err = session.SendCommand(reg)
+			if err != nil {
+				panic(err)
 			}
 		}()
 	}

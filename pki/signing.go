@@ -45,21 +45,13 @@ func (e NotSignedError) Is(target error) bool {
 	return ok
 }
 
-func MarshalAndSign(v any, key *PrivateKey, pub *PublicKey) ([]byte, error) {
-	if key == nil {
-		return nil, fmt.Errorf("private key cannot be nil")
-	}
-
-	if pub == nil {
-		return nil, fmt.Errorf("public key cannot be nil")
-	}
-
+func MarshalAndSign(v any, c Credentials) ([]byte, error) {
 	json, err := json.Marshal(v)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal data: %w", err)
 	}
 
-	msg, err := packAndSign(json, key, pub)
+	msg, err := packAndSign(json, c)
 	if err != nil {
 		return nil, fmt.Errorf("failed to package data: %w", err)
 	}
@@ -138,11 +130,20 @@ type PackedData struct {
 	PublicKey []byte `asn1:"tag:2"`
 }
 
-func packAndSign(data []byte, key *PrivateKey, pub *PublicKey) ([]byte, error) {
+func packAndSign(data []byte, c Credentials) ([]byte, error) {
+	key, err := c.GetPrivateKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get private key: %w", err)
+	}
 
-	signature, err := signBytes(data, key)
+	signature, err := key.signBytes(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign data: %w", err)
+	}
+
+	pub, err := c.GetPublicKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get public key: %w", err)
 	}
 
 	pubData, err := pub.BinaryEncode()
@@ -180,7 +181,7 @@ func unpackAndVerify(packed []byte) ([]byte, *PublicKey, error) {
 		return nil, nil, fmt.Errorf("failed to decode public key: %w", err)
 	}
 
-	err = verifyBytes(d.Data, d.Signature, pub)
+	err = pub.verifyBytes(d.Data, d.Signature)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
@@ -188,17 +189,14 @@ func unpackAndVerify(packed []byte) ([]byte, *PublicKey, error) {
 	return d.Data, pub, nil
 }
 
-func signBytes(data []byte, key *PrivateKey) ([]byte, error) {
-	if key == nil {
-		return nil, fmt.Errorf("private key cannot be nil")
-	}
+func (p *PrivateKey) signBytes(data []byte) ([]byte, error) {
 
-	hash, err := HashBytes(data)
+	hash, err := hashBytes(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash data: %w", err)
 	}
 
-	signature, err := ecdsa.SignASN1(rand.Reader, key.ToEcdsa(), hash)
+	signature, err := ecdsa.SignASN1(rand.Reader, p.ToEcdsa(), hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign data: %w", err)
 	}
@@ -206,12 +204,12 @@ func signBytes(data []byte, key *PrivateKey) ([]byte, error) {
 	return signature, nil
 }
 
-func verifyBytes(data []byte, signature []byte, pub *PublicKey) error {
+func (pub *PublicKey) verifyBytes(data []byte, signature []byte) error {
 	if pub == nil {
 		return fmt.Errorf("public key cannot be nil")
 	}
 
-	hash, err := HashBytes(data)
+	hash, err := hashBytes(data)
 	if err != nil {
 		return fmt.Errorf("failed to hash data: %w", err)
 	}
@@ -228,7 +226,7 @@ func verifyBytes(data []byte, signature []byte, pub *PublicKey) error {
 	return nil
 }
 
-func HashBytes(data []byte) ([]byte, error) {
+func hashBytes(data []byte) ([]byte, error) {
 	hasher := crypto.SHA512.New()
 	n, err := hasher.Write(data)
 	if err != nil {

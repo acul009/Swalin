@@ -50,9 +50,9 @@ func InitRoot(rootName string, password []byte) error {
 		return fmt.Errorf("failed to save root certificate: %w", err)
 	}
 
-	err = SaveCurrentCertAndKey(rootCert, rootKey, password)
+	err = SaveUserCredentials(rootName, password, rootCert, rootKey)
 	if err != nil {
-		return fmt.Errorf("failed to save current certificate: %w", err)
+		return fmt.Errorf("failed to save credentials: %w", err)
 	}
 
 	return nil

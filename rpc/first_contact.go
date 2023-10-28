@@ -29,17 +29,14 @@ func receivePartnerKey(session *RpcSession) error {
 }
 
 func sendMyKey(session *RpcSession) error {
-	pubKey, err := pki.GetCurrentPublicKey()
+	credentials := session.credentials
+
+	pubKey, err := credentials.GetPublicKey()
 	if err != nil {
-		return fmt.Errorf("error getting current public key: %w", err)
+		return fmt.Errorf("error getting public key: %w", err)
 	}
 
-	key, err := pki.GetCurrentKey()
-	if err != nil {
-		return fmt.Errorf("error getting current key: %w", err)
-	}
-
-	payload, err := pki.MarshalAndSign(pubKey, key, pubKey)
+	payload, err := pki.MarshalAndSign(pubKey, credentials)
 	if err != nil {
 		return fmt.Errorf("error marshalling message: %w", err)
 	}

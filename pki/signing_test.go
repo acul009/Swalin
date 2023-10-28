@@ -2,9 +2,6 @@ package pki_test
 
 import (
 	"bytes"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"io"
 	"rahnit-rmm/pki"
 	"reflect"
@@ -18,7 +15,12 @@ type testData struct {
 }
 
 func TestSignBytes(t *testing.T) {
-	generatedKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	credentials, err := pki.GenerateCredentials()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	myPublicKey, err := credentials.GetPublicKey()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,10 +31,7 @@ func TestSignBytes(t *testing.T) {
 		Flt:  1.0,
 	}
 
-	key := pki.PrivateKey(*generatedKey)
-	pubKeyGen := pki.PublicKey(key.PublicKey)
-
-	marshalled, err := pki.MarshalAndSign(data, &key, &pubKeyGen)
+	marshalled, err := pki.MarshalAndSign(data, credentials)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,19 +47,16 @@ func TestSignBytes(t *testing.T) {
 		t.Errorf("expected %v, got %v", data, unmarshalled)
 	}
 
-	if !pub.Equal(key.GetPublicKey()) {
-		t.Errorf("expected %v, got %v", key.PublicKey, pub)
+	if !pub.Equal(myPublicKey) {
+		t.Errorf("expected %v, got %v", myPublicKey, pub)
 	}
 }
 
 func TestPackedReadWrite(t *testing.T) {
-	generatedKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	credentials, err := pki.GenerateCredentials()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	key := pki.PrivateKey(*generatedKey)
-	pubKeyGen := pki.PublicKey(key.PublicKey)
 
 	data1 := testData{
 		Text: "test",
@@ -79,17 +75,17 @@ func TestPackedReadWrite(t *testing.T) {
 		data3[i] = byte(i)
 	}
 
-	marshalled1, err := pki.MarshalAndSign(data1, &key, &pubKeyGen)
+	marshalled1, err := pki.MarshalAndSign(data1, credentials)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	marshalled2, err := pki.MarshalAndSign(data2, &key, &pubKeyGen)
+	marshalled2, err := pki.MarshalAndSign(data2, credentials)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	marshalled3, err := pki.MarshalAndSign(data3, &key, &pubKeyGen)
+	marshalled3, err := pki.MarshalAndSign(data3, credentials)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,16 +131,21 @@ func TestPackedReadWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !key.GetPublicKey().Equal(pub1) {
-		t.Errorf("expected %v, got %v", key.PublicKey, pub1)
+	myPubKey, err := credentials.GetPublicKey()
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if !key.GetPublicKey().Equal(pub2) {
-		t.Errorf("expected %v, got %v", key.PublicKey, pub2)
+	if !myPubKey.Equal(pub1) {
+		t.Errorf("expected %v, got %v", myPubKey, pub1)
 	}
 
-	if !key.GetPublicKey().Equal(pub3) {
-		t.Errorf("expected %v, got %v", key.PublicKey, pub3)
+	if !myPubKey.Equal(pub2) {
+		t.Errorf("expected %v, got %v", myPubKey, pub2)
+	}
+
+	if !myPubKey.Equal(pub3) {
+		t.Errorf("expected %v, got %v", myPubKey, pub3)
 	}
 
 	if !reflect.DeepEqual(data1, *unmarshalled1) {

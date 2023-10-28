@@ -11,7 +11,11 @@ func RegisterUserHandler() RpcCommand {
 	return &registerUserCmd{}
 }
 
-func NewRegisterUserCmd(cert *pki.Certificate, privateKey *pki.PrivateKey, password []byte, totpSecret string, currentTotp string) (*registerUserCmd, error) {
+func NewRegisterUserCmd(credentials *pki.PermanentCredentials, password []byte, totpSecret string, currentTotp string) (*registerUserCmd, error) {
+	privateKey, err := credentials.GetPrivateKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get private key: %w", err)
+	}
 
 	encryptedPrivateKey, err := privateKey.BinaryEncode(password)
 	if err != nil {
@@ -26,6 +30,11 @@ func NewRegisterUserCmd(cert *pki.Certificate, privateKey *pki.PrivateKey, passw
 	passwordHash, err := util.HashPassword(password, clientHashingParameters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	cert, err := credentials.GetCertificate()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get certificate: %w", err)
 	}
 
 	return &registerUserCmd{

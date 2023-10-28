@@ -34,6 +34,7 @@ type RpcServer struct {
 	activeConnections map[uuid.UUID]*RpcConnection
 	mutex             sync.Mutex
 	nonceStorage      *nonceStorage
+	credentials       *pki.PermanentCredentials
 }
 
 type RpcServerState int16
@@ -44,7 +45,7 @@ const (
 	RpcServerStopped
 )
 
-func NewRpcServer(listenAddr string, rpcCommands *CommandCollection) (*RpcServer, error) {
+func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials *pki.PermanentCredentials) (*RpcServer, error) {
 	tlsConf, err := getTlsServerConfig([]TlsConnectionProto{ProtoRpc, ProtoClientLogin})
 	if err != nil {
 		return nil, fmt.Errorf("error getting server tls config: %w", err)
@@ -65,6 +66,7 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection) (*RpcServer
 		activeConnections: make(map[uuid.UUID]*RpcConnection),
 		mutex:             sync.Mutex{},
 		nonceStorage:      NewNonceStorage(),
+		credentials:       credentials,
 	}, nil
 }
 
@@ -132,7 +134,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 	defer s.mutex.Unlock()
 
 	for i := 0; i < 10; i++ {
-		newConnection := newRpcConnection(conn, s, RpcRoleServer, s.nonceStorage, peerCert, protocol)
+		newConnection := newRpcConnection(conn, s, RpcRoleServer, s.nonceStorage, peerCert, protocol, s.credentials)
 		if _, ok := s.activeConnections[newConnection.uuid]; !ok {
 			connection = newConnection
 			break

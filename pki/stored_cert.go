@@ -31,7 +31,7 @@ func (e certMissingError) Unwrap() error {
 var ErrCertMissing = certMissingError{}
 
 func (s *storedCertificate) Available() bool {
-	_, err := os.Stat(s.filename)
+	_, err := os.Stat(s.path())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false

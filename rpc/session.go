@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,12 +24,13 @@ const (
 )
 
 type RpcSession struct {
-	quic.Stream
-	Connection *RpcConnection
-	Uuid       uuid.UUID
-	state      RpcSessionState
-	mutex      sync.Mutex
-	partner    *pki.PublicKey
+	stream      quic.Stream
+	Connection  *RpcConnection
+	Uuid        uuid.UUID
+	state       RpcSessionState
+	mutex       sync.Mutex
+	partner     *pki.PublicKey
+	credentials pki.Credentials
 }
 
 func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
@@ -40,12 +42,13 @@ func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 	}
 
 	return &RpcSession{
-		Stream:     stream,
-		Connection: conn,
-		Uuid:       uuid.New(),
-		state:      RpcSessionCreated,
-		partner:    pubkey,
-		mutex:      sync.Mutex{},
+		stream:      stream,
+		Connection:  conn,
+		Uuid:        uuid.New(),
+		state:       RpcSessionCreated,
+		mutex:       sync.Mutex{},
+		partner:     pubkey,
+		credentials: conn.credentials,
 	}
 
 }
@@ -138,11 +141,15 @@ func (s *RpcSession) Write(p []byte) (n int, err error) {
 		return 0, fmt.Errorf("RPC session not open")
 	}
 	s.mutex.Unlock()
-	return s.Stream.Write(p)
+	return s.stream.Write(p)
 }
 
 func (s *RpcSession) Read(p []byte) (n int, err error) {
-	return s.Stream.Read(p)
+	return s.stream.Read(p)
+}
+
+func (s *RpcSession) Context() context.Context {
+	return s.stream.Context()
 }
 
 func readMessageFromUnknown[P any](s *RpcSession, payload P) (*pki.PublicKey, error) {
@@ -152,16 +159,16 @@ func readMessageFromUnknown[P any](s *RpcSession, payload P) (*pki.PublicKey, er
 		Payload: payload,
 	}
 
-	sender, err := pki.ReadAndUnmarshalAndVerify(s.Stream, message)
+	sender, err := pki.ReadAndUnmarshalAndVerify(s.stream, message)
 	if err != nil {
 		return nil, fmt.Errorf("error reading message: %w", err)
 	}
 
 	log.Printf("Received message from unknown sender: %v", sender)
 
-	myPub, err := pki.GetCurrentPublicKey()
+	myPub, err := s.credentials.GetPublicKey()
 	if err != nil {
-		return nil, fmt.Errorf("error getting current key: %w", err)
+		return nil, fmt.Errorf("error getting current public key: %w", err)
 	}
 
 	err = message.Verify(s.Connection.nonceStorage, myPub)
@@ -195,20 +202,6 @@ func WriteMessage[P any](s *RpcSession, payload P) error {
 		return fmt.Errorf("error ensuring state: %w", err)
 	}
 
-	pub, err := pki.GetCurrentPublicKey()
-	if err != nil {
-		return fmt.Errorf("error getting current key: %w", err)
-	}
-
-	key, err := pki.GetCurrentKey()
-	if err != nil {
-		return fmt.Errorf("error getting current key: %w", err)
-	}
-
-	if err != nil {
-		return fmt.Errorf("error getting current key: %w", err)
-	}
-
 	if s.partner == nil {
 		return fmt.Errorf("can't address message to unknown sender: session has no partner specified")
 	}
@@ -218,7 +211,7 @@ func WriteMessage[P any](s *RpcSession, payload P) error {
 		return fmt.Errorf("error creating message: %w", err)
 	}
 
-	data, err := pki.MarshalAndSign(message, key, pub)
+	data, err := pki.MarshalAndSign(message, s.credentials)
 	if err != nil {
 		return fmt.Errorf("error marshalling message: %w", err)
 	}
@@ -339,7 +332,7 @@ func (s *RpcSession) Close() error {
 
 	s.Connection.removeSession(s.Uuid)
 
-	err := s.Stream.Close()
+	err := s.stream.Close()
 	return err
 }
 

@@ -28,7 +28,7 @@ func FirstClientConnect(addr string) (*RpcConnection, error) {
 
 	protocol := quicConn.ConnectionState().TLS.NegotiatedProtocol
 
-	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, TlsConnectionProto(protocol))
+	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, TlsConnectionProto(protocol), nil)
 
 	return conn, nil
 }

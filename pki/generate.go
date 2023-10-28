@@ -122,6 +122,7 @@ func signCert(template *x509.Certificate, caKey *PrivateKey, caCert *x509.Certif
 type CertType string
 
 const (
+	CertTypeError  CertType = ""
 	CertTypeRoot   CertType = "root"
 	CertTypeUser   CertType = "users"
 	CertTypeServer CertType = "servers"
@@ -159,7 +160,7 @@ func generateUserCert(username string, caKey *PrivateKey, caCert *Certificate) (
 	return cert, userPrivateKey, nil
 }
 
-func createServerCert(name string, pub *PublicKey, caKey *PrivateKey, caCert *Certificate) (*Certificate, error) {
+func CreateServerCert(name string, pub *PublicKey, caCredentials PermanentCredentials) (*Certificate, error) {
 	serverTemplate, err := getTemplate(pub)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate server template: %w", err)
@@ -172,6 +173,15 @@ func createServerCert(name string, pub *PublicKey, caKey *PrivateKey, caCert *Ce
 
 	serverTemplate.NotAfter = time.Now().Add(serverValidFor)
 	serverTemplate.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature
+
+	caCert, caKey, err := caCredentials.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CA credentials: %w", err)
+	}
+
+	if !caCert.IsCA {
+		return nil, fmt.Errorf("credentials are not a CA")
+	}
 
 	cert, err := signCert(serverTemplate, caKey, caCert.ToX509())
 	if err != nil {

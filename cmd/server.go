@@ -40,28 +40,16 @@ to quickly create a Cobra application.`,
 			panic(err)
 		}
 
-		err = pki.UnlockHost()
-		if err != nil {
-			panic(err)
-		}
-
-		ready, err := pki.CurrentAvailable()
-		if err != nil {
-			panic(err)
-		}
-
 		addr := "localhost:1234"
 
-		if !ready {
-			log.Println("Server not initialized, waiting for setup...")
-			err := rpc.WaitForServerSetup(addr)
-			if err != nil {
-				panic(err)
-			}
-
-			//Unlock again to load cert into memory
-			err = pki.UnlockHost()
-			if err != nil {
+		credentials, err := pki.GetHostCredentials()
+		if err != nil {
+			if errors.Is(err, pki.ErrNotInitialized) {
+				credentials, err = rpc.WaitForServerSetup(addr)
+				if err != nil {
+					panic(err)
+				}
+			} else {
 				panic(err)
 			}
 		}
@@ -73,7 +61,7 @@ to quickly create a Cobra application.`,
 		rpcCommands.Add(rpc.PingHandler)
 		rpcCommands.Add(rpc.RegisterUserHandler)
 
-		server, err := rpc.NewRpcServer(addr, rpcCommands)
+		server, err := rpc.NewRpcServer(addr, rpcCommands, credentials)
 		if err != nil {
 			panic(err)
 		}
