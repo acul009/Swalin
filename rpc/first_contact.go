@@ -7,6 +7,20 @@ import (
 	"rahnit-rmm/pki"
 )
 
+func exchangeKeys(session *RpcSession) error {
+	err := sendMyKey(session)
+	if err != nil {
+		return fmt.Errorf("error sending my public key: %w", err)
+	}
+
+	err = receivePartnerKey(session)
+	if err != nil {
+		return fmt.Errorf("error receiving partner public key: %w", err)
+	}
+
+	return nil
+}
+
 func receivePartnerKey(session *RpcSession) error {
 
 	log.Printf("Receiving partner public key...")

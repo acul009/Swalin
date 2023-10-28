@@ -25,8 +25,8 @@ const (
 
 type RpcSession struct {
 	stream      quic.Stream
-	Connection  *RpcConnection
-	Uuid        uuid.UUID
+	connection  *RpcConnection
+	uuid        uuid.UUID
 	state       RpcSessionState
 	mutex       sync.Mutex
 	partner     *pki.PublicKey
@@ -43,8 +43,8 @@ func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 
 	return &RpcSession{
 		stream:      stream,
-		Connection:  conn,
-		Uuid:        uuid.New(),
+		connection:  conn,
+		uuid:        uuid.New(),
 		state:       RpcSessionCreated,
 		mutex:       sync.Mutex{},
 		partner:     pubkey,
@@ -171,7 +171,7 @@ func readMessageFromUnknown[P any](s *RpcSession, payload P) (*pki.PublicKey, er
 		return nil, fmt.Errorf("error getting current public key: %w", err)
 	}
 
-	err = message.Verify(s.Connection.nonceStorage, myPub)
+	err = message.Verify(s.connection.nonceStorage, myPub)
 	if err != nil {
 		return nil, fmt.Errorf("error verifying message: %w", err)
 	}
@@ -330,7 +330,7 @@ func (s *RpcSession) Close() error {
 	s.state = RpcSessionClosed
 	s.mutex.Unlock()
 
-	s.Connection.removeSession(s.Uuid)
+	s.connection.removeSession(s.uuid)
 
 	err := s.stream.Close()
 	return err

@@ -118,7 +118,7 @@ func (conn *RpcConnection) AcceptSession(context.Context) (*RpcSession, error) {
 
 	for i := 0; i < 10; i++ {
 		newSession := newRpcSession(stream, conn)
-		if _, ok := conn.activeSessions[newSession.Uuid]; !ok {
+		if _, ok := conn.activeSessions[newSession.uuid]; !ok {
 			session = newSession
 			break
 		}
@@ -128,7 +128,7 @@ func (conn *RpcConnection) AcceptSession(context.Context) (*RpcSession, error) {
 		return nil, fmt.Errorf("multiple uuid collisions, this should mathematically be impossible")
 	}
 
-	conn.activeSessions[session.Uuid] = session
+	conn.activeSessions[session.uuid] = session
 
 	return session, nil
 }

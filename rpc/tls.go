@@ -13,6 +13,7 @@ const (
 	ProtoServerInit  TlsConnectionProto = "rahnit-rmm-server-init"
 	ProtoRpc         TlsConnectionProto = "rahnit-rmm-rpc"
 	ProtoClientLogin TlsConnectionProto = "rahnit-rmm-client-login"
+	ProtoAgentEnroll TlsConnectionProto = "rahnit-rmm-agent-enroll"
 )
 
 func getTlsTempClientConfig(protos []TlsConnectionProto) *tls.Config {

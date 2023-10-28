@@ -35,6 +35,7 @@ type RpcServer struct {
 	mutex             sync.Mutex
 	nonceStorage      *nonceStorage
 	credentials       *pki.PermanentCredentials
+	enrollment        *enrollmentManager
 }
 
 type RpcServerState int16
@@ -46,7 +47,7 @@ const (
 )
 
 func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials *pki.PermanentCredentials) (*RpcServer, error) {
-	tlsConf, err := getTlsServerConfig([]TlsConnectionProto{ProtoRpc, ProtoClientLogin})
+	tlsConf, err := getTlsServerConfig([]TlsConnectionProto{ProtoRpc, ProtoClientLogin, ProtoAgentEnroll})
 	if err != nil {
 		return nil, fmt.Errorf("error getting server tls config: %w", err)
 	}
@@ -67,6 +68,7 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 		mutex:             sync.Mutex{},
 		nonceStorage:      NewNonceStorage(),
 		credentials:       credentials,
+		enrollment:        newEnrollmentManager(),
 	}, nil
 }
 
@@ -85,7 +87,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 		return nil, fmt.Errorf("peer provided multiple certificates")
 	}
 
-	var protocol TlsConnectionProto
+	protocol := TlsConnectionProto(state.TLS.NegotiatedProtocol)
 	var peerCert *pki.Certificate
 
 	if len(peerCertList) == 1 {
@@ -98,7 +100,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 		peerCert = nil
 	}
 
-	switch TlsConnectionProto(state.TLS.NegotiatedProtocol) {
+	switch protocol {
 	case ProtoRpc:
 
 		if peerCert == nil {
@@ -111,16 +113,12 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 			return nil, fmt.Errorf("peer did not provide a valid certificate: %w", err)
 		}
 
-		protocol = ProtoRpc
-
-	case ProtoClientLogin:
+	case ProtoClientLogin, ProtoAgentEnroll:
 
 		if peerCert != nil {
 			conn.CloseWithError(400, "")
-			return nil, fmt.Errorf("peer provided certificate for login")
+			return nil, fmt.Errorf("peer provided certificate when it should not have")
 		}
-
-		protocol = ProtoClientLogin
 
 	default:
 		conn.CloseWithError(400, "")
@@ -190,6 +188,14 @@ func (s *RpcServer) Run() error {
 				err := acceptLoginRequest(conn)
 				if err != nil {
 					log.Printf("error accepting login request: %v", err)
+				}
+			}()
+
+		case ProtoAgentEnroll:
+			go func() {
+				err := s.enrollment.startEnrollment(conn)
+				if err != nil {
+					log.Printf("error accepting agent enroll request: %v", err)
 				}
 			}()
 
