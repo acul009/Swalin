@@ -75,7 +75,6 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 func (s *RpcServer) accept() (*RpcConnection, error) {
 	conn, err := s.listener.Accept(context.Background())
 	if err != nil {
-		conn.CloseWithError(400, "")
 		return nil, fmt.Errorf("error accepting QUIC connection: %w", err)
 	}
 

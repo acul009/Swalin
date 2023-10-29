@@ -3,13 +3,18 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"log"
+	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/util"
 	"sync"
 	"time"
+
+	"github.com/quic-go/quic-go"
 )
 
 type enrollmentManager struct {
-	waitingEnrollments map[string]*enrollmentConnection
+	waitingEnrollments *util.ObservableMap[string, *enrollmentConnection]
 	mutex              sync.Mutex
 }
 
@@ -30,7 +35,7 @@ const maxEnrollmentTime = 5 * time.Minute
 
 func newEnrollmentManager() *enrollmentManager {
 	return &enrollmentManager{
-		waitingEnrollments: make(map[string]*enrollmentConnection),
+		waitingEnrollments: util.NewObservableMap[string, *enrollmentConnection](),
 		mutex:              sync.Mutex{},
 	}
 }
@@ -38,10 +43,11 @@ func newEnrollmentManager() *enrollmentManager {
 func (m *enrollmentManager) cleanup() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	for _, econn := range m.waitingEnrollments {
+	for key, econn := range m.waitingEnrollments.GetAll() {
 		if econn.mutex.TryLock() && time.Since(econn.enrollment.RequestTime) > maxEnrollmentTime {
 			econn.connection.Close(408, "enrollment timed out")
 			econn.mutex.Unlock()
+			m.waitingEnrollments.Delete(key)
 		}
 	}
 }
@@ -53,7 +59,11 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 		return fmt.Errorf("error accepting QUIC session: %w", err)
 	}
 
-	conn.connection.ConnectionState()
+	err = session.mutateState(RpcSessionCreated, RpcSessionOpen)
+	if err != nil {
+		conn.Close(500, "error setting session state")
+		return fmt.Errorf("error setting session state: %w", err)
+	}
 
 	err = exchangeKeys(session)
 	if err != nil {
@@ -66,21 +76,24 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 	}
 
 	m.mutex.Lock()
-	_, ok := m.waitingEnrollments[encodedKey]
-	if ok {
+	if m.waitingEnrollments.Has(encodedKey) {
 		return fmt.Errorf("enrollment already in progress")
 	}
 
-	m.waitingEnrollments[encodedKey] = &enrollmentConnection{
-		connection: conn,
-		session:    session,
-		enrollment: Enrollment{
-			PublicKey:   session.partner,
-			Addr:        conn.connection.RemoteAddr().String(),
-			RequestTime: time.Now(),
+	m.waitingEnrollments.Set(encodedKey,
+		&enrollmentConnection{
+			connection: conn,
+			session:    session,
+			enrollment: Enrollment{
+				PublicKey:   session.partner,
+				Addr:        conn.connection.RemoteAddr().String(),
+				RequestTime: time.Now(),
+			},
 		},
-	}
+	)
 	m.mutex.Unlock()
+
+	log.Printf("enrollment started for %s", encodedKey)
 
 	return nil
 }
@@ -92,22 +105,16 @@ func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
 		return fmt.Errorf("error encoding key: %w", err)
 	}
 
-	m.mutex.Lock()
-	econn, ok := m.waitingEnrollments[encodedKey]
-	m.mutex.Unlock()
-
-	econn.mutex.Lock()
-	defer econn.mutex.Unlock()
+	econn, ok := m.waitingEnrollments.Get(encodedKey)
 
 	if !ok {
 		return fmt.Errorf("enrollment not in progress")
 	}
 
-	defer func() {
-		m.mutex.Lock()
-		delete(m.waitingEnrollments, encodedKey)
-		m.mutex.Unlock()
-	}()
+	econn.mutex.Lock()
+	defer econn.mutex.Unlock()
+
+	m.waitingEnrollments.Delete(encodedKey)
 
 	err = WriteMessage[*pki.Certificate](econn.session, cert)
 	if err != nil {
@@ -121,18 +128,80 @@ func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
 	return nil
 }
 
-func (m *enrollmentManager) list() []Enrollment {
-	m.cleanup()
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+func (m *enrollmentManager) subscribe(onSet func(string, Enrollment), onRemove func(string)) func() {
+	return m.waitingEnrollments.Subscribe(
+		func(key string, conn *enrollmentConnection) {
+			onSet(key, conn.enrollment)
+		},
+		onRemove,
+	)
+}
 
-	list := make([]Enrollment, 0, len(m.waitingEnrollments))
-	for _, econn := range m.waitingEnrollments {
-		if econn.mutex.TryLock() {
-			list = append(list, econn.enrollment)
-			econn.mutex.Unlock()
-		}
+func (m *enrollmentManager) getAll() map[string]Enrollment {
+	allConns := m.waitingEnrollments.GetAll()
+	copy := make(map[string]Enrollment)
+	for key, conn := range allConns {
+		copy[key] = conn.enrollment
 	}
 
-	return list
+	return copy
+}
+
+func EnrollWithUpstream() (*pki.PermanentCredentials, error) {
+	addr := config.V().GetString("upstream.address")
+	if addr == "" {
+		return nil, fmt.Errorf("upstream address is missing")
+	}
+
+	tlsConf := getTlsTempClientConfig([]TlsConnectionProto{ProtoAgentEnroll})
+
+	quicConf := &quic.Config{
+		KeepAlivePeriod: 30 * time.Second,
+	}
+
+	quicConn, err := quic.DialAddr(context.Background(), addr, tlsConf, quicConf)
+	if err != nil {
+		qErr, ok := err.(*quic.TransportError)
+		if ok && uint8(qErr.ErrorCode) == 120 {
+			return nil, fmt.Errorf("server not ready for login: %w", err)
+		}
+		return nil, fmt.Errorf("error creating QUIC connection: %w", err)
+	}
+
+	initNonceStorage = NewNonceStorage()
+
+	tempCredentials, err := pki.GenerateCredentials()
+	if err != nil {
+		return nil, fmt.Errorf("error generating temp credentials: %w", err)
+	}
+
+	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoAgentEnroll, tempCredentials)
+
+	session, err := conn.OpenSession(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("error opening session: %w", err)
+	}
+
+	err = session.mutateState(RpcSessionCreated, RpcSessionOpen)
+	if err != nil {
+		return nil, fmt.Errorf("error mutating session state: %w", err)
+	}
+
+	err = exchangeKeys(session)
+	if err != nil {
+		return nil, fmt.Errorf("error exchanging keys: %w", err)
+	}
+
+	var cert pki.Certificate
+	err = ReadMessage[*pki.Certificate](session, &cert)
+	if err != nil {
+		return nil, fmt.Errorf("error reading certificate: %w", err)
+	}
+
+	credentials, err := tempCredentials.UpgradeToHostCredentials(&cert)
+	if err != nil {
+		return nil, fmt.Errorf("error upgrading to host credentials: %w", err)
+	}
+
+	return credentials, nil
 }

@@ -6,6 +6,8 @@ import (
 	"log"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
+	"rahnit-rmm/util"
+	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -74,19 +76,60 @@ func accountView(credentials *pki.PermanentCredentials) fyne.CanvasObject {
 	)
 }
 
-func enrollView(conn *rpc.RpcEndpoint) fyne.CanvasObject {
+func enrollView(ep *rpc.RpcEndpoint) fyne.CanvasObject {
+
+	enrollments := util.NewObservableMap[string, rpc.Enrollment]()
+
+	mutex := sync.Mutex{}
+	needsUpdate := false
+	values := enrollments.Values()
+
+	enrollments.Subscribe(
+		func(key string, enrollment rpc.Enrollment) {
+			mutex.Lock()
+			defer mutex.Unlock()
+			needsUpdate = true
+		},
+		func(key string) {
+			mutex.Lock()
+			defer mutex.Unlock()
+			needsUpdate = true
+		},
+	)
+
+	updateCommand := rpc.NewGetPendingEnrollmentsCommand(enrollments)
+
+	go func() {
+		err := ep.SendCommand(context.Background(), updateCommand)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
 	list := widget.NewList(
 		func() int {
-			return 5
+			return len(values)
 		},
 		func() fyne.CanvasObject {
 			return widget.NewLabel("")
 		},
 		func(i int, o fyne.CanvasObject) {
-			number := time.Now().Unix() + int64(i)
-			o.(*widget.Label).SetText(fmt.Sprintf("%d", number))
+			o.(*widget.Label).SetText(values[i].Addr)
 		},
 	)
+
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			mutex.Lock()
+			if needsUpdate {
+				values = enrollments.Values()
+				list.Refresh()
+				needsUpdate = false
+			}
+			mutex.Unlock()
+		}
+	}()
 
 	return list
 }

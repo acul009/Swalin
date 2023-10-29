@@ -244,12 +244,7 @@ func setupServerForm(w fyne.Window, conn *rpc.RpcConnection) {
 				panic(err)
 			}
 
-			session, err := ep.Session(context.Background())
-			if err != nil {
-				panic(err)
-			}
-
-			err = session.SendCommand(reg)
+			err = ep.SendCommand(context.Background(), reg)
 			if err != nil {
 				panic(err)
 			}

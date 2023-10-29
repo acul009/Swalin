@@ -12,17 +12,17 @@ const (
 	hostFilname      = "host"
 )
 
-var ErrNotInitialized = serverNotInitializedError{}
+var ErrNotInitialized = hostNotInitializedError{}
 
-type serverNotInitializedError struct {
+type hostNotInitializedError struct {
 }
 
-func (e serverNotInitializedError) Error() string {
+func (e hostNotInitializedError) Error() string {
 	return "server not yet initialized"
 }
 
-func (e serverNotInitializedError) Is(target error) bool {
-	_, ok := target.(serverNotInitializedError)
+func (e hostNotInitializedError) Is(target error) bool {
+	_, ok := target.(hostNotInitializedError)
 	return ok
 }
 
@@ -54,7 +54,7 @@ func GetHostCredentials() (*PermanentCredentials, error) {
 
 	credentials := getCredentials(password, hostFilname)
 	if !credentials.Available() {
-		return nil, serverNotInitializedError{}
+		return nil, hostNotInitializedError{}
 	}
 
 	return credentials, nil

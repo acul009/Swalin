@@ -1,11 +1,14 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
-	"fmt"
+	"errors"
+	"log"
+	"rahnit-rmm/config"
+	"rahnit-rmm/pki"
+	"rahnit-rmm/rpc"
 
 	"github.com/spf13/cobra"
 )
@@ -21,7 +24,27 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("agent called")
+		log.Printf("agent called")
+
+		err := config.SetSubdir("agent")
+		if err != nil {
+			panic(err)
+		}
+
+		credentials, err := pki.GetHostCredentials()
+		if err != nil {
+			if errors.Is(err, pki.ErrNotInitialized) {
+				log.Printf("agent not yet initialized")
+				credentials, err = rpc.EnrollWithUpstream()
+				if err != nil {
+					panic(err)
+				}
+			} else {
+				panic(err)
+			}
+		}
+
+		log.Printf("agent credentials: %+v", credentials)
 	},
 }
 

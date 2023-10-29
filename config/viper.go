@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -37,6 +38,8 @@ func updateViper() error {
 	}
 
 	v = viper.New()
+	v.AutomaticEnv()
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "__"))
 	v.AddConfigPath(GetConfigDir())
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")

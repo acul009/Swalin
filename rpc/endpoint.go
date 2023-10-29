@@ -71,14 +71,17 @@ func newRpcEndpoint(ctx context.Context, addr string, credentials pki.Credential
 	}, nil
 }
 
-func (r *RpcEndpoint) Session(ctx context.Context) (*RpcSession, error) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	return r.conn.OpenSession(ctx)
+func (r *RpcEndpoint) SendCommand(ctx context.Context, cmd RpcCommand) error {
+	session, err := r.conn.OpenSession(ctx)
+	if err != nil {
+		return fmt.Errorf("error opening session: %w", err)
+	}
+
+	return session.SendCommand(cmd)
 }
 
 func (r *RpcEndpoint) Close(code quic.ApplicationErrorCode, msg string) error {
-	err := r.MutateState(RpcEndpointRunning, RpcEndpointClosed)
+	err := r.mutateState(RpcEndpointRunning, RpcEndpointClosed)
 	if err != nil {
 		return fmt.Errorf("error mutating endpoint state: %w", err)
 	}
@@ -94,7 +97,7 @@ func (r *RpcEndpoint) Close(code quic.ApplicationErrorCode, msg string) error {
 	return nil
 }
 
-func (r *RpcEndpoint) EnsureState(state RpcEndpointState) error {
+func (r *RpcEndpoint) ensureState(state RpcEndpointState) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if r.state != state {
@@ -103,7 +106,7 @@ func (r *RpcEndpoint) EnsureState(state RpcEndpointState) error {
 	return nil
 }
 
-func (r *RpcEndpoint) MutateState(from RpcEndpointState, to RpcEndpointState) error {
+func (r *RpcEndpoint) mutateState(from RpcEndpointState, to RpcEndpointState) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if r.state != from {
