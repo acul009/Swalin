@@ -60,6 +60,11 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 		return nil, fmt.Errorf("error creating QUIC server: %w", err)
 	}
 
+	cert, err := credentials.GetCertificate()
+	if err != nil {
+		return nil, fmt.Errorf("error getting certificate: %w", err)
+	}
+
 	return &RpcServer{
 		listener:          listener,
 		rpcCommands:       rpcCommands,
@@ -68,7 +73,7 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 		mutex:             sync.Mutex{},
 		nonceStorage:      NewNonceStorage(),
 		credentials:       credentials,
-		enrollment:        newEnrollmentManager(),
+		enrollment:        newEnrollmentManager(cert),
 	}, nil
 }
 
@@ -163,6 +168,15 @@ func (s *RpcServer) Run() error {
 	}
 	s.state = RpcServerRunning
 	s.mutex.Unlock()
+
+	go func() {
+		for s.state == RpcServerRunning {
+			log.Printf("Triggering cleanup")
+			s.cleanup()
+			time.Sleep(30 * time.Second)
+		}
+	}()
+
 	for {
 		conn, err := s.accept()
 
@@ -254,4 +268,8 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 	s.listener.Close()
 
 	return err
+}
+
+func (s *RpcServer) cleanup() {
+	s.enrollment.cleanup()
 }

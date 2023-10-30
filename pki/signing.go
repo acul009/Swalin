@@ -146,10 +146,7 @@ func packAndSign(data []byte, c Credentials) ([]byte, error) {
 		return nil, fmt.Errorf("failed to get public key: %w", err)
 	}
 
-	pubData, err := pub.BinaryEncode()
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode public key: %w", err)
-	}
+	pubData := pub.BinaryEncode()
 
 	d := PackedData{
 		Data:      data,

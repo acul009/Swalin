@@ -12,10 +12,7 @@ import (
 type PublicKey ecdsa.PublicKey
 
 func (pub *PublicKey) MarshalJSON() ([]byte, error) {
-	bytes, err := pub.BinaryEncode()
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal public key: %w", err)
-	}
+	bytes := pub.BinaryEncode()
 	return json.Marshal(bytes)
 }
 
@@ -36,13 +33,13 @@ func (pub *PublicKey) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (pub *PublicKey) BinaryEncode() ([]byte, error) {
+func (pub *PublicKey) BinaryEncode() []byte {
 	bytes, err := x509.MarshalPKIXPublicKey(pub.ToEcdsa())
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal public key: %w", err)
+		panic(err)
 	}
 
-	return bytes, nil
+	return bytes
 }
 
 func PublicKeyFromBinary(bytes []byte) (*PublicKey, error) {
@@ -54,12 +51,9 @@ func PublicKeyFromBinary(bytes []byte) (*PublicKey, error) {
 	return ImportPublicKey(pub)
 }
 
-func (pub *PublicKey) PemEncode() ([]byte, error) {
-	bytes, err := pub.BinaryEncode()
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal public key: %w", err)
-	}
-	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: bytes}), nil
+func (pub *PublicKey) PemEncode() []byte {
+	bytes := pub.BinaryEncode()
+	return pem.EncodeToMemory(&pem.Block{Type: "EC PUBLIC KEY", Bytes: bytes})
 }
 
 func PublicKeyFromPem(certPEM []byte) (*PublicKey, error) {
@@ -71,12 +65,9 @@ func PublicKeyFromPem(certPEM []byte) (*PublicKey, error) {
 	return PublicKeyFromBinary(block.Bytes)
 }
 
-func (pub *PublicKey) Base64Encode() (string, error) {
-	bytes, err := pub.BinaryEncode()
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal public key: %w", err)
-	}
-	return base64.StdEncoding.EncodeToString(bytes), nil
+func (pub *PublicKey) Base64Encode() string {
+	bytes := pub.BinaryEncode()
+	return base64.StdEncoding.EncodeToString(bytes)
 }
 
 func (pub *PublicKey) ToEcdsa() *ecdsa.PublicKey {

@@ -15,6 +15,7 @@ import (
 
 type enrollmentManager struct {
 	waitingEnrollments *util.ObservableMap[string, *enrollmentConnection]
+	upstream           *pki.Certificate
 	mutex              sync.Mutex
 }
 
@@ -33,9 +34,10 @@ type Enrollment struct {
 
 const maxEnrollmentTime = 5 * time.Minute
 
-func newEnrollmentManager() *enrollmentManager {
+func newEnrollmentManager(upstream *pki.Certificate) *enrollmentManager {
 	return &enrollmentManager{
 		waitingEnrollments: util.NewObservableMap[string, *enrollmentConnection](),
+		upstream:           upstream,
 		mutex:              sync.Mutex{},
 	}
 }
@@ -45,9 +47,10 @@ func (m *enrollmentManager) cleanup() {
 	defer m.mutex.Unlock()
 	for key, econn := range m.waitingEnrollments.GetAll() {
 		if econn.mutex.TryLock() && time.Since(econn.enrollment.RequestTime) > maxEnrollmentTime {
+			log.Printf("enrollment timed out for %s", key)
 			econn.connection.Close(408, "enrollment timed out")
-			econn.mutex.Unlock()
 			m.waitingEnrollments.Delete(key)
+			econn.mutex.Unlock()
 		}
 	}
 }
@@ -70,10 +73,7 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 		return fmt.Errorf("error exchanging keys: %w", err)
 	}
 
-	encodedKey, err := session.partner.Base64Encode()
-	if err != nil {
-		return fmt.Errorf("error encoding key: %w", err)
-	}
+	encodedKey := session.partner.Base64Encode()
 
 	m.mutex.Lock()
 	if m.waitingEnrollments.Has(encodedKey) {
@@ -84,6 +84,7 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 		&enrollmentConnection{
 			connection: conn,
 			session:    session,
+			mutex:      sync.Mutex{},
 			enrollment: Enrollment{
 				PublicKey:   session.partner,
 				Addr:        conn.connection.RemoteAddr().String(),
@@ -100,10 +101,7 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 
 func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
 	m.cleanup()
-	encodedKey, err := cert.GetPublicKey().Base64Encode()
-	if err != nil {
-		return fmt.Errorf("error encoding key: %w", err)
-	}
+	encodedKey := cert.GetPublicKey().Base64Encode()
 
 	econn, ok := m.waitingEnrollments.Get(encodedKey)
 
@@ -116,10 +114,22 @@ func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
 
 	m.waitingEnrollments.Delete(encodedKey)
 
-	err = WriteMessage[*pki.Certificate](econn.session, cert)
+	root, err := pki.Root.Get()
 	if err != nil {
-		econn.connection.Close(500, "error writing certificate")
-		return fmt.Errorf("error writing certificate: %w", err)
+		econn.connection.Close(500, "error getting root certificate")
+		return fmt.Errorf("error getting root certificate: %w", err)
+	}
+
+	reponse := &enrollmentResponse{
+		cert:     cert,
+		root:     root,
+		upstream: m.upstream,
+	}
+
+	err = WriteMessage[*enrollmentResponse](econn.session, reponse)
+	if err != nil {
+		econn.connection.Close(500, "error writing response")
+		return fmt.Errorf("error writing response: %w", err)
 	}
 
 	econn.session.Close()
@@ -145,6 +155,12 @@ func (m *enrollmentManager) getAll() map[string]Enrollment {
 	}
 
 	return copy
+}
+
+type enrollmentResponse struct {
+	cert     *pki.Certificate
+	root     *pki.Certificate
+	upstream *pki.Certificate
 }
 
 func EnrollWithUpstream() (*pki.PermanentCredentials, error) {
@@ -192,13 +208,24 @@ func EnrollWithUpstream() (*pki.PermanentCredentials, error) {
 		return nil, fmt.Errorf("error exchanging keys: %w", err)
 	}
 
-	var cert pki.Certificate
-	err = ReadMessage[*pki.Certificate](session, &cert)
+	response := &enrollmentResponse{}
+
+	err = ReadMessage[*enrollmentResponse](session, response)
 	if err != nil {
 		return nil, fmt.Errorf("error reading certificate: %w", err)
 	}
 
-	credentials, err := tempCredentials.UpgradeToHostCredentials(&cert)
+	err = pki.Root.Set(response.root)
+	if err != nil {
+		return nil, fmt.Errorf("error setting root certificate: %w", err)
+	}
+
+	err = pki.Upstream.Set(response.upstream)
+	if err != nil {
+		return nil, fmt.Errorf("error setting upstream certificate: %w", err)
+	}
+
+	credentials, err := tempCredentials.UpgradeToHostCredentials(response.cert)
 	if err != nil {
 		return nil, fmt.Errorf("error upgrading to host credentials: %w", err)
 	}

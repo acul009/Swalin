@@ -72,6 +72,11 @@ func newRpcEndpoint(ctx context.Context, addr string, credentials pki.Credential
 }
 
 func (r *RpcEndpoint) SendCommand(ctx context.Context, cmd RpcCommand) error {
+	err := r.ensureState(RpcEndpointRunning)
+	if err != nil {
+		return fmt.Errorf("error mutating endpoint state: %w", err)
+	}
+
 	session, err := r.conn.OpenSession(ctx)
 	if err != nil {
 		return fmt.Errorf("error opening session: %w", err)

@@ -108,6 +108,9 @@ func Login(conn *RpcConnection, username string, password []byte, totpCode strin
 	}
 
 	userCredentials, err := pki.GetUserCredentials(username, password)
+	if err != nil {
+		return nil, fmt.Errorf("error getting user credentials: %w", err)
+	}
 
 	conn.Close(200, "done")
 
