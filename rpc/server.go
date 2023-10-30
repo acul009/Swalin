@@ -194,7 +194,7 @@ func (s *RpcServer) Run() error {
 
 		switch conn.protocol {
 		case ProtoRpc:
-			go conn.serve(s.rpcCommands)
+			go conn.serveRpc(s.rpcCommands)
 
 		case ProtoClientLogin:
 			go func() {

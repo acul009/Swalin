@@ -65,7 +65,7 @@ func newRpcConnection(conn quic.Connection,
 	}
 }
 
-func (conn *RpcConnection) serve(commands *CommandCollection) error {
+func (conn *RpcConnection) serveRpc(commands *CommandCollection) error {
 	err := conn.EnsureState(RpcConnectionOpen)
 	if err != nil {
 		return fmt.Errorf("error ensuring RPC connection is open: %w", err)

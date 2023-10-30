@@ -102,6 +102,10 @@ func (r *RpcEndpoint) Close(code quic.ApplicationErrorCode, msg string) error {
 	return nil
 }
 
+func (r *RpcEndpoint) ServeRpc(commands *CommandCollection) error {
+	return r.conn.serveRpc(commands)
+}
+
 func (r *RpcEndpoint) ensureState(state RpcEndpointState) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()

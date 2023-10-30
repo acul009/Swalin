@@ -4,6 +4,7 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
 	"errors"
 	"log"
 	"rahnit-rmm/config"
@@ -45,6 +46,18 @@ to quickly create a Cobra application.`,
 		}
 
 		log.Printf("agent credentials: %+v", credentials)
+
+		ep, err := rpc.ConnectToUpstream(context.Background(), credentials)
+		if err != nil {
+			panic(err)
+		}
+
+		cmdCollection := rpc.NewCommandCollection()
+
+		err = ep.ServeRpc(cmdCollection)
+		if err != nil {
+			panic(err)
+		}
 	},
 }
 
