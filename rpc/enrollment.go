@@ -50,8 +50,8 @@ func (m *enrollmentManager) cleanup() {
 			log.Printf("enrollment timed out for %s", key)
 			econn.connection.Close(408, "enrollment timed out")
 			m.waitingEnrollments.Delete(key)
-			econn.mutex.Unlock()
 		}
+		econn.mutex.Unlock()
 	}
 }
 
@@ -103,6 +103,8 @@ func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
 	m.cleanup()
 	encodedKey := cert.GetPublicKey().Base64Encode()
 
+	log.Printf("enrollment accepted for %s", encodedKey)
+
 	econn, ok := m.waitingEnrollments.Get(encodedKey)
 
 	if !ok {
@@ -121,9 +123,9 @@ func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
 	}
 
 	reponse := &enrollmentResponse{
-		cert:     cert,
-		root:     root,
-		upstream: m.upstream,
+		Cert:     cert,
+		Root:     root,
+		Upstream: m.upstream,
 	}
 
 	err = WriteMessage[*enrollmentResponse](econn.session, reponse)
@@ -133,7 +135,6 @@ func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
 	}
 
 	econn.session.Close()
-	econn.connection.Close(200, "enrollment complete")
 
 	return nil
 }
@@ -158,9 +159,9 @@ func (m *enrollmentManager) getAll() map[string]Enrollment {
 }
 
 type enrollmentResponse struct {
-	cert     *pki.Certificate
-	root     *pki.Certificate
-	upstream *pki.Certificate
+	Cert     *pki.Certificate
+	Root     *pki.Certificate
+	Upstream *pki.Certificate
 }
 
 func EnrollWithUpstream() (*pki.PermanentCredentials, error) {
@@ -215,19 +216,29 @@ func EnrollWithUpstream() (*pki.PermanentCredentials, error) {
 		return nil, fmt.Errorf("error reading certificate: %w", err)
 	}
 
-	err = pki.Root.Set(response.root)
+	err = pki.Root.Set(response.Root)
 	if err != nil {
 		return nil, fmt.Errorf("error setting root certificate: %w", err)
 	}
 
-	err = pki.Upstream.Set(response.upstream)
+	err = pki.Upstream.Set(response.Upstream)
 	if err != nil {
 		return nil, fmt.Errorf("error setting upstream certificate: %w", err)
 	}
 
-	credentials, err := tempCredentials.UpgradeToHostCredentials(response.cert)
+	credentials, err := tempCredentials.UpgradeToHostCredentials(response.Cert)
 	if err != nil {
 		return nil, fmt.Errorf("error upgrading to host credentials: %w", err)
+	}
+
+	err = session.Close()
+	if err != nil {
+		return nil, fmt.Errorf("error closing session: %w", err)
+	}
+
+	err = conn.Close(200, "enrollment complete")
+	if err != nil {
+		return nil, fmt.Errorf("error closing connection: %w", err)
 	}
 
 	return credentials, nil

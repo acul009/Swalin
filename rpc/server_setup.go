@@ -177,7 +177,7 @@ func SetupServer(conn *RpcConnection, rootCredentials *pki.PermanentCredentials,
 
 	log.Printf("Received request with pubkey: %s\n", req.ServerPubKey)
 
-	serverHostCert, err := pki.CreateServerCert(nameForServer, req.ServerPubKey, *rootCredentials)
+	serverHostCert, err := pki.CreateServerCert(nameForServer, req.ServerPubKey, rootCredentials)
 	if err != nil {
 		return fmt.Errorf("error creating server certificate: %w", err)
 	}

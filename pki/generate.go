@@ -160,7 +160,7 @@ func generateUserCert(username string, caKey *PrivateKey, caCert *Certificate) (
 	return cert, userPrivateKey, nil
 }
 
-func CreateServerCert(name string, pub *PublicKey, caCredentials PermanentCredentials) (*Certificate, error) {
+func CreateServerCert(name string, pub *PublicKey, caCredentials *PermanentCredentials) (*Certificate, error) {
 	serverTemplate, err := getTemplate(pub)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate server template: %w", err)
@@ -186,6 +186,37 @@ func CreateServerCert(name string, pub *PublicKey, caCredentials PermanentCreden
 	cert, err := signCert(serverTemplate, caKey, caCert.ToX509())
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign server certificate: %w", err)
+	}
+
+	return cert, nil
+}
+
+func CreateAgentCert(name string, pub *PublicKey, caCredentials *PermanentCredentials) (*Certificate, error) {
+	agentTemplate, err := getTemplate(pub)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate agent template: %w", err)
+	}
+
+	agentTemplate.Subject = pkix.Name{
+		OrganizationalUnit: []string{string(CertTypeAgent)},
+		CommonName:         name,
+	}
+
+	agentTemplate.NotAfter = time.Now().Add(agentValidFor)
+	agentTemplate.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature
+
+	caCert, caKey, err := caCredentials.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CA credentials: %w", err)
+	}
+
+	if !caCert.IsCA {
+		return nil, fmt.Errorf("credentials are not a CA")
+	}
+
+	cert, err := signCert(agentTemplate, caKey, caCert.ToX509())
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign agent certificate: %w", err)
 	}
 
 	return cert, nil

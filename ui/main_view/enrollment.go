@@ -2,6 +2,8 @@ package mainview
 
 import (
 	"context"
+	"log"
+	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
 	"rahnit-rmm/util"
 	"sync"
@@ -14,16 +16,18 @@ import (
 
 type enrollmentView struct {
 	ep          *rpc.RpcEndpoint
+	credentials *pki.PermanentCredentials
 	enrollments *util.ObservableMap[string, rpc.Enrollment]
 	needsUpdate bool
 	mutex       sync.Mutex
 	visible     bool
 }
 
-func newEnrollmentView(ep *rpc.RpcEndpoint) *enrollmentView {
+func newEnrollmentView(ep *rpc.RpcEndpoint, credentials *pki.PermanentCredentials) *enrollmentView {
 
 	e := &enrollmentView{
 		ep:          ep,
+		credentials: credentials,
 		enrollments: util.NewObservableMap[string, rpc.Enrollment](),
 		needsUpdate: false,
 		mutex:       sync.Mutex{},
@@ -68,13 +72,19 @@ func (e *enrollmentView) Prepare() fyne.CanvasObject {
 			return len(values)
 		},
 		func() fyne.CanvasObject {
+			form := widget.NewForm(
+				widget.NewFormItem("Name", widget.NewEntry()),
+			)
+			form.SubmitText = "Enroll"
+			form.OnSubmit = func() {}
+
 			return container.NewVBox(
 				container.NewHBox(
 					widget.NewLabel("Address"),
 					widget.NewLabel("Request Time"),
 				),
 				widget.NewLabel("PubKey\n\n\n\n\n"),
-				widget.NewButton("Enroll", nil),
+				form,
 			)
 		},
 		func(i int, o fyne.CanvasObject) {
@@ -86,6 +96,30 @@ func (e *enrollmentView) Prepare() fyne.CanvasObject {
 			grid.Objects[0].(*fyne.Container).Objects[0].(*widget.Label).SetText(enrollment.Addr)
 			grid.Objects[0].(*fyne.Container).Objects[1].(*widget.Label).SetText(enrollment.RequestTime.Format("2006-01-02 15:04:05"))
 			grid.Objects[1].(*widget.Label).SetText(string(pubKey))
+			form := grid.Objects[2].(*widget.Form)
+			nameEntry := form.Items[0].Widget.(*widget.Entry)
+
+			form.OnSubmit = func() {
+				name := nameEntry.Text
+				log.Printf("Enrolling %s", name)
+
+				if name == "" {
+					return
+				}
+
+				cert, err := pki.CreateAgentCert(name, enrollment.PublicKey, e.credentials)
+				if err != nil {
+					panic(err)
+				}
+
+				err = e.ep.SendCommand(context.Background(), rpc.NewEnrollAgentCommand(cert))
+				if err != nil {
+					panic(err)
+				}
+
+			}
+			form.Refresh()
+
 			// pubKeyDisp := grid.Objects[2].(*widget.Entry)
 			// pubKeyDisp.OnChanged = func(s string) {
 			// 	pubKeyDisp.Text =

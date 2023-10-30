@@ -41,7 +41,7 @@ func DisplayMainView(w fyne.Window, credentials *pki.PermanentCredentials) {
 		panic(err)
 	}
 
-	enroll := newEnrollmentView(ep)
+	enroll := newEnrollmentView(ep, credentials)
 
 	w.SetContent(
 		container.NewBorder(

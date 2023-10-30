@@ -61,6 +61,7 @@ to quickly create a Cobra application.`,
 		rpcCommands.Add(rpc.PingHandler)
 		rpcCommands.Add(rpc.RegisterUserHandler)
 		rpcCommands.Add(rpc.GetPendingEnrollmentsHandler)
+		rpcCommands.Add(rpc.EnrollAgentHandler)
 
 		server, err := rpc.NewRpcServer(addr, rpcCommands, credentials)
 		if err != nil {
