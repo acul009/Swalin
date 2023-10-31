@@ -6,10 +6,15 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
+	"sync"
+	"syscall"
 
 	"github.com/spf13/cobra"
 )
@@ -54,10 +59,33 @@ to quickly create a Cobra application.`,
 
 		cmdCollection := rpc.NewCommandCollection()
 
-		err = ep.ServeRpc(cmdCollection)
-		if err != nil {
-			panic(err)
-		}
+		wg := sync.WaitGroup{}
+
+		wg.Add(1)
+		go func() {
+			err = ep.ServeRpc(cmdCollection)
+			if err != nil {
+				panic(err)
+			}
+		}()
+
+		interrupt := make(chan os.Signal, 1)
+		signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+
+		wg.Add(1)
+		go func() {
+			<-interrupt
+			err := ep.Close(200, "OK")
+			if err != nil {
+				err := fmt.Errorf("error shutting down program: error closing agent: %w", err)
+				log.Println(err)
+			} else {
+				log.Println("Agent closed without errors")
+			}
+			wg.Done()
+		}()
+
+		wg.Wait()
 	},
 }
 

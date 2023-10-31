@@ -1,6 +1,7 @@
 package managment
 
 import (
+	"log"
 	"rahnit-rmm/rpc"
 
 	"fyne.io/fyne/v2"
@@ -10,7 +11,7 @@ import (
 )
 
 type deviceList struct {
-	deviceDisplays map[string]*fyne.Container
+	deviceDisplays map[string]*deviceListEntry
 	Display        fyne.CanvasObject
 	container      *fyne.Container
 }
@@ -18,7 +19,7 @@ type deviceList struct {
 func newDeviceList() *deviceList {
 	cont := container.NewVBox()
 	return &deviceList{
-		deviceDisplays: make(map[string]*fyne.Container),
+		deviceDisplays: make(map[string]*deviceListEntry),
 		Display:        container.NewVScroll(cont),
 		container:      cont,
 	}
@@ -27,29 +28,14 @@ func newDeviceList() *deviceList {
 func (d *deviceList) Set(key string, dev rpc.DeviceInfo) {
 	currentDisplay, update := d.deviceDisplays[key]
 
-	icon := widget.NewIcon(theme.ComputerIcon())
-	icon.Resize(fyne.Size{Width: 64, Height: 64})
-
-	var status string
-	if dev.Online {
-		status = "Online"
-	} else {
-		status = "Offline"
-	}
-
-	disp := container.NewHBox(
-		icon,
-		widget.NewLabel(status),
-		widget.NewLabel(dev.Name()),
-	)
-
 	if update {
-		currentDisplay.Objects = []fyne.CanvasObject{disp}
-		currentDisplay.Refresh()
+		log.Printf("updating display for %s", key)
+		currentDisplay.Update(dev)
 	} else {
-		newList := append(d.container.Objects, disp)
-		d.container.Objects = newList
-		d.container.Refresh()
+		log.Printf("adding display for %s", key)
+		disp := newDeviceListEntry(dev)
+		d.deviceDisplays[key] = disp
+		d.container.Add(disp)
 	}
 }
 
@@ -57,8 +43,46 @@ func (d *deviceList) Remove(key string) {
 	delete(d.deviceDisplays, key)
 	newList := make([]fyne.CanvasObject, 0, len(d.deviceDisplays))
 	for _, disp := range d.deviceDisplays {
-		newList = append(newList, disp.Objects...)
+		newList = append(newList, disp)
 	}
 	d.container.Objects = newList
 	d.container.Refresh()
+}
+
+type deviceListEntry struct {
+	*fyne.Container
+	icon   *widget.Icon
+	name   *widget.Label
+	status *widget.Label
+}
+
+func newDeviceListEntry(device rpc.DeviceInfo) *deviceListEntry {
+	entry := &deviceListEntry{}
+
+	entry.icon = widget.NewIcon(theme.ComputerIcon())
+	entry.icon.Resize(fyne.Size{Width: 64, Height: 64})
+
+	entry.name = widget.NewLabel("")
+
+	entry.status = widget.NewLabel("")
+
+	entry.Container = container.NewHBox(entry.icon, entry.name, entry.status)
+
+	entry.Container.Refresh()
+
+	return entry
+}
+
+func (d *deviceListEntry) Update(device rpc.DeviceInfo) {
+	d.name.SetText(device.Name())
+
+	var status string
+	if device.Online {
+		status = "Online"
+	} else {
+		status = "Offline"
+	}
+
+	d.status.SetText(status)
+	d.Refresh()
 }

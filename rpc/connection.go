@@ -66,6 +66,19 @@ func newRpcConnection(conn quic.Connection,
 }
 
 func (conn *RpcConnection) serveRpc(commands *CommandCollection) error {
+	defer conn.Close(500, "RPC connection closed")
+
+	if conn.partner == nil {
+		return fmt.Errorf("no partner provided")
+	}
+
+	if conn.server != nil {
+		conn.server.devices.UpdateDeviceStatus(conn.partner.GetPublicKey().Base64Encode(), func(device DeviceInfo) DeviceInfo {
+			device.Online = true
+			return device
+		})
+	}
+
 	err := conn.EnsureState(RpcConnectionOpen)
 	if err != nil {
 		return fmt.Errorf("error ensuring RPC connection is open: %w", err)

@@ -170,6 +170,14 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 func (s *RpcServer) removeConnection(uuid uuid.UUID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	if conn, ok := s.activeConnections[uuid]; ok {
+		if conn.partner != nil {
+			s.devices.UpdateDeviceStatus(conn.partner.GetPublicKey().Base64Encode(), func(device DeviceInfo) DeviceInfo {
+				device.Online = false
+				return device
+			})
+		}
+	}
 	delete(s.activeConnections, uuid)
 }
 

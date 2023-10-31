@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"log"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/util"
@@ -70,6 +71,7 @@ func (d *DeviceList) Subscribe(onSet func(string, DeviceInfo), onRemove func(str
 }
 
 func (d *DeviceList) UpdateDeviceStatus(pubKey string, update func(device DeviceInfo) DeviceInfo) {
+	log.Printf("Updating device status for %s", pubKey)
 	d.devices.Update(pubKey, update)
 }
 
