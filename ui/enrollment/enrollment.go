@@ -1,20 +1,23 @@
-package mainview
+package enrollment
 
 import (
 	"context"
 	"log"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
+	"rahnit-rmm/ui/mainview.go"
 	"rahnit-rmm/util"
 	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
 type enrollmentView struct {
+	main        *mainview.MainView
 	ep          *rpc.RpcEndpoint
 	credentials *pki.PermanentCredentials
 	enrollments *util.ObservableMap[string, rpc.Enrollment]
@@ -23,9 +26,10 @@ type enrollmentView struct {
 	visible     bool
 }
 
-func newEnrollmentView(ep *rpc.RpcEndpoint, credentials *pki.PermanentCredentials) *enrollmentView {
+func NewEnrollmentView(main *mainview.MainView, ep *rpc.RpcEndpoint, credentials *pki.PermanentCredentials) *enrollmentView {
 
 	e := &enrollmentView{
+		main:        main,
 		ep:          ep,
 		credentials: credentials,
 		enrollments: util.NewObservableMap[string, rpc.Enrollment](),
@@ -44,6 +48,14 @@ func newEnrollmentView(ep *rpc.RpcEndpoint, credentials *pki.PermanentCredential
 	}()
 
 	return e
+}
+
+func (e *enrollmentView) Icon() fyne.Resource {
+	return theme.FolderNewIcon()
+}
+
+func (e *enrollmentView) Name() string {
+	return "Enrollments"
 }
 
 func (e *enrollmentView) Prepare() fyne.CanvasObject {

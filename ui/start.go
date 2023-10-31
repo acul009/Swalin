@@ -8,7 +8,6 @@ import (
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
-	mainview "rahnit-rmm/ui/main_view"
 	"rahnit-rmm/util"
 	"sync"
 
@@ -78,7 +77,7 @@ func unlock(w fyne.Window) {
 			panic(err)
 		}
 
-		mainview.DisplayMainView(w, credentials)
+		startMainMenu(w, credentials)
 	}
 
 	w.SetContent(container.NewVBox(
@@ -160,7 +159,7 @@ func setupLoginForm(w fyne.Window, conn *rpc.RpcConnection) {
 			panic(err)
 		}
 
-		mainview.DisplayMainView(w, credentials)
+		startMainMenu(w, credentials)
 	}
 
 	w.SetContent(
@@ -249,7 +248,7 @@ func setupServerForm(w fyne.Window, conn *rpc.RpcConnection) {
 				panic(err)
 			}
 
-			mainview.DisplayMainView(w, credentials)
+			startMainMenu(w, credentials)
 		}()
 	}
 
