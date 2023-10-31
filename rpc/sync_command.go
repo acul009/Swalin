@@ -22,11 +22,15 @@ type updateInfo[K comparable, T any] struct {
 }
 
 func (s *syncDownCommand[K, T]) ExecuteClient(session *RpcSession) error {
+	fmt.Printf("reading initial map\n")
+
 	initial := make(map[K]T)
 	err := ReadMessage[map[K]T](session, initial)
 	if err != nil {
 		return fmt.Errorf("error reading message: %w", err)
 	}
+
+	fmt.Printf("received initial map: %+v\n", initial)
 
 	for key, value := range initial {
 		s.targetMap.Set(key, value)
@@ -35,10 +39,13 @@ func (s *syncDownCommand[K, T]) ExecuteClient(session *RpcSession) error {
 	update := &updateInfo[K, T]{}
 
 	for {
+
 		err := ReadMessage[*updateInfo[K, T]](session, update)
 		if err != nil {
 			return fmt.Errorf("error reading message: %w", err)
 		}
+
+		fmt.Printf("received update: %+v\n", update)
 
 		if update.delete {
 			s.targetMap.Delete(update.Key)
@@ -67,7 +74,7 @@ func (s *syncDownCommand[K, T]) ExecuteServer(session *RpcSession) error {
 
 	var updateErrChan = make(chan error)
 
-	s.targetMap.Subscribe(
+	unsubscribe := s.targetMap.Subscribe(
 		func(key K, value T) {
 			err = WriteMessage[updateInfo[K, T]](session, updateInfo[K, T]{
 				delete: false,
@@ -88,6 +95,7 @@ func (s *syncDownCommand[K, T]) ExecuteServer(session *RpcSession) error {
 			}
 		},
 	)
+	defer unsubscribe()
 
 	err = <-updateErrChan
 

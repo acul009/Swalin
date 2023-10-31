@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"fmt"
-	"log"
 	"rahnit-rmm/pki"
 	"time"
 )
@@ -31,7 +30,6 @@ func newRpcMessage[P any](receiver *pki.PublicKey, payload P) (*RpcMessage[P], e
 }
 
 func (m *RpcMessage[P]) Verify(store *nonceStorage, receiver *pki.PublicKey) error {
-	log.Printf("Verifying message: %+v", m)
 
 	if err := m.VerifyTimestamp(); err != nil {
 		return err

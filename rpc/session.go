@@ -153,7 +153,6 @@ func (s *RpcSession) Context() context.Context {
 }
 
 func readMessageFromUnknown[P any](s *RpcSession, payload P) (*pki.PublicKey, error) {
-	log.Printf("Reading message from unknown sender")
 
 	message := &RpcMessage[P]{
 		Payload: payload,
@@ -163,8 +162,6 @@ func readMessageFromUnknown[P any](s *RpcSession, payload P) (*pki.PublicKey, er
 	if err != nil {
 		return nil, fmt.Errorf("error reading message: %w", err)
 	}
-
-	log.Printf("Received message from unknown sender: %v", sender)
 
 	myPub, err := s.credentials.GetPublicKey()
 	if err != nil {
@@ -197,7 +194,6 @@ func ReadMessage[P any](s *RpcSession, payload P) error {
 }
 
 func WriteMessage[P any](s *RpcSession, payload P) error {
-	log.Printf("trying to write message to session")
 	if err := s.ensureState(RpcSessionOpen); err != nil {
 		return fmt.Errorf("error ensuring state: %w", err)
 	}
@@ -215,8 +211,6 @@ func WriteMessage[P any](s *RpcSession, payload P) error {
 	if err != nil {
 		return fmt.Errorf("error marshalling message: %w", err)
 	}
-
-	log.Printf("Sending message: \n%s\n", string(data))
 
 	n, err := s.Write(data)
 	if err != nil {

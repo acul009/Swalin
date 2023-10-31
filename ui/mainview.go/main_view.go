@@ -9,7 +9,9 @@ import (
 
 type MainView struct {
 	currentView   View
+	currentObject fyne.CanvasObject
 	mainContainer *fyne.Container
+	leftMenu      *fyne.Container
 }
 
 type View interface {
@@ -20,17 +22,46 @@ type View interface {
 }
 
 func NewMainView() *MainView {
+	leftMenu := container.NewVBox()
+
+	main := container.NewBorder(
+		container.NewVBox(
+			widget.NewToolbar(
+				widget.NewToolbarSpacer(),
+				widget.NewToolbarSeparator(),
+				widget.NewToolbarAction(theme.AccountIcon(), func() {
+
+				}),
+			),
+			widget.NewSeparator(),
+		),
+		nil,
+		container.NewHBox(
+			container.NewVBox(
+				leftMenu,
+			),
+			widget.NewSeparator(),
+		),
+		nil,
+	)
 	return &MainView{
-		mainContainer: container.NewVBox(),
+		mainContainer: main,
+		leftMenu:      leftMenu,
 	}
 }
 
 func (m *MainView) SetView(v View) {
+	if m.currentObject != nil {
+		m.mainContainer.Remove(m.currentObject)
+	}
+
 	if m.currentView != nil {
 		m.currentView.Close()
 	}
+	m.currentObject = v.Prepare()
+
 	m.currentView = v
-	m.mainContainer.Objects = []fyne.CanvasObject{v.Prepare()}
+	m.mainContainer.Objects = append(m.mainContainer.Objects, m.currentObject)
 	m.mainContainer.Refresh()
 }
 
@@ -39,42 +70,20 @@ func (m *MainView) PushView(v View) {
 }
 
 func (m *MainView) Display(w fyne.Window, views []View) {
-
-	leftMenu := container.NewVBox()
+	m.leftMenu.RemoveAll()
 	for _, view := range views {
+		v := view
 		icon := view.Icon()
 		if icon == nil {
-			leftMenu.Add(widget.NewButton(view.Name(), func() {
-				m.SetView(view)
+			m.leftMenu.Add(widget.NewButton(v.Name(), func() {
+				m.SetView(v)
 			}))
 		} else {
-			leftMenu.Add(widget.NewButtonWithIcon(view.Name(), icon, func() {
-				m.SetView(view)
+			m.leftMenu.Add(widget.NewButtonWithIcon(v.Name(), icon, func() {
+				m.SetView(v)
 			}))
 		}
 	}
 
-	w.SetContent(
-		container.NewBorder(
-			container.NewVBox(
-				widget.NewToolbar(
-					widget.NewToolbarSpacer(),
-					widget.NewToolbarSeparator(),
-					widget.NewToolbarAction(theme.AccountIcon(), func() {
-
-					}),
-				),
-				widget.NewSeparator(),
-			),
-			nil,
-			container.NewHBox(
-				container.NewVBox(
-					leftMenu,
-				),
-				widget.NewSeparator(),
-			),
-			nil,
-			m.mainContainer,
-		),
-	)
+	w.SetContent(m.mainContainer)
 }

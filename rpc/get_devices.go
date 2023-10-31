@@ -24,8 +24,8 @@ func (c *getDevicesCommand) GetKey() string {
 	return "get-devices"
 }
 
-func (c *getDevicesCommand) ExecuteClient(session *RpcSession) error {
+func (c *getDevicesCommand) ExecuteServer(session *RpcSession) error {
 	devicemap := session.connection.server.devices.devices
 	c.syncDownCommand.targetMap = devicemap
-	return c.syncDownCommand.ExecuteClient(session)
+	return c.syncDownCommand.ExecuteServer(session)
 }

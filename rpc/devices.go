@@ -10,7 +10,11 @@ import (
 
 type DeviceInfo struct {
 	Certificate *pki.Certificate
-	online      bool
+	Online      bool
+}
+
+func (d DeviceInfo) Name() string {
+	return d.Certificate.GetName()
 }
 
 type DeviceList struct {
@@ -35,7 +39,7 @@ func NewDeviceListFromDB() (*DeviceList, error) {
 		}
 		d.devices.Set(cert.GetPublicKey().Base64Encode(), DeviceInfo{
 			Certificate: cert,
-			online:      false,
+			Online:      false,
 		})
 	}
 
@@ -55,7 +59,7 @@ func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
 
 	d.devices.Set(cert.GetPublicKey().Base64Encode(), DeviceInfo{
 		Certificate: cert,
-		online:      false,
+		Online:      false,
 	})
 
 	return nil

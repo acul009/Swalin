@@ -37,6 +37,7 @@ type RpcServer struct {
 	credentials       *pki.PermanentCredentials
 	enrollment        *enrollmentManager
 	devices           *DeviceList
+	verifier          pki.Verifier
 }
 
 type RpcServerState int16
@@ -71,6 +72,11 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 		return nil, fmt.Errorf("error creating device list: %w", err)
 	}
 
+	verifier, err := pki.NewLocalVerify()
+	if err != nil {
+		return nil, fmt.Errorf("error creating local verify: %w", err)
+	}
+
 	return &RpcServer{
 		listener:          listener,
 		rpcCommands:       rpcCommands,
@@ -81,6 +87,7 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 		credentials:       credentials,
 		enrollment:        newEnrollmentManager(cert),
 		devices:           devices,
+		verifier:          verifier,
 	}, nil
 }
 
@@ -119,7 +126,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 			return nil, fmt.Errorf("peer did not provide a any certificate")
 		}
 
-		if err := pki.VerifyCertificate(peerCert); err != nil {
+		if err := s.verifier.VerifyTls(peerCert); err != nil {
 			conn.CloseWithError(400, "")
 			return nil, fmt.Errorf("peer did not provide a valid certificate: %w", err)
 		}

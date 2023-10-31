@@ -7,12 +7,18 @@ import (
 	"rahnit-rmm/config"
 )
 
-type verifyOptionCache struct {
+type Verifier interface {
+	VerifyUser(cert *Certificate) error
+	VerifyAgent(cert *Certificate) error
+	VerifyTls(cert *Certificate) error
+}
+
+type localVerify struct {
 	rootPool      *x509.CertPool
 	intermediates *x509.CertPool
 }
 
-func NewOptionCacheFromDB() (*verifyOptionCache, error) {
+func NewLocalVerify() (*localVerify, error) {
 	rootCert, err := Root.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load root certificate: %w", err)
@@ -38,23 +44,23 @@ func NewOptionCacheFromDB() (*verifyOptionCache, error) {
 		intermediatePool.AddCert(userCert.ToX509())
 	}
 
-	return &verifyOptionCache{
+	return &localVerify{
 		rootPool:      rootPool,
 		intermediates: intermediatePool,
 	}, nil
 }
 
-func (v *verifyOptionCache) options() x509.VerifyOptions {
+func (v *localVerify) options(keyUses ...x509.ExtKeyUsage) x509.VerifyOptions {
 
 	return x509.VerifyOptions{
 		Roots:         v.rootPool,
 		Intermediates: v.intermediates,
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		KeyUsages:     keyUses,
 	}
 }
 
-func (v *verifyOptionCache) verify(cert *Certificate) error {
-	chains, err := cert.ToX509().Verify(v.options())
+func (v *localVerify) verify(cert *Certificate, keyUses ...x509.ExtKeyUsage) error {
+	chains, err := cert.ToX509().Verify(v.options(keyUses...))
 	if err != nil {
 		return fmt.Errorf("failed to verify certificate: %w", err)
 	}
@@ -74,7 +80,7 @@ func (v *verifyOptionCache) verify(cert *Certificate) error {
 	return nil
 }
 
-func (v *verifyOptionCache) checkCertificateInfo(cert *Certificate) error {
+func (v *localVerify) checkCertificateInfo(cert *Certificate) error {
 	err := v.checkRevoked(cert)
 	if err != nil {
 		return fmt.Errorf("certificate has been revoked: %w", err)
@@ -83,22 +89,23 @@ func (v *verifyOptionCache) checkCertificateInfo(cert *Certificate) error {
 	return nil
 }
 
-func (v *verifyOptionCache) checkRevoked(cert *Certificate) error {
+func (v *localVerify) checkRevoked(cert *Certificate) error {
 	// TODO
 	return nil
 }
 
-func (v *verifyOptionCache) VerifyUser(cert *Certificate) error {
+func (v *localVerify) VerifyUser(cert *Certificate) error {
 	if cert == nil {
 		return fmt.Errorf("certificate is nil")
 	}
 
-	err := v.verify(cert)
+	err := v.verify(cert, x509.ExtKeyUsageClientAuth)
 	if err != nil {
 		return fmt.Errorf("failed to verify certificate: %w", err)
 	}
 
-	if cert.Subject.OrganizationalUnit[0] != string(CertTypeUser) && cert.Subject.OrganizationalUnit[0] != string(CertTypeRoot) {
+	if cert.Subject.OrganizationalUnit[0] != string(CertTypeUser) &&
+		cert.Subject.OrganizationalUnit[0] != string(CertTypeRoot) {
 		return fmt.Errorf("certificate is not a user certificate")
 	}
 
@@ -109,12 +116,12 @@ func (v *verifyOptionCache) VerifyUser(cert *Certificate) error {
 	return nil
 }
 
-func (v *verifyOptionCache) VerifyAgent(cert *Certificate) error {
+func (v *localVerify) VerifyAgent(cert *Certificate) error {
 	if cert == nil {
 		return fmt.Errorf("certificate is nil")
 	}
 
-	err := v.verify(cert)
+	err := v.verify(cert, x509.ExtKeyUsageClientAuth)
 	if err != nil {
 		return fmt.Errorf("failed to verify certificate: %w", err)
 	}
@@ -125,6 +132,25 @@ func (v *verifyOptionCache) VerifyAgent(cert *Certificate) error {
 
 	if cert.IsCA {
 		return fmt.Errorf("certificate is a CA")
+	}
+
+	return nil
+}
+
+func (v *localVerify) VerifyTls(cert *Certificate) error {
+	if cert == nil {
+		return fmt.Errorf("certificate is nil")
+	}
+
+	err := v.verify(cert, x509.ExtKeyUsageClientAuth)
+	if err != nil {
+		return fmt.Errorf("failed to verify certificate: %w", err)
+	}
+
+	if cert.Subject.OrganizationalUnit[0] != string(CertTypeUser) &&
+		cert.Subject.OrganizationalUnit[0] != string(CertTypeRoot) &&
+		cert.Subject.OrganizationalUnit[0] != string(CertTypeAgent) {
+		return fmt.Errorf("certificate is of wrong type")
 	}
 
 	return nil
