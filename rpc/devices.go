@@ -1,4 +1,4 @@
-package permissions
+package rpc
 
 import (
 	"context"
@@ -42,7 +42,7 @@ func NewDeviceListFromDB() (*DeviceList, error) {
 	return d, nil
 }
 
-func (d *DeviceList) AddDevice(cert *pki.Certificate) error {
+func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
 	if d.devices.Has(cert.GetPublicKey().Base64Encode()) {
 		return fmt.Errorf("device already exists")
 	}
@@ -67,4 +67,8 @@ func (d *DeviceList) Subscribe(onSet func(string, DeviceInfo), onRemove func(str
 
 func (d *DeviceList) UpdateDeviceStatus(pubKey string, update func(device DeviceInfo) DeviceInfo) {
 	d.devices.Update(pubKey, update)
+}
+
+func (d *DeviceList) GetAll() map[string]DeviceInfo {
+	return d.devices.GetAll()
 }

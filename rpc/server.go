@@ -36,6 +36,7 @@ type RpcServer struct {
 	nonceStorage      *nonceStorage
 	credentials       *pki.PermanentCredentials
 	enrollment        *enrollmentManager
+	devices           *DeviceList
 }
 
 type RpcServerState int16
@@ -65,6 +66,11 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 		return nil, fmt.Errorf("error getting certificate: %w", err)
 	}
 
+	devices, err := NewDeviceListFromDB()
+	if err != nil {
+		return nil, fmt.Errorf("error creating device list: %w", err)
+	}
+
 	return &RpcServer{
 		listener:          listener,
 		rpcCommands:       rpcCommands,
@@ -74,6 +80,7 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 		nonceStorage:      NewNonceStorage(),
 		credentials:       credentials,
 		enrollment:        newEnrollmentManager(cert),
+		devices:           devices,
 	}, nil
 }
 
