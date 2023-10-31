@@ -73,6 +73,15 @@ func (m *ObservableMap[K, T]) Set(key K, value T) {
 	}
 }
 
+func (m *ObservableMap[K, T]) Update(key K, updateFunc func(T) T) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	m.m[key] = updateFunc(m.m[key])
+	for _, observer := range m.observers {
+		observer.set(key, m.m[key])
+	}
+}
+
 func (m *ObservableMap[K, T]) Delete(key K) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()

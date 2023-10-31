@@ -272,4 +272,5 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 
 func (s *RpcServer) cleanup() {
 	s.enrollment.cleanup()
+	s.nonceStorage.cleanup()
 }

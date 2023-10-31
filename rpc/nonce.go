@@ -49,7 +49,7 @@ func (s *nonceStorage) AddNonce(nonce Nonce) {
 	s.nonceMap[key] = time.Now().Unix()
 }
 
-func (s *nonceStorage) Cleanup() {
+func (s *nonceStorage) cleanup() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
