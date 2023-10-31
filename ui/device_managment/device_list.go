@@ -26,34 +26,36 @@ func newDeviceList() *deviceList {
 }
 
 func (d *deviceList) Set(key string, dev rpc.DeviceInfo) {
-	currentDisplay, update := d.deviceDisplays[key]
+	disp, update := d.deviceDisplays[key]
 
 	if update {
 		log.Printf("updating display for %s", key)
-		currentDisplay.Update(dev)
 	} else {
 		log.Printf("adding display for %s", key)
-		disp := newDeviceListEntry(dev)
+		disp = newDeviceListEntry(dev)
 		d.deviceDisplays[key] = disp
-		d.container.Add(disp)
+		d.container.Add(disp.container)
+		d.container.Refresh()
+		disp.container.Refresh()
 	}
+	disp.Update(dev)
 }
 
 func (d *deviceList) Remove(key string) {
 	delete(d.deviceDisplays, key)
 	newList := make([]fyne.CanvasObject, 0, len(d.deviceDisplays))
 	for _, disp := range d.deviceDisplays {
-		newList = append(newList, disp)
+		newList = append(newList, disp.container)
 	}
 	d.container.Objects = newList
 	d.container.Refresh()
 }
 
 type deviceListEntry struct {
-	*fyne.Container
-	icon   *widget.Icon
-	name   *widget.Label
-	status *widget.Label
+	container *fyne.Container
+	icon      *widget.Icon
+	name      *widget.Label
+	status    *widget.Label
 }
 
 func newDeviceListEntry(device rpc.DeviceInfo) *deviceListEntry {
@@ -66,9 +68,7 @@ func newDeviceListEntry(device rpc.DeviceInfo) *deviceListEntry {
 
 	entry.status = widget.NewLabel("")
 
-	entry.Container = container.NewHBox(entry.icon, entry.name, entry.status)
-
-	entry.Container.Refresh()
+	entry.container = container.NewHBox(entry.icon, entry.name, entry.status)
 
 	return entry
 }
@@ -84,5 +84,5 @@ func (d *deviceListEntry) Update(device rpc.DeviceInfo) {
 	}
 
 	d.status.SetText(status)
-	d.Refresh()
+	d.container.Refresh()
 }
