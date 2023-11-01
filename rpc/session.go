@@ -24,7 +24,8 @@ const (
 )
 
 type RpcSession struct {
-	stream      quic.Stream
+	stream      io.ReadWriteCloser
+	ctx         context.Context
 	connection  *RpcConnection
 	uuid        uuid.UUID
 	state       RpcSessionState
@@ -43,6 +44,7 @@ func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 
 	return &RpcSession{
 		stream:      stream,
+		ctx:         stream.Context(),
 		connection:  conn,
 		uuid:        uuid.New(),
 		state:       RpcSessionCreated,
@@ -149,7 +151,7 @@ func (s *RpcSession) Read(p []byte) (n int, err error) {
 }
 
 func (s *RpcSession) Context() context.Context {
-	return s.stream.Context()
+	return s.ctx
 }
 
 func readMessageFromUnknown[P any](s *RpcSession, payload P) (*pki.PublicKey, error) {

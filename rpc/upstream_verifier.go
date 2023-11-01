@@ -19,12 +19,68 @@ type verifyCertificateChainCmd struct {
 
 func (c *verifyCertificateChainCmd) ExecuteServer(session *RpcSession) error {
 	if c.Key != nil {
+		chain, err := session.connection.verifier.VerifyPublicKey(c.Key)
+		if err != nil {
+			session.WriteResponseHeader(SessionResponseHeader{
+				Code: 500,
+				Msg:  "Internal Server Error",
+			})
+			return fmt.Errorf("error verifying public key: %w", err)
+		}
 
+		session.WriteResponseHeader(SessionResponseHeader{
+			Code: 200,
+			Msg:  "OK",
+		})
+
+		err = WriteMessage[[]*pki.Certificate](session, chain)
+		if err != nil {
+			return fmt.Errorf("error writing message: %w", err)
+		}
+
+		return nil
 	}
+
+	if c.Cert != nil {
+		chain, err := session.connection.verifier.Verify(c.Cert)
+		if err != nil {
+			session.WriteResponseHeader(SessionResponseHeader{
+				Code: 500,
+				Msg:  "Internal Server Error",
+			})
+			return fmt.Errorf("error verifying certificate: %w", err)
+		}
+
+		session.WriteResponseHeader(SessionResponseHeader{
+			Code: 200,
+			Msg:  "OK",
+		})
+
+		err = WriteMessage[[]*pki.Certificate](session, chain)
+		if err != nil {
+			return fmt.Errorf("error writing message: %w", err)
+		}
+
+		return nil
+	}
+
+	session.WriteResponseHeader(SessionResponseHeader{
+		Code: 400,
+		Msg:  "Bad Request",
+	})
+	return fmt.Errorf("no certificate or public key specified")
+
 }
 
 func (c *verifyCertificateChainCmd) ExecuteClient(session *RpcSession) error {
+	chain := make([]*pki.Certificate, 0)
+	err := ReadMessage[[]*pki.Certificate](session, chain)
+	if err != nil {
+		return fmt.Errorf("error reading message: %w", err)
+	}
 
+	c.chain = chain
+	return nil
 }
 
 func (c *verifyCertificateChainCmd) GetKey() string {
@@ -151,18 +207,17 @@ func (v *upstreamVerify) VerifyPublicKey(pub *pki.PublicKey) ([]*pki.Certificate
 		return v.Verify(upstream)
 	}
 
-	chain := make([]*pki.Certificate, 0, 1)
+	cmd := &verifyCertificateChainCmd{
+		Key: pub,
+	}
 
-	err = v.ep.SendCommand(context.Background(),
-		&verifyCertificateChainCmd{
-			Key:   pub,
-			chain: chain,
-		},
-	)
+	err = v.ep.SendCommand(context.Background(), cmd)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to request certificate chain: %w", err)
 	}
+
+	chain := cmd.chain
 
 	cert := chain[0]
 
@@ -187,4 +242,5 @@ func (v *upstreamVerify) VerifyPublicKey(pub *pki.PublicKey) ([]*pki.Certificate
 		verifiedChain = append(verifiedChain, workingCert)
 	}
 
+	return verifiedChain, nil
 }
