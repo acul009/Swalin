@@ -77,13 +77,22 @@ func (r *registerUserCmd) ExecuteServer(session *RpcSession) error {
 
 	cert := r.Cert
 
-	err := session.connection.server.verifier.VerifyUser(cert)
+	_, err := session.connection.verifier.Verify(cert)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 400,
 			Msg:  "Invalid certificate",
 		})
 		return fmt.Errorf("invalid certificate: %w", err)
+	}
+
+	if cert.Type() != pki.CertTypeUser && cert.Type() != pki.CertTypeRoot {
+		session.WriteResponseHeader(SessionResponseHeader{
+			Code: 400,
+			Msg:  "Invalid certificate type",
+		})
+		return fmt.Errorf("invalid certificate type")
+
 	}
 
 	username := cert.Subject.CommonName

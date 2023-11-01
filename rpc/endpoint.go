@@ -62,7 +62,14 @@ func newRpcEndpoint(ctx context.Context, addr string, credentials pki.Credential
 		return nil, fmt.Errorf("error creating QUIC connection: %w", err)
 	}
 
-	rpcConn := newRpcConnection(quicConn, nil, RpcRoleClient, NewNonceStorage(), partner, ProtoRpc, credentials)
+	rpcConn := newRpcConnection(quicConn, nil, RpcRoleClient, NewNonceStorage(), partner, ProtoRpc, credentials, nil)
+
+	verifier, err := NewUpstreamVerify()
+	if err != nil {
+		return nil, fmt.Errorf("error creating upstream verify: %w", err)
+	}
+
+	rpcConn.verifier = verifier
 
 	return &RpcEndpoint{
 		conn:  rpcConn,

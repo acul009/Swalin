@@ -1,6 +1,7 @@
 package pki
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/json"
@@ -70,6 +71,10 @@ func ImportCertificate(cert *x509.Certificate) (*Certificate, error) {
 	return &certTyped, nil
 }
 
+func (cert *Certificate) Equal(compare *Certificate) bool {
+	return bytes.Equal(cert.Raw, compare.Raw)
+}
+
 func (cert *Certificate) GetPublicKey() *PublicKey {
 	certTyped, ok := cert.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
@@ -79,25 +84,34 @@ func (cert *Certificate) GetPublicKey() *PublicKey {
 	return &pub
 }
 
-func (cert *Certificate) GetType() (CertType, error) {
-	if len(cert.Subject.OrganizationalUnit) == 0 {
-		return CertTypeError, fmt.Errorf("organizational unit is empty")
-	}
-	ou := cert.Subject.OrganizationalUnit[0]
-	ct := CertType(ou)
-
-	switch ct {
-	case CertTypeUser:
-		if !cert.IsCA {
-			return CertTypeError, fmt.Errorf("user certificate is not a CA")
-		}
-
-	}
-
-	return CertTypeError, fmt.Errorf("unknown certificate type")
-
-}
-
 func (cert *Certificate) GetName() string {
 	return cert.Subject.CommonName
+}
+
+func (cert *Certificate) Type() CertType {
+	if len(cert.Subject.OrganizationalUnit) == 0 {
+		return CertTypeError
+	}
+
+	t := CertType(cert.Subject.OrganizationalUnit[0])
+
+	switch t {
+	case CertTypeUser:
+	case CertTypeRoot:
+		if !cert.IsCA {
+			return CertTypeError
+		}
+
+		return t
+
+	case CertTypeAgent:
+	case CertTypeServer:
+		if !cert.IsCA {
+			return CertTypeError
+		}
+
+		return t
+	}
+
+	return CertTypeError
 }

@@ -5,12 +5,14 @@ import (
 	"crypto/x509"
 	"fmt"
 	"rahnit-rmm/config"
+	"rahnit-rmm/ent"
+	"rahnit-rmm/ent/device"
+	"rahnit-rmm/ent/user"
 )
 
 type Verifier interface {
-	VerifyUser(cert *Certificate) error
-	VerifyAgent(cert *Certificate) error
-	VerifyTls(cert *Certificate) error
+	Verify(cert *Certificate) ([]*Certificate, error)
+	VerifyPublicKey(pub *PublicKey) ([]*Certificate, error)
 }
 
 type localVerify struct {
@@ -50,34 +52,41 @@ func NewLocalVerify() (*localVerify, error) {
 	}, nil
 }
 
-func (v *localVerify) options(keyUses ...x509.ExtKeyUsage) x509.VerifyOptions {
+func (v *localVerify) options() x509.VerifyOptions {
 
 	return x509.VerifyOptions{
 		Roots:         v.rootPool,
 		Intermediates: v.intermediates,
-		KeyUsages:     keyUses,
 	}
 }
 
-func (v *localVerify) verify(cert *Certificate, keyUses ...x509.ExtKeyUsage) error {
-	chains, err := cert.ToX509().Verify(v.options(keyUses...))
-	if err != nil {
-		return fmt.Errorf("failed to verify certificate: %w", err)
+func (v *localVerify) Verify(cert *Certificate) ([]*Certificate, error) {
+	if cert == nil {
+		return nil, fmt.Errorf("certificate is nil")
 	}
+
+	chains, err := cert.ToX509().Verify(v.options())
+	if err != nil || len(chains) == 0 {
+		return nil, fmt.Errorf("failed to verify certificate: %w", err)
+	}
+
+	chain := make([]*Certificate, 0, len(chains[0]))
 
 	for _, cert := range chains[0] {
 		workingCert, err := ImportCertificate(cert)
 		if err != nil {
-			return fmt.Errorf("failed to import certificate: %w", err)
+			return nil, fmt.Errorf("failed to import certificate: %w", err)
 		}
 
 		err = v.checkCertificateInfo(workingCert)
 		if err != nil {
-			return fmt.Errorf("failed to check certificate info: %w", err)
+			return nil, fmt.Errorf("failed to check certificate info: %w", err)
 		}
+
+		chain = append(chain, workingCert)
 	}
 
-	return nil
+	return chain, nil
 }
 
 func (v *localVerify) checkCertificateInfo(cert *Certificate) error {
@@ -94,64 +103,53 @@ func (v *localVerify) checkRevoked(cert *Certificate) error {
 	return nil
 }
 
-func (v *localVerify) VerifyUser(cert *Certificate) error {
-	if cert == nil {
-		return fmt.Errorf("certificate is nil")
-	}
-
-	err := v.verify(cert, x509.ExtKeyUsageClientAuth)
+func (v *localVerify) VerifyPublicKey(pub *PublicKey) ([]*Certificate, error) {
+	root, err := Root.Get()
 	if err != nil {
-		return fmt.Errorf("failed to verify certificate: %w", err)
+		return nil, fmt.Errorf("failed to check if public key is root: %w", err)
 	}
 
-	if cert.Subject.OrganizationalUnit[0] != string(CertTypeUser) &&
-		cert.Subject.OrganizationalUnit[0] != string(CertTypeRoot) {
-		return fmt.Errorf("certificate is not a user certificate")
+	if root.GetPublicKey().Equal(pub) {
+		return []*Certificate{root}, nil
 	}
 
-	if !cert.IsCA {
-		return fmt.Errorf("certificate is not a CA")
+	if Upstream.Available() {
+		upstream, err := Upstream.Get()
+		if err != nil {
+			return nil, fmt.Errorf("failed to check if public key is upstream: %w", err)
+		}
+		return v.Verify(upstream)
 	}
 
-	return nil
-}
+	db := config.DB()
 
-func (v *localVerify) VerifyAgent(cert *Certificate) error {
-	if cert == nil {
-		return fmt.Errorf("certificate is nil")
-	}
-
-	err := v.verify(cert, x509.ExtKeyUsageClientAuth)
+	// check for user with public key
+	user, err := db.User.Query().Where(user.PublicKeyEQ(pub.Base64Encode())).Only(context.Background())
 	if err != nil {
-		return fmt.Errorf("failed to verify certificate: %w", err)
+		if !ent.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to query user: %w", err)
+		}
+	} else {
+		cert, err := CertificateFromPem([]byte(user.Certificate))
+		if err != nil {
+			return nil, fmt.Errorf("failed to load user certificate: %w", err)
+		}
+		return v.Verify(cert)
 	}
 
-	if cert.Subject.OrganizationalUnit[0] != string(CertTypeAgent) {
-		return fmt.Errorf("certificate is not an agent certificate")
-	}
-
-	if cert.IsCA {
-		return fmt.Errorf("certificate is a CA")
-	}
-
-	return nil
-}
-
-func (v *localVerify) VerifyTls(cert *Certificate) error {
-	if cert == nil {
-		return fmt.Errorf("certificate is nil")
-	}
-
-	err := v.verify(cert, x509.ExtKeyUsageClientAuth)
+	// check for device with public key
+	device, err := db.Device.Query().Where(device.PublicKeyEQ(pub.Base64Encode())).Only(context.Background())
 	if err != nil {
-		return fmt.Errorf("failed to verify certificate: %w", err)
+		if !ent.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to query device: %w", err)
+		}
+	} else {
+		cert, err := CertificateFromPem([]byte(device.Certificate))
+		if err != nil {
+			return nil, fmt.Errorf("failed to load device certificate: %w", err)
+		}
+		return v.Verify(cert)
 	}
 
-	if cert.Subject.OrganizationalUnit[0] != string(CertTypeUser) &&
-		cert.Subject.OrganizationalUnit[0] != string(CertTypeRoot) &&
-		cert.Subject.OrganizationalUnit[0] != string(CertTypeAgent) {
-		return fmt.Errorf("certificate is of wrong type")
-	}
-
-	return nil
+	return nil, fmt.Errorf("unknown public key")
 }

@@ -192,7 +192,7 @@ func EnrollWithUpstream() (*pki.PermanentCredentials, error) {
 		return nil, fmt.Errorf("error generating temp credentials: %w", err)
 	}
 
-	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoAgentEnroll, tempCredentials)
+	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoAgentEnroll, tempCredentials, pki.NewNilVerifier())
 
 	session, err := conn.OpenSession(context.Background())
 	if err != nil {

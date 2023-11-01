@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"rahnit-rmm/pki"
 	"time"
 
 	"github.com/quic-go/quic-go"
@@ -28,7 +29,7 @@ func FirstClientConnect(addr string) (*RpcConnection, error) {
 
 	protocol := quicConn.ConnectionState().TLS.NegotiatedProtocol
 
-	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, TlsConnectionProto(protocol), nil)
+	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, TlsConnectionProto(protocol), nil, pki.NewNilVerifier())
 
 	return conn, nil
 }

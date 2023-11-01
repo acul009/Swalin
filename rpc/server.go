@@ -126,9 +126,21 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 			return nil, fmt.Errorf("peer did not provide a any certificate")
 		}
 
-		if err := s.verifier.VerifyTls(peerCert); err != nil {
+		if _, err := s.verifier.Verify(peerCert); err != nil {
 			conn.CloseWithError(400, "")
 			return nil, fmt.Errorf("peer did not provide a valid certificate: %w", err)
+		}
+
+		certType := peerCert.Type()
+
+		switch certType {
+		case pki.CertTypeUser:
+		case pki.CertTypeRoot:
+		case pki.CertTypeAgent:
+			log.Println("Valid certificate type")
+		default:
+			conn.CloseWithError(400, "")
+			return nil, fmt.Errorf("peer presented wrong certificate type: %s", certType)
 		}
 
 	case ProtoClientLogin, ProtoAgentEnroll:
@@ -150,7 +162,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 	defer s.mutex.Unlock()
 
 	for i := 0; i < 10; i++ {
-		newConnection := newRpcConnection(conn, s, RpcRoleServer, s.nonceStorage, peerCert, protocol, s.credentials)
+		newConnection := newRpcConnection(conn, s, RpcRoleServer, s.nonceStorage, peerCert, protocol, s.credentials, s.verifier)
 		if _, ok := s.activeConnections[newConnection.uuid]; !ok {
 			connection = newConnection
 			break

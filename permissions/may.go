@@ -35,21 +35,28 @@ func MayStartCommand(sender *pki.PublicKey, command string) error {
 		return nil
 	}
 
-	db := config.DB()
+	switch command {
 
-	encoded := sender.Base64Encode()
+	case "verify-certificate-chain":
+		return nil
 
-	_, err = db.User.Query().Where(user.PublicKeyEQ(encoded)).Only(context.Background())
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return PermissionDeniedError{
-				PublicKey: sender,
-				Reason:    "requested sender is not a user",
+	default:
+		db := config.DB()
+
+		encoded := sender.Base64Encode()
+
+		_, err = db.User.Query().Where(user.PublicKeyEQ(encoded)).Only(context.Background())
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return PermissionDeniedError{
+					PublicKey: sender,
+					Reason:    "requested sender is not a user",
+				}
 			}
+			return fmt.Errorf("failed to query user: %w", err)
 		}
-		return fmt.Errorf("failed to query user: %w", err)
-	}
 
-	return nil
+		return nil
+	}
 
 }

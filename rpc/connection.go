@@ -40,6 +40,7 @@ type RpcConnection struct {
 	nonceStorage   *nonceStorage
 	protocol       TlsConnectionProto
 	credentials    pki.Credentials
+	verifier       pki.Verifier
 }
 
 func newRpcConnection(conn quic.Connection,
@@ -49,6 +50,7 @@ func newRpcConnection(conn quic.Connection,
 	partner *pki.Certificate,
 	protocol TlsConnectionProto,
 	credentials pki.Credentials,
+	verifier pki.Verifier,
 ) *RpcConnection {
 	return &RpcConnection{
 		connection:     conn,
@@ -62,6 +64,7 @@ func newRpcConnection(conn quic.Connection,
 		nonceStorage:   nonceStorage,
 		protocol:       protocol,
 		credentials:    credentials,
+		verifier:       verifier,
 	}
 }
 
