@@ -96,16 +96,14 @@ func (cert *Certificate) Type() CertType {
 	t := CertType(cert.Subject.OrganizationalUnit[0])
 
 	switch t {
-	case CertTypeUser:
-	case CertTypeRoot:
+	case CertTypeUser, CertTypeRoot:
 		if !cert.IsCA {
 			return CertTypeError
 		}
 
 		return t
 
-	case CertTypeAgent:
-	case CertTypeServer:
+	case CertTypeAgent, CertTypeServer:
 		if !cert.IsCA {
 			return CertTypeError
 		}
