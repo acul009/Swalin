@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"log"
 )
 
 type Certificate x509.Certificate
@@ -95,16 +96,19 @@ func (cert *Certificate) Type() CertType {
 
 	t := CertType(cert.Subject.OrganizationalUnit[0])
 
-	switch t {
-	case CertTypeUser, CertTypeRoot:
+	if t == CertTypeUser || t == CertTypeRoot {
 		if !cert.IsCA {
+			log.Printf("WARNING: certificate of type %s is not a CA", t)
 			return CertTypeError
 		}
 
 		return t
+	}
 
-	case CertTypeAgent, CertTypeServer:
-		if !cert.IsCA {
+	if t == CertTypeAgent || t == CertTypeServer {
+
+		if cert.IsCA {
+			log.Printf("WARNING: certificate of type %s is a CA", t)
 			return CertTypeError
 		}
 

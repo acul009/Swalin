@@ -67,6 +67,7 @@ to quickly create a Cobra application.`,
 			if err != nil {
 				panic(err)
 			}
+			wg.Done()
 		}()
 
 		interrupt := make(chan os.Signal, 1)
