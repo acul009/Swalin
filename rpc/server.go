@@ -205,7 +205,6 @@ func (s *RpcServer) Run() error {
 
 	go func() {
 		for s.state == RpcServerRunning {
-			log.Printf("Triggering cleanup")
 			s.cleanup()
 			time.Sleep(30 * time.Second)
 		}
