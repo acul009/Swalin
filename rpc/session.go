@@ -55,31 +55,25 @@ func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 
 }
 
-func (s *RpcSession) handleIncoming(commands *CommandCollection) {
+func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 	defer s.Close()
 	log.Printf("handling incoming session...")
 	err := s.ensureState(RpcSessionCreated)
 	if err != nil {
-		log.Printf("error ensuring state: %v", err)
+		return fmt.Errorf("error ensuring state: %w", err)
 	}
 
 	header, sender, err := s.readRequestHeader()
-
-	if err != nil {
-		log.Printf("error reading request header: %v", err)
-		return
-	}
-
-	s.partner = sender
 
 	if err != nil {
 		s.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,
 			Msg:  "error reading request header",
 		})
-		log.Printf("error reading header: %v", err)
-		return
+		return fmt.Errorf("error reading request header: %w", err)
 	}
+
+	s.partner = sender
 
 	log.Printf("Header: %+v", header)
 
@@ -89,8 +83,7 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) {
 			Code: 403,
 			Msg:  "permission denied",
 		})
-		log.Printf("permission denied: %v", err)
-		return
+		return fmt.Errorf("permission denied: %w", err)
 	}
 
 	handler, ok := commands.Get(header.Cmd)
@@ -99,8 +92,7 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) {
 			Code: 404,
 			Msg:  "command not found",
 		})
-		log.Printf("unknown command: %s", header.Cmd)
-		return
+		return fmt.Errorf("unknown command: %s", header.Cmd)
 	}
 
 	cmd := handler()
@@ -111,17 +103,16 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) {
 			Code: 422,
 			Msg:  "error unmarshalling command",
 		})
-		log.Printf("error unmarshalling command: %v", err)
-		return
+		return fmt.Errorf("error unmarshalling command: %w", err)
 	}
 
 	err = cmd.ExecuteServer(s)
 
 	if err != nil {
-		log.Printf("error executing command: %v", err)
-		return
+		return fmt.Errorf("error executing command: %w", err)
 	}
 
+	return nil
 }
 
 func (s *RpcSession) Write(p []byte) (n int, err error) {

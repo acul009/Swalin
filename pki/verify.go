@@ -99,7 +99,7 @@ func (v *localVerify) checkCertificateInfo(cert *Certificate) error {
 }
 
 func (v *localVerify) checkRevoked(cert *Certificate) error {
-	// TODO
+	// TODO: check if certificate was revoked
 	return nil
 }
 

@@ -19,11 +19,13 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 		widget.NewLabel(device.Name()),
 		widget.NewLabel(string(device.Certificate.PemEncode())),
 		widget.NewButton("Ping", func() {
-			cmd := &rpc.PingCmd{}
-			err := ep.SendCommandTo(context.Background(), device.Certificate, cmd)
-			if err != nil {
-				panic(err)
-			}
+			go func() {
+				cmd := &rpc.PingCmd{}
+				err := ep.SendCommandTo(context.Background(), device.Certificate, cmd)
+				if err != nil {
+					panic(err)
+				}
+			}()
 		}),
 	)
 

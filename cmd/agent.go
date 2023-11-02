@@ -57,8 +57,11 @@ to quickly create a Cobra application.`,
 			panic(err)
 		}
 
-		cmdCollection := rpc.NewCommandCollection()
-		cmdCollection.Add(rpc.PingHandler)
+		cmdCollection := rpc.NewCommandCollection(
+			rpc.CreateE2eDecryptCommandHandler(rpc.NewCommandCollection(
+				rpc.PingHandler,
+			)),
+		)
 
 		wg := sync.WaitGroup{}
 

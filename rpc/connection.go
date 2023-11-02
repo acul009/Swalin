@@ -117,7 +117,12 @@ func (conn *RpcConnection) serveRpc(commands *CommandCollection) error {
 		}
 
 		log.Printf("RPC session opened, handling incoming commands")
-		go session.handleIncoming(commands)
+		go func() {
+			err := session.handleIncoming(commands)
+			if err != nil {
+				log.Printf("error handling incoming session: %v", err)
+			}
+		}()
 	}
 
 }

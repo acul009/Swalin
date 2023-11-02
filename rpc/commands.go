@@ -12,10 +12,15 @@ type CommandCollection struct {
 	Commands map[string]RpcCommandHandler
 }
 
-func NewCommandCollection() *CommandCollection {
-	return &CommandCollection{
+func NewCommandCollection(commands ...RpcCommandHandler) *CommandCollection {
+	collection := &CommandCollection{
 		Commands: make(map[string]RpcCommandHandler),
 	}
+	for _, cmd := range commands {
+		collection.Add(cmd)
+	}
+
+	return collection
 }
 
 func (c *CommandCollection) Add(cmdHandler RpcCommandHandler) {

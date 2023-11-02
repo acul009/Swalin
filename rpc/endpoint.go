@@ -93,7 +93,11 @@ func (r *RpcEndpoint) SendCommand(ctx context.Context, cmd RpcCommand) error {
 }
 
 func (r *RpcEndpoint) SendCommandTo(ctx context.Context, to *pki.Certificate, cmd RpcCommand) error {
-	forward := newForwardCommand(to, cmd)
+	encrypt, err := newE2eEncryptCommand(cmd)
+	if err != nil {
+		return fmt.Errorf("error preparing encryption: %w", err)
+	}
+	forward := newForwardCommand(to, encrypt)
 	return r.SendCommand(ctx, forward)
 }
 
