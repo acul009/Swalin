@@ -11,9 +11,9 @@ import (
 // TODO: check if secure against padding attacks
 
 type CryptoStream struct {
-	stream    io.ReadWriteCloser
-	encryptor cipher.Stream
-	decryptor cipher.Stream
+	stream io.ReadWriteCloser
+	io.Reader
+	io.Writer
 }
 
 func NewCryptoStream(stream io.ReadWriteCloser, key []byte, iv []byte) (*CryptoStream, error) {
@@ -41,32 +41,17 @@ func NewCryptoStream(stream io.ReadWriteCloser, key []byte, iv []byte) (*CryptoS
 		return nil, fmt.Errorf("failed creating cipher: %w", err)
 	}
 
-	// Create a cipher cipher for encryption
-	encryptor := cipher.NewCFBEncrypter(block, iv)
-	decryptor := cipher.NewCFBDecrypter(block, iv)
-
 	return &CryptoStream{
-		stream:    stream,
-		encryptor: encryptor,
-		decryptor: decryptor,
+		stream: stream,
+		Reader: cipher.StreamReader{
+			S: cipher.NewCFBDecrypter(block, iv),
+			R: stream,
+		},
+		Writer: cipher.StreamWriter{
+			S: cipher.NewCFBEncrypter(block, iv),
+			W: stream,
+		},
 	}, nil
-}
-
-func (c *CryptoStream) Read(dst []byte) (int, error) {
-	src := make([]byte, len(dst))
-	n, err := c.stream.Read(src)
-	if n == 0 {
-		return 0, err
-	}
-
-	c.encryptor.XORKeyStream(dst, src)
-	return n, err
-}
-
-func (c *CryptoStream) Write(src []byte) (int, error) {
-	dst := make([]byte, len(src))
-	c.decryptor.XORKeyStream(dst, src)
-	return c.stream.Write(dst)
 }
 
 func (c *CryptoStream) Close() error {
