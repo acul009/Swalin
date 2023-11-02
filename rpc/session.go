@@ -63,16 +63,12 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) {
 		log.Printf("error ensuring state: %v", err)
 	}
 
-	log.Printf("Session opened, reading request header...")
-
 	header, sender, err := s.readRequestHeader()
 
 	if err != nil {
 		log.Printf("error reading request header: %v", err)
 		return
 	}
-
-	log.Printf("Received Header: %+v", header)
 
 	s.partner = sender
 
@@ -96,14 +92,6 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) {
 		log.Printf("permission denied: %v", err)
 		return
 	}
-
-	debug, err := json.Marshal(header)
-	if err != nil {
-		log.Printf("error marshalling header: %v\n", err)
-		return
-	}
-
-	fmt.Printf("\nHeader\n%v\n", string(debug))
 
 	handler, ok := commands.Get(header.Cmd)
 	if !ok {
