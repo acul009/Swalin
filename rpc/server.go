@@ -114,6 +114,8 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 			conn.CloseWithError(400, "")
 			return nil, fmt.Errorf("error parsing peer certificate: %w", err)
 		}
+
+		log.Printf("Peer certificate:\n%s", peerCert.PemEncode())
 	} else {
 		peerCert = nil
 	}
@@ -134,9 +136,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 		certType := peerCert.Type()
 
 		switch certType {
-		case pki.CertTypeUser:
-		case pki.CertTypeRoot:
-		case pki.CertTypeAgent:
+		case pki.CertTypeUser, pki.CertTypeRoot, pki.CertTypeAgent:
 			log.Println("Valid certificate type")
 		default:
 			conn.CloseWithError(400, "")
@@ -306,4 +306,21 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 func (s *RpcServer) cleanup() {
 	s.enrollment.cleanup()
 	s.nonceStorage.cleanup()
+}
+
+func (s *RpcServer) getConnectionWith(partner *pki.Certificate) (*RpcConnection, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	for _, connection := range s.activeConnections {
+		if connection.partner == nil {
+			continue
+		}
+
+		if connection.partner.Equal(partner) {
+			return connection, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no connection found")
+
 }

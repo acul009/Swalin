@@ -9,29 +9,39 @@ import (
 
 type MainView struct {
 	currentView   View
+	viewStack     []View
 	currentObject fyne.CanvasObject
 	mainContainer *fyne.Container
 	leftMenu      *fyne.Container
+	backButton    *widget.Button
 }
 
 type View interface {
-	Name() string
-	Icon() fyne.Resource
 	Prepare() fyne.CanvasObject
 	Close()
+}
+
+type MenuView interface {
+	View
+	Name() string
+	Icon() fyne.Resource
 }
 
 func NewMainView() *MainView {
 	leftMenu := container.NewVBox()
 
+	backButton := widget.NewButtonWithIcon("", theme.NavigateBackIcon(), nil)
+
 	main := container.NewBorder(
 		container.NewVBox(
-			widget.NewToolbar(
-				widget.NewToolbarSpacer(),
-				widget.NewToolbarSeparator(),
-				widget.NewToolbarAction(theme.AccountIcon(), func() {
-
-				}),
+			container.NewHBox(
+				backButton,
+				widget.NewToolbar(
+					widget.NewToolbarSpacer(),
+					widget.NewToolbarSeparator(),
+					widget.NewToolbarAction(theme.AccountIcon(), func() {
+					}),
+				),
 			),
 			widget.NewSeparator(),
 		),
@@ -44,13 +54,27 @@ func NewMainView() *MainView {
 		),
 		nil,
 	)
-	return &MainView{
+	m := &MainView{
+		currentView:   nil,
+		viewStack:     []View{},
 		mainContainer: main,
 		leftMenu:      leftMenu,
+		backButton:    backButton,
 	}
+
+	backButton.OnTapped = m.popView
+	backButton.Disable()
+
+	return m
 }
 
 func (m *MainView) SetView(v View) {
+	m.viewStack = make([]View, 0)
+	m.backButton.Disable()
+	m.display(v)
+}
+
+func (m *MainView) display(v View) {
 	if m.currentObject != nil {
 		m.mainContainer.Remove(m.currentObject)
 	}
@@ -66,10 +90,28 @@ func (m *MainView) SetView(v View) {
 }
 
 func (m *MainView) PushView(v View) {
+	if m.currentView != nil {
+		m.viewStack = append(m.viewStack, m.currentView)
+		m.backButton.Enable()
+	}
 
+	m.display(v)
 }
 
-func (m *MainView) Display(w fyne.Window, views []View) {
+func (m *MainView) popView() {
+	if len(m.viewStack) > 0 {
+		v := m.viewStack[len(m.viewStack)-1]
+		m.viewStack = m.viewStack[:len(m.viewStack)-1]
+		m.display(v)
+	}
+	if len(m.viewStack) == 0 {
+		m.backButton.Disable()
+	} else {
+		m.backButton.Enable()
+	}
+}
+
+func (m *MainView) Display(w fyne.Window, views []MenuView) {
 	m.leftMenu.RemoveAll()
 	for _, view := range views {
 		v := view

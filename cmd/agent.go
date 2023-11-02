@@ -58,6 +58,7 @@ to quickly create a Cobra application.`,
 		}
 
 		cmdCollection := rpc.NewCommandCollection()
+		cmdCollection.Add(rpc.PingHandler)
 
 		wg := sync.WaitGroup{}
 

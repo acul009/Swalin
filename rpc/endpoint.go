@@ -92,6 +92,11 @@ func (r *RpcEndpoint) SendCommand(ctx context.Context, cmd RpcCommand) error {
 	return session.SendCommand(cmd)
 }
 
+func (r *RpcEndpoint) SendCommandTo(ctx context.Context, to *pki.Certificate, cmd RpcCommand) error {
+	forward := newForwardCommand(to, cmd)
+	return r.SendCommand(ctx, forward)
+}
+
 func (r *RpcEndpoint) Close(code quic.ApplicationErrorCode, msg string) error {
 	err := r.mutateState(RpcEndpointRunning, RpcEndpointClosed)
 	if err != nil {

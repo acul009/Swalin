@@ -23,7 +23,7 @@ func startMainMenu(window fyne.Window, credentials *pki.PermanentCredentials) {
 
 	enrollView := enrollment.NewEnrollmentView(m, ep, credentials)
 
-	m.Display(window, []mainview.View{
+	m.Display(window, []mainview.MenuView{
 		manageView,
 		enrollView,
 	})

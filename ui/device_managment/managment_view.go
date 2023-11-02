@@ -19,7 +19,7 @@ type deviceManagementView struct {
 }
 
 func NewDeviceManagementView(main *mainview.MainView, ep *rpc.RpcEndpoint) *deviceManagementView {
-	list := newDeviceList()
+	list := newDeviceList(main, ep)
 	devices := util.NewObservableMap[string, rpc.DeviceInfo]()
 
 	devices.Subscribe(list.Set, list.Remove)
