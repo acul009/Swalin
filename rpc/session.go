@@ -73,6 +73,15 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 		return fmt.Errorf("error reading request header: %w", err)
 	}
 
+	_, err = s.connection.verifier.VerifyPublicKey(sender)
+	if err != nil {
+		s.WriteResponseHeader(SessionResponseHeader{
+			Code: 401,
+			Msg:  "error verifying public key",
+		})
+		return fmt.Errorf("error verifying public key: %w", err)
+	}
+
 	s.partner = sender
 
 	log.Printf("Header: %+v", header)
