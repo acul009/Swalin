@@ -1,7 +1,6 @@
 package util
 
 import (
-	"log"
 	"sync"
 
 	"github.com/google/uuid"
@@ -55,13 +54,11 @@ func (o *GenericObservable[T]) notifyObservers() {
 }
 
 func (o *GenericObservable[T]) Subscribe(observer func(T)) func() {
-	log.Printf("subscribing...")
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 	uuid := uuid.New()
 	o.observers[uuid] = observer
 	return func() {
-		log.Printf("unsubscribing...")
 		o.mutex.Lock()
 		defer o.mutex.Unlock()
 		delete(o.observers, uuid)

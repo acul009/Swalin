@@ -64,21 +64,27 @@ func newRpcEndpoint(ctx context.Context, addr string, credentials pki.Credential
 
 	rpcConn := newRpcConnection(quicConn, nil, RpcRoleClient, NewNonceStorage(), partner, ProtoRpc, credentials, nil)
 
-	verifier, err := NewUpstreamVerify()
+	ep := &RpcEndpoint{
+		conn:  rpcConn,
+		state: RpcEndpointRunning,
+		mutex: sync.Mutex{},
+	}
+
+	verifier, err := NewUpstreamVerify(ep)
 	if err != nil {
 		return nil, fmt.Errorf("error creating upstream verify: %w", err)
 	}
 
-	rpcConn.verifier = verifier
+	ep.conn.verifier = verifier
 
-	return &RpcEndpoint{
-		conn:  rpcConn,
-		state: RpcEndpointRunning,
-		mutex: sync.Mutex{},
-	}, nil
+	return ep, nil
 }
 
 func (r *RpcEndpoint) SendCommand(ctx context.Context, cmd RpcCommand) error {
+	if r == nil {
+		return fmt.Errorf("endpoint is nil")
+	}
+
 	err := r.ensureState(RpcEndpointRunning)
 	if err != nil {
 		return fmt.Errorf("error mutating endpoint state: %w", err)
@@ -93,10 +99,24 @@ func (r *RpcEndpoint) SendCommand(ctx context.Context, cmd RpcCommand) error {
 }
 
 func (r *RpcEndpoint) SendCommandTo(ctx context.Context, to *pki.Certificate, cmd RpcCommand) error {
+	if r == nil {
+		return fmt.Errorf("endpoint is nil")
+	}
+
 	encrypt, err := newE2eEncryptCommand(cmd)
 	if err != nil {
 		return fmt.Errorf("error preparing encryption: %w", err)
 	}
+
+	if r.conn.verifier == nil {
+		return fmt.Errorf("verifier is nil")
+	}
+
+	_, err = r.conn.verifier.Verify(to)
+	if err != nil {
+		return fmt.Errorf("error verifying target certificate: %w", err)
+	}
+
 	forward := newForwardCommand(to, encrypt)
 	return r.SendCommand(ctx, forward)
 }
@@ -119,6 +139,10 @@ func (r *RpcEndpoint) Close(code quic.ApplicationErrorCode, msg string) error {
 }
 
 func (r *RpcEndpoint) ServeRpc(commands *CommandCollection) error {
+	if r == nil {
+		return fmt.Errorf("endpoint is nil")
+	}
+
 	return r.conn.serveRpc(commands)
 }
 

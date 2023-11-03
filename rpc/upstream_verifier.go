@@ -92,7 +92,7 @@ type upstreamVerify struct {
 	ep       *RpcEndpoint
 }
 
-func NewUpstreamVerify() (*upstreamVerify, error) {
+func NewUpstreamVerify(ep *RpcEndpoint) (*upstreamVerify, error) {
 	rootCert, err := pki.Root.Get()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load root certificate: %w", err)
@@ -103,6 +103,7 @@ func NewUpstreamVerify() (*upstreamVerify, error) {
 
 	return &upstreamVerify{
 		rootPool: rootPool,
+		ep:       ep,
 	}, nil
 }
 

@@ -57,13 +57,15 @@ to quickly create a Cobra application.`,
 		log.Println("Server initialized, starting up...")
 
 		fmt.Printf("\nListening on localhost:%s\n", addr)
-		rpcCommands := rpc.NewCommandCollection()
-		rpcCommands.Add(rpc.PingHandler)
-		rpcCommands.Add(rpc.RegisterUserHandler)
-		rpcCommands.Add(rpc.GetPendingEnrollmentsHandler)
-		rpcCommands.Add(rpc.EnrollAgentHandler)
-		rpcCommands.Add(rpc.GetDevicesCommandHandler)
-		rpcCommands.Add(rpc.ForwardCommandHandler)
+		rpcCommands := rpc.NewCommandCollection(
+			rpc.PingHandler,
+			rpc.RegisterUserHandler,
+			rpc.GetPendingEnrollmentsHandler,
+			rpc.EnrollAgentHandler,
+			rpc.GetDevicesCommandHandler,
+			rpc.ForwardCommandHandler,
+			rpc.VerifyCertificateChainHandler,
+		)
 
 		server, err := rpc.NewRpcServer(addr, rpcCommands, credentials)
 		if err != nil {
