@@ -3,6 +3,7 @@ package rpc
 import (
 	"fmt"
 	"io"
+	"log"
 	"rahnit-rmm/pki"
 )
 
@@ -74,13 +75,22 @@ func (f *forwardCommand) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("error writing response header: %w", err)
 	}
 
-	go io.Copy(session, forwardSession)
-	io.Copy(forwardSession, session)
+	errChan := make(chan error)
 
-	return nil
+	go func() {
+		_, err := io.Copy(session, forwardSession)
+		errChan <- err
+	}()
+	go func() {
+		_, err := io.Copy(forwardSession, session)
+		errChan <- err
+	}()
+
+	return <-errChan
 }
 
 func (f *forwardCommand) ExecuteClient(session *RpcSession) error {
+
 	err := session.mutateState(RpcSessionOpen, RpcSessionCreated)
 	if err != nil {
 		return fmt.Errorf("error mutating session state: %w", err)
@@ -88,9 +98,11 @@ func (f *forwardCommand) ExecuteClient(session *RpcSession) error {
 
 	session.partner = f.Target.GetPublicKey()
 
-	err = session.SendCommand(f.cmd)
+	log.Printf("Session forwarded, starting next command...")
+
+	err = session.sendCommand(f.cmd)
 	if err != nil {
-		return fmt.Errorf("error sending command: %w", err)
+		return fmt.Errorf("error sending forwarded command: %w", err)
 	}
 
 	return nil

@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/rmm"
 	"rahnit-rmm/rpc"
 	"sync"
 	"syscall"
@@ -60,6 +61,7 @@ to quickly create a Cobra application.`,
 		cmdCollection := rpc.NewCommandCollection(
 			rpc.CreateE2eDecryptCommandHandler(rpc.NewCommandCollection(
 				rpc.PingHandler,
+				rmm.MonitorSystemCommandHandler,
 			)),
 		)
 

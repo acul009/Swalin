@@ -263,7 +263,7 @@ func (s *RpcSession) ensureState(state RpcSessionState) error {
 	return nil
 }
 
-func (s *RpcSession) SendCommand(cmd RpcCommand) error {
+func (s *RpcSession) sendCommand(cmd RpcCommand) error {
 
 	args := make(map[string]interface{})
 	err := reEncode(cmd, &args)

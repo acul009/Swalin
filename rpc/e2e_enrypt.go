@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
+	"log"
 	"rahnit-rmm/util"
 )
 
@@ -47,6 +48,8 @@ func newE2eEncryptCommand(cmd RpcCommand) (*e2eEncryptCommand, error) {
 func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
 	curve := ecdh.P521()
 
+	log.Printf("Encryption requested...")
+
 	remotePub, err := curve.NewPublicKey(e.ClientPublicKey)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
@@ -65,6 +68,8 @@ func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("error generating key: %w", err)
 	}
 
+	log.Printf("Key generated")
+
 	shared, err := key.ECDH(remotePub)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
@@ -73,6 +78,8 @@ func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
 		})
 		return fmt.Errorf("error computing shared secret: %w", err)
 	}
+
+	log.Printf("Shared secret computed")
 
 	iv := make([]byte, aes.BlockSize)
 	_, err = io.ReadFull(rand.Reader, iv)
@@ -109,6 +116,8 @@ func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("error writing message: %w", err)
 	}
 
+	log.Printf("starting encryption...")
+
 	session.stream = cryptoStream
 
 	err = session.mutateState(RpcSessionOpen, RpcSessionCreated)
@@ -125,6 +134,9 @@ func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
 }
 
 func (e *e2eEncryptCommand) ExecuteClient(session *RpcSession) error {
+
+	fmt.Printf("Trying to encrypt session...\n")
+
 	resp := &e2eResponse{}
 	err := ReadMessage[*e2eResponse](session, resp)
 	if err != nil {
@@ -154,7 +166,9 @@ func (e *e2eEncryptCommand) ExecuteClient(session *RpcSession) error {
 		return fmt.Errorf("error mutating session state: %w", err)
 	}
 
-	err = session.SendCommand(e.cmd)
+	log.Printf("Session encrypted, sending command...")
+
+	err = session.sendCommand(e.cmd)
 	if err != nil {
 		return fmt.Errorf("error sending encrypted command: %w", err)
 	}

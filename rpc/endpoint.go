@@ -89,7 +89,7 @@ func (r *RpcEndpoint) SendCommand(ctx context.Context, cmd RpcCommand) error {
 		return fmt.Errorf("error opening session: %w", err)
 	}
 
-	return session.SendCommand(cmd)
+	return session.sendCommand(cmd)
 }
 
 func (r *RpcEndpoint) SendCommandTo(ctx context.Context, to *pki.Certificate, cmd RpcCommand) error {
