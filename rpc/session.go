@@ -118,7 +118,22 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 	err = cmd.ExecuteServer(s)
 
 	if err != nil {
+		if s.ensureState(RpcSessionClosed) == nil {
+			s.WriteResponseHeader(SessionResponseHeader{
+				Code: 500,
+				Msg:  "error executing command",
+			})
+			return fmt.Errorf("error executing command: %w", err)
+		}
 		return fmt.Errorf("error executing command: %w", err)
+	} else {
+		if s.ensureState(RpcSessionClosed) == nil {
+			s.WriteResponseHeader(SessionResponseHeader{
+				Code: 500,
+				Msg:  "error executing command",
+			})
+			return fmt.Errorf("error executing command: %w", err)
+		}
 	}
 
 	return nil

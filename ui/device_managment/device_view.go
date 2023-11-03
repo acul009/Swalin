@@ -3,6 +3,7 @@ package managment
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"rahnit-rmm/rmm"
 	"rahnit-rmm/rpc"
@@ -13,6 +14,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
+	"github.com/fyne-io/terminal"
 )
 
 type deviceView struct {
@@ -31,21 +33,62 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 	cpuBind := binding.NewString()
 	memBind := binding.NewString()
 
-	return &deviceView{
-		ep:     ep,
-		device: device,
-		container: container.NewVBox(
-			widget.NewLabel(device.Name()),
-			widget.NewLabelWithData(osBind),
-			container.NewHBox(
-				widget.NewLabelWithData(cpuBind),
-				widget.NewLabelWithData(memBind),
-			),
-		),
+	d := &deviceView{
+		ep:      ep,
+		device:  device,
 		osBind:  osBind,
 		cpuBind: cpuBind,
 		memBind: memBind,
 	}
+
+	d.container = container.NewVBox(
+		widget.NewLabel(device.Name()),
+		widget.NewLabelWithData(osBind),
+		container.NewHBox(
+			widget.NewLabelWithData(cpuBind),
+			widget.NewLabelWithData(memBind),
+		),
+		widget.NewButton("Terminal", func() {
+			// create pipe fifo
+			readInput, writeInput := io.Pipe()
+			readOutput, writeOutput := io.Pipe()
+
+			ctx, cancel := context.WithCancel(context.Background())
+
+			remShell := rmm.NewRemoteShellCommand(readInput, writeOutput)
+			go func() {
+				err := d.ep.SendCommandTo(ctx, device.Certificate, remShell)
+				if err != nil {
+					panic(err)
+				}
+			}()
+
+			term := terminal.New()
+			go func() {
+				err := term.RunWithConnection(writeInput, readOutput)
+				if err != nil {
+					panic(err)
+				}
+			}()
+
+			window := fyne.CurrentApp().NewWindow("Terminal")
+
+			window.SetContent(
+				term,
+			)
+
+			window.SetOnClosed(func() {
+				cancel()
+			})
+
+			window.Resize(fyne.NewSize(800, 600))
+
+			window.Show()
+
+		}),
+	)
+
+	return d
 }
 
 func (d *deviceView) Prepare() fyne.CanvasObject {
