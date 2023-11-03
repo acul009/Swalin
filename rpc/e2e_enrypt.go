@@ -91,6 +91,8 @@ func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("error generating iv: %w", err)
 	}
 
+	log.Printf("initializing crypto stream...")
+
 	cryptoStream, err := util.NewCryptoStream(session.stream, shared, iv)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
@@ -100,6 +102,8 @@ func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("error creating crypto stream: %w", err)
 	}
 
+	log.Printf("writing ok response...")
+
 	err = session.WriteResponseHeader(SessionResponseHeader{
 		Code: 200,
 		Msg:  "OK",
@@ -107,6 +111,8 @@ func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
 	if err != nil {
 		return fmt.Errorf("error writing response header: %w", err)
 	}
+
+	log.Printf("writing own public key and iv...")
 
 	err = WriteMessage[e2eResponse](session, e2eResponse{
 		ServerPublicKey: key.PublicKey().Bytes(),

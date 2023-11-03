@@ -45,7 +45,7 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 		widget.NewLabel(device.Name()),
 		widget.NewLabelWithData(osBind),
 		container.NewHBox(
-			widget.NewLabelWithData(cpuBind),
+			NewCircleChartWidget(),
 			widget.NewLabelWithData(memBind),
 		),
 		widget.NewButton("Terminal", func() {

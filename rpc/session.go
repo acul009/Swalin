@@ -140,12 +140,10 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 }
 
 func (s *RpcSession) Write(p []byte) (n int, err error) {
-	s.mutex.Lock()
-	if s.state != RpcSessionOpen {
-		s.mutex.Unlock()
-		return 0, fmt.Errorf("RPC session not open")
+	err = s.ensureState(RpcSessionOpen)
+	if err != nil {
+		return 0, fmt.Errorf("error ensuring state: %w", err)
 	}
-	s.mutex.Unlock()
 	return s.stream.Write(p)
 }
 
@@ -268,22 +266,20 @@ func (s *RpcSession) WriteResponseHeader(header SessionResponseHeader) error {
 
 func (s *RpcSession) mutateState(from RpcSessionState, to RpcSessionState) error {
 	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	if s.state != from {
-		s.mutex.Unlock()
 		return fmt.Errorf("RPC session not in state %v", from)
 	}
 	s.state = to
-	s.mutex.Unlock()
 	return nil
 }
 
 func (s *RpcSession) ensureState(state RpcSessionState) error {
 	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	if s.state != state {
-		s.mutex.Unlock()
 		return fmt.Errorf("RPC session not in state %v", state)
 	}
-	s.mutex.Unlock()
 	return nil
 }
 
@@ -321,17 +317,14 @@ func (s *RpcSession) sendCommand(cmd RpcCommand) error {
 }
 
 func (s *RpcSession) Close() error {
-	s.mutex.Lock()
-	if s.state != RpcSessionOpen {
-		s.mutex.Unlock()
-		return fmt.Errorf("RPC session not open")
+	err := s.mutateState(RpcSessionOpen, RpcSessionClosed)
+	if err != nil {
+		return fmt.Errorf("error mutating state: %w", err)
 	}
-	s.state = RpcSessionClosed
-	s.mutex.Unlock()
 
 	s.connection.removeSession(s.uuid)
 
-	err := s.stream.Close()
+	err = s.stream.Close()
 	return err
 }
 
@@ -362,27 +355,28 @@ func (s *RpcSession) readRequestHeader() (SessionRequestHeader, *pki.PublicKey, 
 }
 
 func (s *RpcSession) readResponseHeader() (SessionResponseHeader, error) {
-
-	s.mutex.Lock()
-	if s.state != RpcSessionRequested {
-		s.mutex.Unlock()
-		return SessionResponseHeader{}, fmt.Errorf("RPC connection not yet requested")
+	err := s.ensureState(RpcSessionRequested)
+	if err != nil {
+		return SessionResponseHeader{}, fmt.Errorf("error ensuring state: %w", err)
 	}
-	s.mutex.Unlock()
 
 	header := SessionResponseHeader{}
-	err := ReadMessage[*SessionResponseHeader](s, &header)
+	err = ReadMessage[*SessionResponseHeader](s, &header)
 	if err != nil {
 		return SessionResponseHeader{}, fmt.Errorf("error reading response header: %w", err)
 	}
 
-	s.mutex.Lock()
 	if header.Code >= 200 || header.Code <= 299 {
-		s.state = RpcSessionOpen
+		err = s.mutateState(RpcSessionRequested, RpcSessionOpen)
+		if err != nil {
+			return SessionResponseHeader{}, fmt.Errorf("error mutating state: %w", err)
+		}
 	} else {
-		s.state = RpcSessionClosed
+		err = s.mutateState(RpcSessionRequested, RpcSessionClosed)
+		if err != nil {
+			return SessionResponseHeader{}, fmt.Errorf("error mutating state: %w", err)
+		}
 	}
-	s.mutex.Unlock()
 
 	return header, nil
 }
