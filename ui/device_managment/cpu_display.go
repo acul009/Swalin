@@ -13,8 +13,9 @@ import (
 
 type cpuDisplay struct {
 	widget.BaseWidget
-	bars       []*fynecharts.BarWidget[float64]
-	layout     fyne.Layout
+	bars   []*fynecharts.BarWidget[float64]
+	layout fyne.Layout
+	fyne.Container
 	observable util.Observable[*rmm.CpuStats]
 	unsub      func()
 }
