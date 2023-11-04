@@ -144,6 +144,7 @@ func (s *RpcSession) Write(p []byte) (n int, err error) {
 	if err != nil {
 		return 0, fmt.Errorf("error ensuring state: %w", err)
 	}
+	log.Printf("Writing raw data to stream...")
 	return s.stream.Write(p)
 }
 
@@ -197,23 +198,27 @@ func ReadMessage[P any](s *RpcSession, payload P) error {
 }
 
 func WriteMessage[P any](s *RpcSession, payload P) error {
-	if err := s.ensureState(RpcSessionOpen); err != nil {
-		return fmt.Errorf("error ensuring state: %w", err)
-	}
-
 	if s.partner == nil {
 		return fmt.Errorf("can't address message to unknown sender: session has no partner specified")
 	}
+
+	log.Printf("ensuring session state...")
+
+	log.Printf("creating message...")
 
 	message, err := newRpcMessage[P](s.partner, payload)
 	if err != nil {
 		return fmt.Errorf("error creating message: %w", err)
 	}
 
+	log.Printf("marshalling message...")
+
 	data, err := pki.MarshalAndSign(message, s.credentials)
 	if err != nil {
 		return fmt.Errorf("error marshalling message: %w", err)
 	}
+
+	log.Printf("writing message...")
 
 	n, err := s.Write(data)
 	if err != nil {
@@ -313,10 +318,21 @@ func (s *RpcSession) sendCommand(cmd RpcCommand) error {
 		return fmt.Errorf("error sending command: %v", response.Msg)
 	}
 
-	return cmd.ExecuteClient(s)
+	err = cmd.ExecuteClient(s)
+	if err != nil {
+		return fmt.Errorf("error executing command client side: %w", err)
+	}
+
+	err = s.Close()
+	if err != nil {
+		return fmt.Errorf("error closing session: %w", err)
+	}
+
+	return nil
 }
 
 func (s *RpcSession) Close() error {
+	log.Printf("closing session...")
 	err := s.mutateState(RpcSessionOpen, RpcSessionClosed)
 	if err != nil {
 		return fmt.Errorf("error mutating state: %w", err)

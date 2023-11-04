@@ -20,7 +20,6 @@ type ChartProvider interface {
 }
 
 func NewChartWidget(renderer func(newSize fyne.Size) ChartProvider) *chartWidget {
-
 	cw := &chartWidget{
 		renderer: renderer,
 	}

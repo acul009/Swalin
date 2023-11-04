@@ -14,9 +14,13 @@ type StaticStats struct {
 }
 
 type ActiveStats struct {
-	CpuUsage  []float64
+	Cpu       *CpuStats
 	Memory    *MemoryStats
 	Processes *ProcessStats
+}
+
+type CpuStats struct {
+	Usage []float64
 }
 
 type MemoryStats struct {
@@ -57,9 +61,9 @@ func GetActiveStats() (*ActiveStats, error) {
 		return nil, fmt.Errorf("error retrieving memory stats: %w", err)
 	}
 
-	cpuUsage, err := cpu.Percent(0, true)
+	cpuStats, err := GetCpuStats()
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving cpu usage: %w", err)
+		return nil, fmt.Errorf("error retrieving cpu stats: %w", err)
 	}
 
 	processStats, err := GetProcessInfo()
@@ -68,7 +72,7 @@ func GetActiveStats() (*ActiveStats, error) {
 	}
 
 	return &ActiveStats{
-		CpuUsage:  cpuUsage,
+		Cpu:       cpuStats,
 		Memory:    memStats,
 		Processes: processStats,
 	}, nil
@@ -87,6 +91,17 @@ func GetMemoryStats() (*MemoryStats, error) {
 	}, nil
 }
 
+func GetCpuStats() (*CpuStats, error) {
+	cpuUsage, err := cpu.Percent(0, true)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving cpu usage: %w", err)
+	}
+
+	return &CpuStats{
+		Usage: cpuUsage,
+	}, nil
+}
+
 func GetProcessInfo() (*ProcessStats, error) {
 	processes, err := process.Processes()
 	if err != nil {
@@ -96,12 +111,10 @@ func GetProcessInfo() (*ProcessStats, error) {
 	processesInfo := make([]ProcessInfo, 0, len(processes))
 
 	for _, p := range processes {
-		// name, err := p.Name()
-		// if err != nil {
-		// 	return nil, fmt.Errorf("error getting process name: %w", err)
-		// }
+		name, _ := p.Name()
 		processesInfo = append(processesInfo, ProcessInfo{
-			Pid: p.Pid,
+			Name: name,
+			Pid:  p.Pid,
 		})
 	}
 

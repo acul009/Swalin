@@ -3,8 +3,12 @@ package rmm
 import (
 	"fmt"
 	"io"
-	"os/exec"
+	"log"
+	"os"
 	"rahnit-rmm/rpc"
+	"syscall"
+
+	"github.com/ActiveState/termtest/conpty"
 )
 
 func RemoteShellCommandHandler() rpc.RpcCommand {
@@ -28,26 +32,63 @@ func (cmd *remoteShellCommand) GetKey() string {
 }
 
 func (cmd *remoteShellCommand) ExecuteServer(session *rpc.RpcSession) error {
-	shell := getShellCommand()
+	cpty, err := conpty.New(80, 25)
+	if err != nil {
+		session.WriteResponseHeader(rpc.SessionResponseHeader{
+			Code: 500,
+			Msg:  "Unable to create conpty",
+		})
+		return fmt.Errorf("error creating conpty: %w", err)
+	}
 
-	shellCmd := exec.Command(shell[0], shell[1:]...)
-	shellCmd.Stdin = session
-	shellCmd.Stdout = session
-	shellCmd.Stderr = session
+	pid, _, err := cpty.Spawn(
+		"C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+		[]string{},
+		&syscall.ProcAttr{
+			Env: os.Environ(),
+		},
+	)
+	if err != nil {
+		session.WriteResponseHeader(rpc.SessionResponseHeader{
+			Code: 500,
+			Msg:  "Unable to start shell",
+		})
+		return fmt.Errorf("error starting shell: %w", err)
+	}
+
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return fmt.Errorf("error finding process: %w", err)
+	}
+
+	go func() {
+		_, err := process.Wait()
+		if err != nil {
+			log.Fatalf("Error waiting for process: %v", err)
+		}
+		cpty.Close()
+	}()
 
 	session.WriteResponseHeader(rpc.SessionResponseHeader{
 		Code: 200,
 		Msg:  "OK",
 	})
 
-	err := shellCmd.Start()
-	if err != nil {
-		return fmt.Errorf("error starting shell command: %w", err)
-	}
+	errChan := make(chan error)
 
-	err = shellCmd.Wait()
+	go func() {
+		_, err = io.Copy(cpty.InPipe(), session)
+		errChan <- err
+	}()
+
+	go func() {
+		_, err = io.Copy(session, cpty.OutPipe())
+		errChan <- err
+	}()
+
+	err = <-errChan
 	if err != nil {
-		return fmt.Errorf("error waiting for shell command: %w", err)
+		return fmt.Errorf("error copying: %w", err)
 	}
 
 	return nil

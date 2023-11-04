@@ -19,11 +19,7 @@ type monitorSystemCommand struct {
 	active util.Observable[*ActiveStats]
 }
 
-func NewMonitorSystemCommand(static func(*StaticStats), active func(*ActiveStats)) *monitorSystemCommand {
-	staticOb := util.NewGenericObservable[*StaticStats](nil)
-	staticOb.Subscribe(static)
-	activeOb := util.NewGenericObservable[*ActiveStats](nil)
-	activeOb.Subscribe(active)
+func NewMonitorSystemCommand(staticOb util.Observable[*StaticStats], activeOb util.Observable[*ActiveStats]) *monitorSystemCommand {
 	return &monitorSystemCommand{
 		static: staticOb,
 		active: activeOb,
@@ -63,8 +59,6 @@ func (cmd *monitorSystemCommand) ExecuteServer(session *rpc.RpcSession) error {
 		if err != nil {
 			return fmt.Errorf("error getting active stats: %w", err)
 		}
-
-		log.Printf("Active stats: %+v\n", active)
 
 		err = rpc.WriteMessage[*ActiveStats](session, active)
 		if err != nil {

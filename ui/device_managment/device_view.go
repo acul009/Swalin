@@ -2,13 +2,11 @@ package managment
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"rahnit-rmm/rmm"
 	"rahnit-rmm/rpc"
-	"strconv"
-	"strings"
+	"rahnit-rmm/util"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -26,26 +24,35 @@ type deviceView struct {
 	osBind    binding.String
 	cpuBind   binding.String
 	memBind   binding.String
+	active    util.Observable[*rmm.ActiveStats]
+	static    util.Observable[*rmm.StaticStats]
 }
 
 func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 	osBind := binding.NewString()
-	cpuBind := binding.NewString()
 	memBind := binding.NewString()
 
 	d := &deviceView{
 		ep:      ep,
 		device:  device,
 		osBind:  osBind,
-		cpuBind: cpuBind,
 		memBind: memBind,
+		active:  util.NewObservable[*rmm.ActiveStats](nil),
+		static:  util.NewObservable[*rmm.StaticStats](nil),
 	}
+
+	cpuDisplay := newCpuDisplay(util.DeriveObservable[*rmm.ActiveStats, *rmm.CpuStats](d.active, func(active *rmm.ActiveStats) *rmm.CpuStats {
+		if active == nil {
+			return nil
+		}
+		return active.Cpu
+	}))
 
 	d.container = container.NewVBox(
 		widget.NewLabel(device.Name()),
 		widget.NewLabelWithData(osBind),
 		container.NewHBox(
-			NewCircleChartWidget(),
+			cpuDisplay,
 			widget.NewLabelWithData(memBind),
 		),
 		widget.NewButton("Terminal", func() {
@@ -66,6 +73,7 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 			term := terminal.New()
 			go func() {
 				err := term.RunWithConnection(writeInput, readOutput)
+				term.RunLocalShell()
 				if err != nil {
 					panic(err)
 				}
@@ -95,7 +103,8 @@ func (d *deviceView) Prepare() fyne.CanvasObject {
 	d.ctx, d.cancel = context.WithCancel(context.Background())
 
 	go func() {
-		cmd := rmm.NewMonitorSystemCommand(d.setStatic, d.setActive)
+
+		cmd := rmm.NewMonitorSystemCommand(d.static, d.active)
 		err := d.ep.SendCommandTo(d.ctx, d.device.Certificate, cmd)
 		if err != nil {
 			panic(err)
@@ -105,27 +114,7 @@ func (d *deviceView) Prepare() fyne.CanvasObject {
 	return d.container
 }
 
-func (d *deviceView) setStatic(static *rmm.StaticStats) {
-	log.Printf("Static stats: %+v\n", static)
-	d.osBind.Set(static.HostInfo.OS)
-}
-
-func (d *deviceView) setActive(active *rmm.ActiveStats) {
-	percent := 0.0
-
-	sb := &strings.Builder{}
-
-	for _, cpu := range active.CpuUsage {
-		sb.WriteString(fmt.Sprintf("%s %%     ", strconv.FormatFloat(cpu, 'f', 0, 64)))
-		percent += cpu
-	}
-
-	percent /= float64(len(active.CpuUsage))
-
-	//display cpu in percent
-	d.cpuBind.Set(sb.String())
-}
-
 func (d *deviceView) Close() {
+	log.Printf("closing device view...")
 	d.cancel()
 }
