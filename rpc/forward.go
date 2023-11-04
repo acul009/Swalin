@@ -91,7 +91,15 @@ func (f *forwardCommand) ExecuteServer(session *RpcSession) error {
 		errChan <- err
 	}()
 
-	return <-errChan
+	err = <-errChan
+
+	log.Printf("Forwarding session closed: %v", err)
+
+	if err != nil {
+		return fmt.Errorf("error forwarding session: %w", err)
+	}
+
+	return nil
 }
 
 func (f *forwardCommand) ExecuteClient(session *RpcSession) error {
