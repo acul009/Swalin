@@ -55,7 +55,12 @@ func (f *forwardCommand) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("unable to open session to target: %w", err)
 	}
 
-	defer forwardSession.Close()
+	defer func() {
+		err := forwardSession.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	err = forwardSession.mutateState(RpcSessionCreated, RpcSessionOpen)
 	if err != nil {

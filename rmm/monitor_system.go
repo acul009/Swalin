@@ -15,11 +15,11 @@ func MonitorSystemCommandHandler() rpc.RpcCommand {
 }
 
 type monitorSystemCommand struct {
-	static util.Observable[*StaticStats]
-	active util.Observable[*ActiveStats]
+	static util.UpdateableObservable[*StaticStats]
+	active util.UpdateableObservable[*ActiveStats]
 }
 
-func NewMonitorSystemCommand(staticOb util.Observable[*StaticStats], activeOb util.Observable[*ActiveStats]) *monitorSystemCommand {
+func NewMonitorSystemCommand(staticOb util.UpdateableObservable[*StaticStats], activeOb util.UpdateableObservable[*ActiveStats]) *monitorSystemCommand {
 	return &monitorSystemCommand{
 		static: staticOb,
 		active: activeOb,
@@ -78,7 +78,9 @@ func (cmd *monitorSystemCommand) ExecuteClient(session *rpc.RpcSession) error {
 		return fmt.Errorf("error reading static stats: %w", err)
 	}
 
-	cmd.static.Set(static)
+	cmd.static.Update(func(_ *StaticStats) *StaticStats {
+		return static
+	})
 
 	active := &ActiveStats{}
 
@@ -88,7 +90,11 @@ func (cmd *monitorSystemCommand) ExecuteClient(session *rpc.RpcSession) error {
 			return fmt.Errorf("error reading active stats: %w", err)
 		}
 
-		cmd.active.Set(active)
+		log.Printf("Received active stats: %+v", active)
+
+		cmd.active.Update(func(_ *ActiveStats) *ActiveStats {
+			return active
+		})
 	}
 
 	return nil

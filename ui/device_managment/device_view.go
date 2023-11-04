@@ -24,8 +24,8 @@ type deviceView struct {
 	osBind    binding.String
 	cpuBind   binding.String
 	memBind   binding.String
-	active    util.Observable[*rmm.ActiveStats]
-	static    util.Observable[*rmm.StaticStats]
+	active    util.UpdateableObservable[*rmm.ActiveStats]
+	static    util.UpdateableObservable[*rmm.StaticStats]
 }
 
 func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {

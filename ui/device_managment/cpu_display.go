@@ -1,6 +1,7 @@
 package managment
 
 import (
+	"fmt"
 	"log"
 	"rahnit-rmm/rmm"
 	fynecharts "rahnit-rmm/ui/charts.go"
@@ -11,97 +12,97 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+var _ fyne.Widget = (*cpuDisplay)(nil)
+
 type cpuDisplay struct {
 	widget.BaseWidget
-	bars   []*fynecharts.BarWidget[float64]
-	layout fyne.Layout
-	fyne.Container
-	observable util.Observable[*rmm.CpuStats]
-	unsub      func()
+	layout      fyne.Layout
+	bars        []*fynecharts.BarWidget[float64]
+	cores       int
+	observable  util.Observable[*rmm.CpuStats]
+	unsubscribe []func()
 }
 
-func newCpuDisplay(cpu util.Observable[*rmm.CpuStats]) *cpuDisplay {
-	c := &cpuDisplay{
-		bars:       make([]*fynecharts.BarWidget[float64], 0),
-		layout:     layout.NewHBoxLayout(),
-		observable: cpu,
+func newCpuDisplay(observable util.Observable[*rmm.CpuStats]) *cpuDisplay {
+	d := &cpuDisplay{
+		layout:     layout.NewVBoxLayout(),
+		observable: observable,
 	}
 
-	c.ExtendBaseWidget(c)
+	d.ExtendBaseWidget(d)
 
-	c.unsub = c.observable.Subscribe(c.Update)
+	d.unsubscribe = []func(){observable.Subscribe(
+		func(cpu *rmm.CpuStats) {
+			log.Printf("cores: %d", len(cpu.Usage))
+			d.cores = len(cpu.Usage)
+			d.fixBars()
+		},
+	)}
 
-	return c
+	return d
 }
 
-func (c *cpuDisplay) Update(cpu *rmm.CpuStats) {
-	log.Printf("updating cpu display")
-	want := len(cpu.Usage)
-	have := len(c.bars)
-	if have < want {
-		for i := 0; i < (want - have); i++ {
-			bar := fynecharts.NewBarWidget[float64]("")
-			c.bars = append(c.bars, bar)
-		}
-	} else if have > want {
-		c.bars = c.bars[:want]
+func (d *cpuDisplay) fixBars() {
+	log.Printf("fixing bars...")
+	if d.bars == nil {
+		d.bars = make([]*fynecharts.BarWidget[float64], 0, d.cores)
 	}
 
-	log.Printf("len(c.bars): %d, len(cpu.Usage): %d", len(c.bars), len(cpu.Usage))
+	for len(d.bars) < d.cores {
+		i := len(d.bars)
+		log.Printf("adding bar for core %d", i)
 
-	for i, usage := range cpu.Usage {
-		c.bars[i].Update(usage, 1)
+		coreStat := util.DeriveObservable[*rmm.CpuStats, float64](
+			d.observable,
+			func(cpu *rmm.CpuStats) float64 {
+				return cpu.Usage[i]
+			},
+		)
+
+		log.Printf("crearing new widget")
+		bar := fynecharts.NewBarWidget[float64](coreStat, 1, func(f float64) string {
+			return fmt.Sprintf("%.0f%%", f)
+		})
+
+		log.Printf("adding to layout")
+		d.bars = append(d.bars, bar)
 	}
 
+	log.Printf("fixing bars complete")
 }
 
-func (c *cpuDisplay) Show() {
-	c.unsub = c.observable.Subscribe(c.Update)
+type cpuDisplayRenderer struct {
+	widget *cpuDisplay
 }
 
-func (c *cpuDisplay) Hide() {
-	if c.unsub != nil {
-		c.unsub()
-		c.unsub = nil
+func (d *cpuDisplay) CreateRenderer() fyne.WidgetRenderer {
+	return &cpuDisplayRenderer{
+		widget: d,
 	}
 }
 
-func (c *cpuDisplay) objects() []fyne.CanvasObject {
-	obj := make([]fyne.CanvasObject, 0, len(c.bars))
+func (d *cpuDisplayRenderer) Layout(size fyne.Size) {
+	d.widget.layout.Layout(d.Objects(), size)
+}
 
-	for _, bar := range c.bars {
+func (d *cpuDisplayRenderer) MinSize() fyne.Size {
+	return d.widget.layout.MinSize(d.Objects())
+}
+
+func (d *cpuDisplayRenderer) Refresh() {
+
+}
+
+func (d *cpuDisplayRenderer) Destroy() {
+
+}
+
+func (d *cpuDisplayRenderer) Objects() []fyne.CanvasObject {
+	obj := make([]fyne.CanvasObject, 0, len(d.widget.bars))
+
+	for _, bar := range d.widget.bars {
 		obj = append(obj, bar)
 	}
 
 	return obj
-}
-
-type cpuDisplayRenderer struct {
-	display *cpuDisplay
-}
-
-func (c *cpuDisplay) CreateRenderer() fyne.WidgetRenderer {
-	return &cpuDisplayRenderer{
-		display: c,
-	}
-}
-
-func (c *cpuDisplayRenderer) Layout(size fyne.Size) {
-	c.display.layout.Layout(c.display.objects(), size)
-}
-
-func (c *cpuDisplayRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(float32(len(c.display.bars)*200), 100)
-}
-
-func (c *cpuDisplayRenderer) Refresh() {
-
-}
-
-func (c *cpuDisplayRenderer) Destroy() {
-
-}
-
-func (c *cpuDisplayRenderer) Objects() []fyne.CanvasObject {
-	return c.display.objects()
 }

@@ -289,6 +289,12 @@ func (s *RpcSession) ensureState(state RpcSessionState) error {
 }
 
 func (s *RpcSession) sendCommand(cmd RpcCommand) error {
+	defer func() {
+		err := s.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	args := make(map[string]interface{})
 	err := reEncode(cmd, &args)
@@ -323,24 +329,21 @@ func (s *RpcSession) sendCommand(cmd RpcCommand) error {
 		return fmt.Errorf("error executing command client side: %w", err)
 	}
 
-	err = s.Close()
-	if err != nil {
-		return fmt.Errorf("error closing session: %w", err)
-	}
-
 	return nil
 }
 
 func (s *RpcSession) Close() error {
 	log.Printf("closing session...")
-	err := s.mutateState(RpcSessionOpen, RpcSessionClosed)
-	if err != nil {
-		return fmt.Errorf("error mutating state: %w", err)
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if s.state == RpcSessionClosed {
+		return nil
 	}
+	s.state = RpcSessionClosed
 
 	s.connection.removeSession(s.uuid)
 
-	err = s.stream.Close()
+	err := s.stream.Close()
 	return err
 }
 
