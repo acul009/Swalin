@@ -19,7 +19,7 @@ type GenericObservable[T any] struct {
 	mutex     sync.RWMutex
 }
 
-func NewGenericObservable[T any](value T) *GenericObservable[T] {
+func NewObservable[T any](value T) *GenericObservable[T] {
 	return &GenericObservable[T]{
 		value:     value,
 		observers: make(map[uuid.UUID]func(T)),
@@ -63,4 +63,14 @@ func (o *GenericObservable[T]) Subscribe(observer func(T)) func() {
 		defer o.mutex.Unlock()
 		delete(o.observers, uuid)
 	}
+}
+
+func DeriveObservable[T any, U any](observable Observable[T], transform func(T) U) Observable[U] {
+	derived := NewObservable[U](transform(observable.Get()))
+
+	observable.Subscribe(func(value T) {
+		derived.Set(transform(value))
+	})
+
+	return derived
 }
