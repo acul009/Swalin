@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -336,16 +337,32 @@ func (s *RpcSession) sendCommand(cmd RpcCommand) (util.AsyncAction, error) {
 }
 
 type runningCommand struct {
-	session *RpcSession
-	errChan chan error
+	session    *RpcSession
+	errChan    chan error
+	forceClose bool
 }
 
 func (r *runningCommand) Close() error {
-	return r.session.Close()
+	r.forceClose = true
+	err := r.session.Close()
+	if err != nil {
+		return fmt.Errorf("error closing session: %w", err)
+	}
+
+	return nil
 }
 
 func (r *runningCommand) Wait() error {
-	return <-r.errChan
+	err := <-r.errChan
+	if err != nil {
+		// cancel errors are expected, since we might be force closing
+		streamErr := &quic.StreamError{}
+		if r.forceClose && errors.Is(err, streamErr) {
+			return nil
+		}
+	}
+
+	return nil
 }
 
 func (s *RpcSession) Close() error {

@@ -21,11 +21,9 @@ type deviceView struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	container *fyne.Container
-	osBind    binding.String
-	cpuBind   binding.String
-	memBind   binding.String
 	active    util.UpdateableObservable[*rmm.ActiveStats]
 	static    util.UpdateableObservable[*rmm.StaticStats]
+	running   util.AsyncAction
 }
 
 func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
@@ -33,12 +31,10 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 	memBind := binding.NewString()
 
 	d := &deviceView{
-		ep:      ep,
-		device:  device,
-		osBind:  osBind,
-		memBind: memBind,
-		active:  util.NewObservable[*rmm.ActiveStats](nil),
-		static:  util.NewObservable[*rmm.StaticStats](nil),
+		ep:     ep,
+		device: device,
+		active: util.NewObservable[*rmm.ActiveStats](nil),
+		static: util.NewObservable[*rmm.StaticStats](nil),
 	}
 
 	cpuDisplay := newCpuDisplay(util.DeriveObservable[*rmm.ActiveStats, *rmm.CpuStats](d.active, func(active *rmm.ActiveStats) *rmm.CpuStats {
@@ -112,6 +108,8 @@ func (d *deviceView) Prepare() fyne.CanvasObject {
 		panic(err)
 	}
 
+	d.running = running
+
 	go func() {
 		err := running.Wait()
 		if err != nil {
@@ -125,4 +123,8 @@ func (d *deviceView) Prepare() fyne.CanvasObject {
 func (d *deviceView) Close() {
 	log.Printf("closing device view...")
 	d.cancel()
+	err := d.running.Close()
+	if err != nil {
+		panic(err)
+	}
 }
