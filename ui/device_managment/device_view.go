@@ -63,8 +63,13 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 			ctx, cancel := context.WithCancel(context.Background())
 
 			remShell := rmm.NewRemoteShellCommand(readInput, writeOutput)
+			shellConn, err := d.ep.SendCommandTo(ctx, device.Certificate, remShell)
+			if err != nil {
+				panic(err)
+			}
+
 			go func() {
-				err := d.ep.SendCommandTo(ctx, device.Certificate, remShell)
+				err := shellConn.Wait()
 				if err != nil {
 					panic(err)
 				}
@@ -101,10 +106,14 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 func (d *deviceView) Prepare() fyne.CanvasObject {
 	d.ctx, d.cancel = context.WithCancel(context.Background())
 
-	go func() {
+	cmd := rmm.NewMonitorSystemCommand(d.static, d.active)
+	running, err := d.ep.SendCommandTo(d.ctx, d.device.Certificate, cmd)
+	if err != nil {
+		panic(err)
+	}
 
-		cmd := rmm.NewMonitorSystemCommand(d.static, d.active)
-		err := d.ep.SendCommandTo(d.ctx, d.device.Certificate, cmd)
+	go func() {
+		err := running.Wait()
 		if err != nil {
 			panic(err)
 		}

@@ -8,6 +8,7 @@ import (
 	"log"
 	"rahnit-rmm/permissions"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/util"
 	"strings"
 	"sync"
 
@@ -286,18 +287,12 @@ func (s *RpcSession) ensureState(state RpcSessionState) error {
 	return nil
 }
 
-func (s *RpcSession) sendCommand(cmd RpcCommand) error {
-	defer func() {
-		err := s.Close()
-		if err != nil {
-			panic(err)
-		}
-	}()
+func (s *RpcSession) sendCommand(cmd RpcCommand) (util.AsyncAction, error) {
 
 	args := make(map[string]interface{})
 	err := reEncode(cmd, &args)
 	if err != nil {
-		return fmt.Errorf("error encoding command: %w", err)
+		return nil, fmt.Errorf("error encoding command: %w", err)
 	}
 
 	header := SessionRequestHeader{
@@ -307,27 +302,50 @@ func (s *RpcSession) sendCommand(cmd RpcCommand) error {
 
 	err = s.writeRequestHeader(header)
 	if err != nil {
-		return fmt.Errorf("error writing header to stream: %w", err)
+		return nil, fmt.Errorf("error writing header to stream: %w", err)
 	}
 
 	response, err := s.readResponseHeader()
 
 	if err != nil {
-		return fmt.Errorf("error reading response header: %w", err)
+		return nil, fmt.Errorf("error reading response header: %w", err)
 	}
 
 	fmt.Printf("Response Header:\n%v\n", response)
 
 	if response.Code != 200 {
-		return fmt.Errorf("error sending command: %v", response.Msg)
+		return nil, fmt.Errorf("error sending command: %v", response.Msg)
 	}
 
-	err = cmd.ExecuteClient(s)
-	if err != nil {
-		return fmt.Errorf("error executing command client side: %w", err)
+	running := &runningCommand{
+		session: s,
+		errChan: make(chan error),
 	}
 
-	return nil
+	go func() {
+		defer func() {
+			err := s.Close()
+			if err != nil {
+				panic(err)
+			}
+		}()
+		running.errChan <- cmd.ExecuteClient(s)
+	}()
+
+	return running, nil
+}
+
+type runningCommand struct {
+	session *RpcSession
+	errChan chan error
+}
+
+func (r *runningCommand) Close() error {
+	return r.session.Close()
+}
+
+func (r *runningCommand) Wait() error {
+	return <-r.errChan
 }
 
 func (s *RpcSession) Close() error {
@@ -421,9 +439,11 @@ func wrapQuicStream(stream quic.Stream) *streamWrapper {
 func (s *streamWrapper) Close() error {
 	log.Printf("Closing stream wrapper")
 	err := s.Stream.Close()
-	if strings.HasPrefix(err.Error(), "close called for canceled stream") {
-		return nil
+	if err != nil {
+		if !strings.HasPrefix(err.Error(), "close called for canceled stream") {
+			return fmt.Errorf("error closing stream wrapper: %w", err)
+		}
 	}
 	s.Stream.CancelRead(200)
-	return err
+	return nil
 }

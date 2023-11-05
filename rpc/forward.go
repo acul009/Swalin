@@ -113,9 +113,14 @@ func (f *forwardCommand) ExecuteClient(session *RpcSession) error {
 
 	log.Printf("Session forwarded, starting next command...")
 
-	err = session.sendCommand(f.cmd)
+	running, err := session.sendCommand(f.cmd)
 	if err != nil {
 		return fmt.Errorf("error sending forwarded command: %w", err)
+	}
+
+	err = running.Wait()
+	if err != nil {
+		return fmt.Errorf("error executing forwarded command: %w", err)
 	}
 
 	return nil

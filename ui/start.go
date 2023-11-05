@@ -243,7 +243,7 @@ func setupServerForm(w fyne.Window, conn *rpc.RpcConnection) {
 				panic(err)
 			}
 
-			err = ep.SendCommand(context.Background(), reg)
+			err = ep.SendSyncCommand(context.Background(), reg)
 			if err != nil {
 				panic(err)
 			}

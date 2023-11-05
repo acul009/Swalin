@@ -6,6 +6,7 @@ require (
 	entgo.io/ent v0.12.4
 	fyne.io/fyne/v2 v2.4.1
 	github.com/ActiveState/termtest/conpty v0.5.0
+	github.com/creack/pty v1.1.11
 	github.com/fyne-io/terminal v0.0.0-20231016205454-26f201fdd229
 	github.com/google/uuid v1.3.1
 	github.com/pquerna/otp v1.4.0
@@ -25,7 +26,6 @@ require (
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/blend/go-sdk v1.20220411.3 // indirect
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
-	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fredbi/uri v1.0.0 // indirect

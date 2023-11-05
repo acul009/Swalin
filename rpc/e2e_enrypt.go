@@ -174,9 +174,14 @@ func (e *e2eEncryptCommand) ExecuteClient(session *RpcSession) error {
 
 	log.Printf("Session encrypted, sending command...")
 
-	err = session.sendCommand(e.cmd)
+	running, err := session.sendCommand(e.cmd)
 	if err != nil {
 		return fmt.Errorf("error sending encrypted command: %w", err)
+	}
+
+	err = running.Wait()
+	if err != nil {
+		return fmt.Errorf("error executing encrypted command: %w", err)
 	}
 
 	return nil

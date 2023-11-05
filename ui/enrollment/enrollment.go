@@ -40,8 +40,13 @@ func NewEnrollmentView(main *mainview.MainView, ep *rpc.RpcEndpoint, credentials
 
 	updateCommand := rpc.NewGetPendingEnrollmentsCommand(e.enrollments)
 
+	running, err := ep.SendCommand(context.Background(), updateCommand)
+	if err != nil {
+		panic(err)
+	}
+
 	go func() {
-		err := e.ep.SendCommand(context.Background(), updateCommand)
+		err := running.Wait()
 		if err != nil {
 			panic(err)
 		}
@@ -124,7 +129,7 @@ func (e *enrollmentView) Prepare() fyne.CanvasObject {
 					panic(err)
 				}
 
-				err = e.ep.SendCommand(context.Background(), rpc.NewEnrollAgentCommand(cert))
+				err = e.ep.SendSyncCommand(context.Background(), rpc.NewEnrollAgentCommand(cert))
 				if err != nil {
 					panic(err)
 				}

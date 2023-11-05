@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/util"
 	"sync"
 	"time"
 
@@ -80,45 +81,73 @@ func newRpcEndpoint(ctx context.Context, addr string, credentials pki.Credential
 	return ep, nil
 }
 
-func (r *RpcEndpoint) SendCommand(ctx context.Context, cmd RpcCommand) error {
+func (r *RpcEndpoint) SendCommand(ctx context.Context, cmd RpcCommand) (util.AsyncAction, error) {
 	if r == nil {
-		return fmt.Errorf("endpoint is nil")
+		return nil, fmt.Errorf("endpoint is nil")
 	}
 
 	err := r.ensureState(RpcEndpointRunning)
 	if err != nil {
-		return fmt.Errorf("error mutating endpoint state: %w", err)
+		return nil, fmt.Errorf("error mutating endpoint state: %w", err)
 	}
 
 	session, err := r.conn.OpenSession(ctx)
 	if err != nil {
-		return fmt.Errorf("error opening session: %w", err)
+		return nil, fmt.Errorf("error opening session: %w", err)
 	}
 
 	return session.sendCommand(cmd)
 }
 
-func (r *RpcEndpoint) SendCommandTo(ctx context.Context, to *pki.Certificate, cmd RpcCommand) error {
+func (r *RpcEndpoint) SendSyncCommand(ctx context.Context, cmd RpcCommand) error {
+	running, err := r.SendCommand(ctx, cmd)
+	if err != nil {
+		return err
+	}
+
+	err = running.Wait()
+	if err != nil {
+		return fmt.Errorf("error executing command: %w", err)
+	}
+
+	return nil
+}
+
+func (r *RpcEndpoint) SendCommandTo(ctx context.Context, to *pki.Certificate, cmd RpcCommand) (util.AsyncAction, error) {
 	if r == nil {
-		return fmt.Errorf("endpoint is nil")
+		return nil, fmt.Errorf("endpoint is nil")
 	}
 
 	encrypt, err := newE2eEncryptCommand(cmd)
 	if err != nil {
-		return fmt.Errorf("error preparing encryption: %w", err)
+		return nil, fmt.Errorf("error preparing encryption: %w", err)
 	}
 
 	if r.conn.verifier == nil {
-		return fmt.Errorf("verifier is nil")
+		return nil, fmt.Errorf("verifier is nil")
 	}
 
 	_, err = r.conn.verifier.Verify(to)
 	if err != nil {
-		return fmt.Errorf("error verifying target certificate: %w", err)
+		return nil, fmt.Errorf("error verifying target certificate: %w", err)
 	}
 
 	forward := newForwardCommand(to, encrypt)
 	return r.SendCommand(ctx, forward)
+}
+
+func (r *RpcEndpoint) SendSyncCommandTo(ctx context.Context, to *pki.Certificate, cmd RpcCommand) error {
+	running, err := r.SendCommandTo(ctx, to, cmd)
+	if err != nil {
+		return err
+	}
+
+	err = running.Wait()
+	if err != nil {
+		return fmt.Errorf("error executing command: %w", err)
+	}
+
+	return nil
 }
 
 func (r *RpcEndpoint) Close(code quic.ApplicationErrorCode, msg string) error {

@@ -26,8 +26,13 @@ func NewDeviceManagementView(main *mainview.MainView, ep *rpc.RpcEndpoint) *devi
 
 	cmd := rpc.NewGetDevicesCommand(devices)
 
+	running, err := ep.SendCommand(context.Background(), cmd)
+	if err != nil {
+		panic(err)
+	}
+
 	go func() {
-		err := ep.SendCommand(context.Background(), cmd)
+		err := running.Wait()
 		if err != nil {
 			panic(err)
 		}

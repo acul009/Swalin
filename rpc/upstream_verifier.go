@@ -143,7 +143,7 @@ func (v *upstreamVerify) Verify(cert *pki.Certificate) ([]*pki.Certificate, erro
 
 	chain := make([]*pki.Certificate, 0, 1)
 
-	err = v.ep.SendCommand(context.Background(),
+	err = v.ep.SendSyncCommand(context.Background(),
 		&verifyCertificateChainCmd{
 			Cert:  cert,
 			chain: chain,
@@ -212,7 +212,7 @@ func (v *upstreamVerify) VerifyPublicKey(pub *pki.PublicKey) ([]*pki.Certificate
 		Key: pub,
 	}
 
-	err = v.ep.SendCommand(context.Background(), cmd)
+	err = v.ep.SendSyncCommand(context.Background(), cmd)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to request certificate chain: %w", err)
