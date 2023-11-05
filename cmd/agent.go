@@ -74,13 +74,13 @@ to quickly create a Cobra application.`,
 			if err != nil {
 				panic(err)
 			}
+			ep.Close(400, "Client error")
 			wg.Done()
 		}()
 
 		interrupt := make(chan os.Signal, 1)
 		signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 
-		wg.Add(1)
 		go func() {
 			<-interrupt
 			err := ep.Close(200, "OK")
@@ -90,7 +90,6 @@ to quickly create a Cobra application.`,
 			} else {
 				log.Println("Agent closed without errors")
 			}
-			wg.Done()
 		}()
 
 		wg.Wait()

@@ -22,15 +22,12 @@ type updateInfo[K comparable, T any] struct {
 }
 
 func (s *syncDownCommand[K, T]) ExecuteClient(session *RpcSession) error {
-	fmt.Printf("reading initial map\n")
 
 	initial := make(map[K]T)
 	err := ReadMessage[map[K]T](session, initial)
 	if err != nil {
 		return fmt.Errorf("error reading message: %w", err)
 	}
-
-	fmt.Printf("received initial map: %+v\n", initial)
 
 	for key, value := range initial {
 		s.targetMap.Set(key, value)

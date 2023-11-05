@@ -29,6 +29,10 @@ func (cmd *remoteShellCommand) GetKey() string {
 func (cmd *remoteShellCommand) ExecuteServer(session *rpc.RpcSession) error {
 	shell, err := startShell()
 	if err != nil {
+		session.WriteResponseHeader(rpc.SessionResponseHeader{
+			Code: 500,
+			Msg:  "Unable to start shell",
+		})
 		return fmt.Errorf("error starting shell: %w", err)
 	}
 

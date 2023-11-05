@@ -73,7 +73,6 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 			term := terminal.New()
 			go func() {
 				err := term.RunWithConnection(writeInput, readOutput)
-				term.RunLocalShell()
 				if err != nil {
 					panic(err)
 				}

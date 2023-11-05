@@ -33,7 +33,7 @@ func newCpuDisplay(observable util.Observable[*rmm.CpuStats]) *cpuDisplay {
 
 	d.unsubscribe = []func(){observable.Subscribe(
 		func(cpu *rmm.CpuStats) {
-			log.Printf("cores: %d", len(cpu.Usage))
+			// log.Printf("cores: %d", len(cpu.Usage))
 			d.cores = len(cpu.Usage)
 			d.fixBars()
 		},
@@ -43,7 +43,7 @@ func newCpuDisplay(observable util.Observable[*rmm.CpuStats]) *cpuDisplay {
 }
 
 func (d *cpuDisplay) fixBars() {
-	log.Printf("fixing bars...")
+	// log.Printf("fixing bars...")
 	if d.bars == nil {
 		d.bars = make([]*fynecharts.BarWidget[float64], 0, d.cores)
 	}
@@ -68,7 +68,7 @@ func (d *cpuDisplay) fixBars() {
 		d.bars = append(d.bars, bar)
 	}
 
-	log.Printf("fixing bars complete")
+	// log.Printf("fixing bars complete")
 }
 
 type cpuDisplayRenderer struct {

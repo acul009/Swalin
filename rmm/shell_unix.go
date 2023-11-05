@@ -4,51 +4,25 @@
 package rmm
 
 import (
-	"fmt"
 	"io"
+	"os"
 	"os/exec"
+
+	"github.com/creack/pty"
 )
 
-type unixShell struct {
-	io.Writer
-	io.Reader
-	cmd *exec.Cmd
-}
-
 func startShell() (io.ReadWriteCloser, error) {
-	cmd := exec.Command("/bin/bash")
-	readInput, writeInput := io.Pipe()
-	readOutput, writeOutput := io.Pipe()
-	cmd.Stdin = readInput
-	cmd.Stdout = writeOutput
-	cmd.Stderr = writeOutput
-	err := cmd.Run()
-	if err != nil {
-		return nil, fmt.Errorf("error starting shell: %w", err)
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "bash"
 	}
 
-	shell := &unixShell{
-		Writer: writeInput,
-		Reader: readOutput,
-		cmd:    cmd,
-	}
+	env := os.Environ()
+	env = append(env, "TERM=xterm-256color")
+	c := exec.Command(shell)
+	c.Env = env
 
-	go func() {
-		err := cmd.Wait()
-		if err != nil {
-			panic(err)
-		}
-	}()
-
-	return shell, nil
-}
-
-func (s *unixShell) Close() error {
-	err := s.cmd.Process.Kill()
-	defer s.cmd.Process.Release()
-	if err != nil {
-		return fmt.Errorf("error killing shell: %w", err)
-	}
-
-	return nil
+	// Start the command with a pty.
+	f, err := pty.Start(c)
+	return f, err
 }

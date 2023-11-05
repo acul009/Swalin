@@ -39,7 +39,7 @@ func (o *observable[T]) Get() T {
 }
 
 func (o *observable[T]) Update(updateFunc func(T) T) {
-	log.Printf("updating observable...")
+	// log.Printf("updating observable...")
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 	o.value = updateFunc(o.value)

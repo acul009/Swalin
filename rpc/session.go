@@ -8,6 +8,7 @@ import (
 	"log"
 	"rahnit-rmm/permissions"
 	"rahnit-rmm/pki"
+	"strings"
 	"sync"
 
 	"github.com/quic-go/quic-go"
@@ -143,7 +144,7 @@ func (s *RpcSession) Write(p []byte) (n int, err error) {
 	if err != nil {
 		return 0, fmt.Errorf("error ensuring state: %w", err)
 	}
-	log.Printf("Writing raw data to stream...")
+	// log.Printf("Writing raw data to stream...")
 	return s.stream.Write(p)
 }
 
@@ -201,23 +202,21 @@ func WriteMessage[P any](s *RpcSession, payload P) error {
 		return fmt.Errorf("can't address message to unknown sender: session has no partner specified")
 	}
 
-	log.Printf("ensuring session state...")
-
-	log.Printf("creating message...")
+	// log.Printf("creating message...")
 
 	message, err := newRpcMessage[P](s.partner, payload)
 	if err != nil {
 		return fmt.Errorf("error creating message: %w", err)
 	}
 
-	log.Printf("marshalling message...")
+	// log.Printf("marshalling message...")
 
 	data, err := pki.MarshalAndSign(message, s.credentials)
 	if err != nil {
 		return fmt.Errorf("error marshalling message: %w", err)
 	}
 
-	log.Printf("writing message...")
+	// log.Printf("writing message...")
 
 	n, err := s.Write(data)
 	if err != nil {
@@ -291,8 +290,6 @@ func (s *RpcSession) sendCommand(cmd RpcCommand) error {
 	defer func() {
 		err := s.Close()
 		if err != nil {
-			//log error type:
-			log.Printf("type of error: %T\n", err)
 			panic(err)
 		}
 	}()
@@ -345,7 +342,11 @@ func (s *RpcSession) Close() error {
 	s.connection.removeSession(s.id)
 
 	err := s.stream.Close()
-	return err
+	if err != nil {
+		return fmt.Errorf("error closing underlying readwriter: %w", err)
+	}
+
+	return nil
 }
 
 type SessionRequestHeader struct {
@@ -417,7 +418,12 @@ func wrapQuicStream(stream quic.Stream) *streamWrapper {
 	return &streamWrapper{stream}
 }
 
-func (s streamWrapper) Close() error {
+func (s *streamWrapper) Close() error {
+	log.Printf("Closing stream wrapper")
+	err := s.Stream.Close()
+	if strings.HasPrefix(err.Error(), "close called for canceled stream") {
+		return nil
+	}
 	s.Stream.CancelRead(200)
-	return nil
+	return err
 }

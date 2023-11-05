@@ -90,12 +90,10 @@ func (cmd *monitorSystemCommand) ExecuteClient(session *rpc.RpcSession) error {
 			return fmt.Errorf("error reading active stats: %w", err)
 		}
 
-		log.Printf("Received active stats: %+v", active)
+		// log.Printf("Received active stats: %+v", active)
 
 		cmd.active.Update(func(_ *ActiveStats) *ActiveStats {
 			return active
 		})
 	}
-
-	return nil
 }
