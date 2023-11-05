@@ -35,7 +35,7 @@ type RpcConnection struct {
 	uuid           uuid.UUID
 	state          RpcConnectionState
 	role           RpcConnectionRole
-	activeSessions map[uuid.UUID]*RpcSession
+	activeSessions map[quic.StreamID]*RpcSession
 	mutex          sync.Mutex
 	nonceStorage   *nonceStorage
 	protocol       TlsConnectionProto
@@ -59,7 +59,7 @@ func newRpcConnection(conn quic.Connection,
 		uuid:           uuid.New(),
 		state:          RpcConnectionOpen,
 		role:           role,
-		activeSessions: make(map[uuid.UUID]*RpcSession),
+		activeSessions: make(map[quic.StreamID]*RpcSession),
 		mutex:          sync.Mutex{},
 		nonceStorage:   nonceStorage,
 		protocol:       protocol,
@@ -132,24 +132,12 @@ func (conn *RpcConnection) AcceptSession(context.Context) (*RpcSession, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error accepting QUIC stream: %w", err)
 	}
-	var session *RpcSession = nil
+	session := newRpcSession(stream, conn)
 
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 
-	for i := 0; i < 10; i++ {
-		newSession := newRpcSession(stream, conn)
-		if _, ok := conn.activeSessions[newSession.uuid]; !ok {
-			session = newSession
-			break
-		}
-	}
-
-	if session == nil {
-		return nil, fmt.Errorf("multiple uuid collisions, this should mathematically be impossible")
-	}
-
-	conn.activeSessions[session.uuid] = session
+	conn.activeSessions[stream.StreamID()] = session
 
 	return session, nil
 }
@@ -189,10 +177,10 @@ func (conn *RpcConnection) EnsureState(state RpcConnectionState) error {
 	return nil
 }
 
-func (conn *RpcConnection) removeSession(uuid uuid.UUID) {
+func (conn *RpcConnection) removeSession(id quic.StreamID) {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
-	delete(conn.activeSessions, uuid)
+	delete(conn.activeSessions, id)
 }
 
 func (conn *RpcConnection) Close(code quic.ApplicationErrorCode, msg string) error {

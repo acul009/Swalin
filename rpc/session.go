@@ -10,7 +10,6 @@ import (
 	"rahnit-rmm/pki"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/quic-go/quic-go"
 )
 
@@ -27,7 +26,7 @@ type RpcSession struct {
 	stream      io.ReadWriteCloser
 	ctx         context.Context
 	connection  *RpcConnection
-	uuid        uuid.UUID
+	id          quic.StreamID
 	state       RpcSessionState
 	mutex       sync.Mutex
 	partner     *pki.PublicKey
@@ -43,10 +42,10 @@ func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 	}
 
 	return &RpcSession{
-		stream:      stream,
+		stream:      wrapQuicStream(stream),
 		ctx:         stream.Context(),
 		connection:  conn,
-		uuid:        uuid.New(),
+		id:          stream.StreamID(),
 		state:       RpcSessionCreated,
 		mutex:       sync.Mutex{},
 		partner:     pubkey,
@@ -292,6 +291,8 @@ func (s *RpcSession) sendCommand(cmd RpcCommand) error {
 	defer func() {
 		err := s.Close()
 		if err != nil {
+			//log error type:
+			log.Printf("type of error: %T\n", err)
 			panic(err)
 		}
 	}()
@@ -341,7 +342,7 @@ func (s *RpcSession) Close() error {
 	}
 	s.state = RpcSessionClosed
 
-	s.connection.removeSession(s.uuid)
+	s.connection.removeSession(s.id)
 
 	err := s.stream.Close()
 	return err
@@ -406,4 +407,17 @@ func reEncode(from interface{}, to interface{}) error {
 		return err
 	}
 	return json.Unmarshal(data, to)
+}
+
+type streamWrapper struct {
+	quic.Stream
+}
+
+func wrapQuicStream(stream quic.Stream) *streamWrapper {
+	return &streamWrapper{stream}
+}
+
+func (s streamWrapper) Close() error {
+	s.Stream.CancelRead(200)
+	return nil
 }
