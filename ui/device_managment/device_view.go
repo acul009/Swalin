@@ -44,6 +44,13 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 		return active.Cpu
 	}))
 
+	processList := newProcessList(util.DeriveObservable[*rmm.ActiveStats, *rmm.ProcessStats](d.active, func(active *rmm.ActiveStats) *rmm.ProcessStats {
+		if active == nil {
+			return nil
+		}
+		return active.Processes
+	}))
+
 	d.container = container.NewVBox(
 		widget.NewLabel(device.Name()),
 		widget.NewLabelWithData(osBind),
@@ -94,6 +101,7 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 			window.Show()
 
 		}),
+		processList,
 	)
 
 	return d
