@@ -24,12 +24,16 @@ type BarWidget[T constraints.Integer | constraints.Float] struct {
 
 func NewBarWidget[T constraints.Integer | constraints.Float](current util.Observable[T], max T, formatter func(T) string) *BarWidget[T] {
 	widget := &BarWidget[T]{
-		formatter: formatter,
-		max:       max,
-		current:   0,
-		text:      canvas.NewText("", theme.ForegroundColor()),
-		onDestroy: func() {},
+		formatter:   formatter,
+		max:         max,
+		current:     0,
+		text:        canvas.NewText("", theme.ForegroundColor()),
+		onDestroy:   func() {},
+		rectMax:     canvas.NewRectangle(theme.WarningColor()),
+		rectCurrent: canvas.NewRectangle(theme.ForegroundColor()),
 	}
+
+	widget.text.Alignment = fyne.TextAlignCenter
 
 	log.Printf("extending basewidget")
 	widget.BaseWidget.ExtendBaseWidget(widget)
@@ -45,13 +49,23 @@ func NewBarWidget[T constraints.Integer | constraints.Float](current util.Observ
 }
 
 func (bw *BarWidget[T]) update(current T) {
-	bw.current = current
-	bw.computeLabel()
+	if current > bw.max {
+		bw.current = bw.max
+	} else {
+		bw.current = current
+	}
+	bw.updateGraphics()
 }
 
-func (bw *BarWidget[T]) computeLabel() {
+func (bw *BarWidget[T]) updateGraphics() {
 	bw.text.Text = bw.formatter(bw.current)
 	bw.text.Refresh()
+	barSize := bw.rectMax.Size()
+	barPos := bw.rectMax.Position()
+	currentHeight := barSize.Height * float32(bw.current/bw.max)
+	bw.rectCurrent.Move(fyne.NewPos(barPos.X, barSize.Height-currentHeight))
+	bw.rectCurrent.Resize(fyne.NewSize(barSize.Width, currentHeight))
+	bw.rectCurrent.Refresh()
 }
 
 func (bw *BarWidget[T]) CreateRenderer() fyne.WidgetRenderer {
@@ -65,16 +79,22 @@ type barRenderer[T constraints.Integer | constraints.Float] struct {
 }
 
 func (br *barRenderer[T]) Layout(size fyne.Size) {
-	br.widget.text.Move(fyne.NewPos(0, 0))
-	br.widget.text.Resize(size)
+	textSize := br.widget.text.MinSize()
+	br.widget.text.Resize(fyne.NewSize(size.Width, textSize.Height))
+	barHeight := size.Height - textSize.Height
+	br.widget.text.Move(fyne.NewPos(0, barHeight))
+	br.widget.rectMax.Move(fyne.NewPos(size.Width/4, 0))
+	br.widget.rectMax.Resize(fyne.NewSize(size.Width/2, barHeight))
+	br.widget.updateGraphics()
 }
 
 func (br *barRenderer[T]) MinSize() fyne.Size {
-	return br.widget.text.MinSize()
+	return fyne.NewSize(50, 100)
 }
 
 func (br *barRenderer[T]) Refresh() {
-	br.widget.text.Refresh()
+	br.widget.updateGraphics()
+	br.widget.rectMax.Refresh()
 }
 
 func (br *barRenderer[T]) Destroy() {
@@ -82,5 +102,9 @@ func (br *barRenderer[T]) Destroy() {
 }
 
 func (br *barRenderer[T]) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{br.widget.text}
+	return []fyne.CanvasObject{
+		br.widget.text,
+		// br.widget.rectMax,
+		br.widget.rectCurrent,
+	}
 }

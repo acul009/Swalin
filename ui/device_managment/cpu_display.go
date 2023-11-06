@@ -25,7 +25,7 @@ type cpuDisplay struct {
 
 func newCpuDisplay(observable util.Observable[*rmm.CpuStats]) *cpuDisplay {
 	d := &cpuDisplay{
-		layout:     layout.NewVBoxLayout(),
+		layout:     layout.NewHBoxLayout(),
 		observable: observable,
 	}
 
@@ -60,7 +60,7 @@ func (d *cpuDisplay) fixBars() {
 		)
 
 		log.Printf("crearing new widget")
-		bar := fynecharts.NewBarWidget[float64](coreStat, 1, func(f float64) string {
+		bar := fynecharts.NewBarWidget[float64](coreStat, 100, func(f float64) string {
 			return fmt.Sprintf("%.0f%%", f)
 		})
 
