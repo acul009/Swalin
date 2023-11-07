@@ -23,6 +23,11 @@ func GetUserCredentials(username string, password []byte) (*PermanentCredentials
 		return nil, fmt.Errorf("user credentials not found")
 	}
 
+	_, err := credentials.GetPrivateKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user credentials: %w", err)
+	}
+
 	return credentials, nil
 }
 

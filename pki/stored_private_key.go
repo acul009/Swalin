@@ -52,11 +52,11 @@ func (s *storedPrivateKey) Get() (*PrivateKey, error) {
 		privateKey, err := loadPrivateKeyFromFile(s.path(), s.password)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
-				return nil, &certMissingError{
+				return nil, privateKeyMissingError{
 					cause: err,
 				}
 			}
-			return nil, fmt.Errorf("failed to load certificate: %w", err)
+			return nil, fmt.Errorf("failed to load encrypted private key: %w", err)
 		}
 
 		s.privateKey = privateKey

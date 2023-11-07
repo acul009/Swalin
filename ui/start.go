@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"log"
 	"rahnit-rmm/config"
@@ -18,6 +19,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/data/validation"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
@@ -52,15 +54,9 @@ func unlock(w fyne.Window) {
 	}
 
 	userSelect := widget.NewSelect(availableUsers, nil)
+	userSelect.Selected = availableUsers[0]
 
 	passwordField := widget.NewPasswordEntry()
-	passwordField.Validator = func(s string) error {
-		if len(s) < 8 {
-			return fmt.Errorf("password must be at least 8 characters")
-		}
-
-		return nil
-	}
 
 	form := widget.NewForm(
 		widget.NewFormItem("User", userSelect),
@@ -68,16 +64,26 @@ func unlock(w fyne.Window) {
 	)
 	form.SubmitText = "Login"
 
-	form.OnSubmit = func() {
+	submitFunc := func() {
 		username := userSelect.Selected
 		password := passwordField.Text
 
 		credentials, err := pki.GetUserCredentials(username, []byte(password))
 		if err != nil {
-			panic(err)
+			if errors.Is(err, pki.ErrWrongPassword) {
+				dialog.ShowError(fmt.Errorf("wrong password"), w)
+				return
+			} else {
+				panic(err)
+			}
 		}
 
 		startMainMenu(w, credentials)
+	}
+
+	form.OnSubmit = submitFunc
+	passwordField.OnSubmitted = func(s string) {
+		submitFunc()
 	}
 
 	w.SetContent(container.NewVBox(

@@ -8,6 +8,25 @@ import (
 	"rahnit-rmm/util"
 )
 
+var ErrWrongPassword = &wrongPasswordError{}
+
+type wrongPasswordError struct {
+	cause error
+}
+
+func (e *wrongPasswordError) Error() string {
+	return "wrong password"
+}
+
+func (e *wrongPasswordError) Is(target error) bool {
+	_, ok := target.(*wrongPasswordError)
+	return ok
+}
+
+func (e *wrongPasswordError) Unwrap() error {
+	return e.cause
+}
+
 type PrivateKey ecdsa.PrivateKey
 
 func (key *PrivateKey) MarshalJSON() ([]byte, error) {
@@ -52,7 +71,9 @@ func PrivateKeyFromBinary(keyPEM []byte, password []byte) (*PrivateKey, error) {
 	// Parse the CA private key
 	key, err := x509.ParseECPrivateKey(keyBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse CA private key: %w", err)
+		return nil, &wrongPasswordError{
+			cause: err,
+		}
 	}
 
 	return ImportPrivateKey(*key), nil
