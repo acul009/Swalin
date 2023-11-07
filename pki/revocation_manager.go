@@ -1,10 +1,10 @@
 package pki
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"log"
 	"rahnit-rmm/config"
@@ -47,7 +47,9 @@ func (r *revocationManager) CheckPayload(payload []byte) error {
 }
 
 func (r *revocationManager) isRevokedHash(hash []byte, hasher crypto.Hash) bool {
-	revModel, err := r.db.Revocation.Query().Where(revocation.HashEQ(base64.StdEncoding.EncodeToString(hash)), revocation.HasherEQ(uint64(hasher))).Only(context.Background())
+	baseHash := base64.StdEncoding.EncodeToString(hash)
+
+	revModel, err := r.db.Revocation.Query().Where(revocation.HashEQ(baseHash), revocation.HasherEQ(uint64(hasher))).Only(context.Background())
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return false
@@ -56,23 +58,16 @@ func (r *revocationManager) isRevokedHash(hash []byte, hasher crypto.Hash) bool 
 		return true
 	}
 
-	revocation := &Revocation{}
-	err = json.Unmarshal([]byte(revModel.Revocation), revocation)
+	revocation, err := RevocationFromBinary(revModel.Revocation)
 	if err != nil {
-		log.Printf("WARNING: failed to unmarshal revocation: %v", err)
-		return true
-	}
-
-	chain, err := r.verifier.VerifyPublicKey(revocation.Creator())
-	if err != nil {
-		log.Printf("WARNING: failed to verify revocation: %v", err)
+		log.Printf("WARNING: failed to load revocation: %v", err)
 		return false
 	}
 
-	if chain[0].Type() != CertTypeRoot && chain[0].Type() != CertTypeUser {
-		log.Printf("WARNING: revocation not made by user or root: %v", err)
-		return false
+	revoked := revocation.Hasher == hasher && bytes.Equal(revocation.Hash, hash)
+	if !revoked {
+		log.Printf("WARNING: revocation for %x has broken index", hash)
 	}
 
-	return true
+	return revoked
 }

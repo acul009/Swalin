@@ -2,39 +2,45 @@ package pki
 
 import (
 	"crypto"
-	"encoding/base64"
-	"encoding/json"
+	"encoding/asn1"
 	"fmt"
 	"rahnit-rmm/util"
 )
 
-type revocationPayload struct {
+type Revocation struct {
 	Hash      []byte
 	Hasher    crypto.Hash
 	Timestamp int64
 	Nonce     util.Nonce
-	Chain     []*Certificate
+	raw       []byte
 }
 
-type Revocation struct {
-	PackedPayload []byte
-	Signature     []byte
+type revocationDerHelper struct {
+	payload []byte
+	Chain   []*Certificate
 }
 
-func RevocationFromBase64(data string) (*Revocation, error) {
-	binary, err := base64.StdEncoding.DecodeString(data)
+func RevocationFromBinary(data []byte) (*Revocation, error) {
+
+	helper := &revocationDerHelper{}
+
+	_, err := asn1.Unmarshal(data, helper)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode base64: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal revocation helper: %w", err)
 	}
 
-}
-
-func (r Revocation) Payload() (*revocationPayload, error) {
-	payload := &revocationPayload{}
-	err := json.Unmarshal(r.PackedPayload, payload)
+	_, err = helper.Chain[0].VerifyChain(nil, CreatePool(helper.Chain[1:]), false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal payload: %w", err)
+		return nil, fmt.Errorf("failed to verify chain: %w", err)
 	}
 
-	return payload, nil
+	revocation := &Revocation{}
+	_, err = asn1.Unmarshal(helper.payload, revocation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal revocation: %w", err)
+	}
+
+	revocation.raw = data
+
+	return revocation, nil
 }

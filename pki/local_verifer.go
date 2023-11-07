@@ -65,42 +65,7 @@ func (v *localVerify) Verify(cert *Certificate) ([]*Certificate, error) {
 		return nil, fmt.Errorf("certificate is nil")
 	}
 
-	chains, err := cert.ToX509().Verify(v.options())
-	if err != nil || len(chains) == 0 {
-		return nil, fmt.Errorf("failed to verify certificate: %w", err)
-	}
-
-	chain := make([]*Certificate, 0, len(chains[0]))
-
-	for _, cert := range chains[0] {
-		workingCert, err := ImportCertificate(cert)
-		if err != nil {
-			return nil, fmt.Errorf("failed to import certificate: %w", err)
-		}
-
-		err = v.checkCertificateInfo(workingCert)
-		if err != nil {
-			return nil, fmt.Errorf("failed to check certificate info: %w", err)
-		}
-
-		chain = append(chain, workingCert)
-	}
-
-	return chain, nil
-}
-
-func (v *localVerify) checkCertificateInfo(cert *Certificate) error {
-	err := v.checkRevoked(cert)
-	if err != nil {
-		return fmt.Errorf("certificate has been revoked: %w", err)
-	}
-
-	return nil
-}
-
-func (v *localVerify) checkRevoked(cert *Certificate) error {
-	// TODO: check if certificate was revoked
-	return nil
+	return cert.VerifyChain(v.rootPool, v.intermediates, true)
 }
 
 func (v *localVerify) VerifyPublicKey(pub *PublicKey) ([]*Certificate, error) {
