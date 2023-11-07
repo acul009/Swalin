@@ -164,7 +164,7 @@ func readMessageFromUnknown[P any](s *RpcSession, payload P) (*pki.PublicKey, er
 		Payload: payload,
 	}
 
-	sender, err := pki.ReadAndUnmarshalAndVerify(s.stream, message)
+	sender, err := pki.ReadAndUnmarshalAndVerify(s.stream, message, false)
 	if err != nil {
 		return nil, fmt.Errorf("error reading message: %w", err)
 	}
