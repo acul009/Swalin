@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"rahnit-rmm/ent/device"
 	"rahnit-rmm/ent/predicate"
+	"rahnit-rmm/ent/revocation"
+	"rahnit-rmm/ent/tunnelconfig"
 	"rahnit-rmm/ent/user"
 	"rahnit-rmm/util"
 	"sync"
@@ -25,22 +27,26 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeDevice = "Device"
-	TypeUser   = "User"
+	TypeDevice       = "Device"
+	TypeRevocation   = "Revocation"
+	TypeTunnelConfig = "TunnelConfig"
+	TypeUser         = "User"
 )
 
 // DeviceMutation represents an operation that mutates the Device nodes in the graph.
 type DeviceMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	public_key    *string
-	certificate   *string
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*Device, error)
-	predicates    []predicate.Device
+	op                   Op
+	typ                  string
+	id                   *int
+	public_key           *string
+	certificate          *string
+	clearedFields        map[string]struct{}
+	tunnel_config        *int
+	clearedtunnel_config bool
+	done                 bool
+	oldValue             func(context.Context) (*Device, error)
+	predicates           []predicate.Device
 }
 
 var _ ent.Mutation = (*DeviceMutation)(nil)
@@ -213,6 +219,45 @@ func (m *DeviceMutation) ResetCertificate() {
 	m.certificate = nil
 }
 
+// SetTunnelConfigID sets the "tunnel_config" edge to the TunnelConfig entity by id.
+func (m *DeviceMutation) SetTunnelConfigID(id int) {
+	m.tunnel_config = &id
+}
+
+// ClearTunnelConfig clears the "tunnel_config" edge to the TunnelConfig entity.
+func (m *DeviceMutation) ClearTunnelConfig() {
+	m.clearedtunnel_config = true
+}
+
+// TunnelConfigCleared reports if the "tunnel_config" edge to the TunnelConfig entity was cleared.
+func (m *DeviceMutation) TunnelConfigCleared() bool {
+	return m.clearedtunnel_config
+}
+
+// TunnelConfigID returns the "tunnel_config" edge ID in the mutation.
+func (m *DeviceMutation) TunnelConfigID() (id int, exists bool) {
+	if m.tunnel_config != nil {
+		return *m.tunnel_config, true
+	}
+	return
+}
+
+// TunnelConfigIDs returns the "tunnel_config" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// TunnelConfigID instead. It exists only for internal usage by the builders.
+func (m *DeviceMutation) TunnelConfigIDs() (ids []int) {
+	if id := m.tunnel_config; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetTunnelConfig resets all changes to the "tunnel_config" edge.
+func (m *DeviceMutation) ResetTunnelConfig() {
+	m.tunnel_config = nil
+	m.clearedtunnel_config = false
+}
+
 // Where appends a list predicates to the DeviceMutation builder.
 func (m *DeviceMutation) Where(ps ...predicate.Device) {
 	m.predicates = append(m.predicates, ps...)
@@ -363,19 +408,28 @@ func (m *DeviceMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *DeviceMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.tunnel_config != nil {
+		edges = append(edges, device.EdgeTunnelConfig)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *DeviceMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case device.EdgeTunnelConfig:
+		if id := m.tunnel_config; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *DeviceMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
 	return edges
 }
 
@@ -387,26 +441,844 @@ func (m *DeviceMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *DeviceMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedtunnel_config {
+		edges = append(edges, device.EdgeTunnelConfig)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *DeviceMutation) EdgeCleared(name string) bool {
+	switch name {
+	case device.EdgeTunnelConfig:
+		return m.clearedtunnel_config
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *DeviceMutation) ClearEdge(name string) error {
+	switch name {
+	case device.EdgeTunnelConfig:
+		m.ClearTunnelConfig()
+		return nil
+	}
 	return fmt.Errorf("unknown Device unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *DeviceMutation) ResetEdge(name string) error {
+	switch name {
+	case device.EdgeTunnelConfig:
+		m.ResetTunnelConfig()
+		return nil
+	}
 	return fmt.Errorf("unknown Device edge %s", name)
+}
+
+// RevocationMutation represents an operation that mutates the Revocation nodes in the graph.
+type RevocationMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	revocation    *[]byte
+	hash          *string
+	hasher        *uint64
+	addhasher     *int64
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*Revocation, error)
+	predicates    []predicate.Revocation
+}
+
+var _ ent.Mutation = (*RevocationMutation)(nil)
+
+// revocationOption allows management of the mutation configuration using functional options.
+type revocationOption func(*RevocationMutation)
+
+// newRevocationMutation creates new mutation for the Revocation entity.
+func newRevocationMutation(c config, op Op, opts ...revocationOption) *RevocationMutation {
+	m := &RevocationMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeRevocation,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withRevocationID sets the ID field of the mutation.
+func withRevocationID(id int) revocationOption {
+	return func(m *RevocationMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Revocation
+		)
+		m.oldValue = func(ctx context.Context) (*Revocation, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Revocation.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withRevocation sets the old Revocation of the mutation.
+func withRevocation(node *Revocation) revocationOption {
+	return func(m *RevocationMutation) {
+		m.oldValue = func(context.Context) (*Revocation, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m RevocationMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m RevocationMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *RevocationMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *RevocationMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Revocation.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetRevocation sets the "revocation" field.
+func (m *RevocationMutation) SetRevocation(b []byte) {
+	m.revocation = &b
+}
+
+// Revocation returns the value of the "revocation" field in the mutation.
+func (m *RevocationMutation) Revocation() (r []byte, exists bool) {
+	v := m.revocation
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRevocation returns the old "revocation" field's value of the Revocation entity.
+// If the Revocation object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RevocationMutation) OldRevocation(ctx context.Context) (v []byte, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRevocation is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRevocation requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRevocation: %w", err)
+	}
+	return oldValue.Revocation, nil
+}
+
+// ResetRevocation resets all changes to the "revocation" field.
+func (m *RevocationMutation) ResetRevocation() {
+	m.revocation = nil
+}
+
+// SetHash sets the "hash" field.
+func (m *RevocationMutation) SetHash(s string) {
+	m.hash = &s
+}
+
+// Hash returns the value of the "hash" field in the mutation.
+func (m *RevocationMutation) Hash() (r string, exists bool) {
+	v := m.hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldHash returns the old "hash" field's value of the Revocation entity.
+// If the Revocation object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RevocationMutation) OldHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldHash: %w", err)
+	}
+	return oldValue.Hash, nil
+}
+
+// ResetHash resets all changes to the "hash" field.
+func (m *RevocationMutation) ResetHash() {
+	m.hash = nil
+}
+
+// SetHasher sets the "hasher" field.
+func (m *RevocationMutation) SetHasher(u uint64) {
+	m.hasher = &u
+	m.addhasher = nil
+}
+
+// Hasher returns the value of the "hasher" field in the mutation.
+func (m *RevocationMutation) Hasher() (r uint64, exists bool) {
+	v := m.hasher
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldHasher returns the old "hasher" field's value of the Revocation entity.
+// If the Revocation object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RevocationMutation) OldHasher(ctx context.Context) (v uint64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldHasher is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldHasher requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldHasher: %w", err)
+	}
+	return oldValue.Hasher, nil
+}
+
+// AddHasher adds u to the "hasher" field.
+func (m *RevocationMutation) AddHasher(u int64) {
+	if m.addhasher != nil {
+		*m.addhasher += u
+	} else {
+		m.addhasher = &u
+	}
+}
+
+// AddedHasher returns the value that was added to the "hasher" field in this mutation.
+func (m *RevocationMutation) AddedHasher() (r int64, exists bool) {
+	v := m.addhasher
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetHasher resets all changes to the "hasher" field.
+func (m *RevocationMutation) ResetHasher() {
+	m.hasher = nil
+	m.addhasher = nil
+}
+
+// Where appends a list predicates to the RevocationMutation builder.
+func (m *RevocationMutation) Where(ps ...predicate.Revocation) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the RevocationMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *RevocationMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Revocation, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *RevocationMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *RevocationMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Revocation).
+func (m *RevocationMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *RevocationMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.revocation != nil {
+		fields = append(fields, revocation.FieldRevocation)
+	}
+	if m.hash != nil {
+		fields = append(fields, revocation.FieldHash)
+	}
+	if m.hasher != nil {
+		fields = append(fields, revocation.FieldHasher)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *RevocationMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case revocation.FieldRevocation:
+		return m.Revocation()
+	case revocation.FieldHash:
+		return m.Hash()
+	case revocation.FieldHasher:
+		return m.Hasher()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *RevocationMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case revocation.FieldRevocation:
+		return m.OldRevocation(ctx)
+	case revocation.FieldHash:
+		return m.OldHash(ctx)
+	case revocation.FieldHasher:
+		return m.OldHasher(ctx)
+	}
+	return nil, fmt.Errorf("unknown Revocation field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *RevocationMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case revocation.FieldRevocation:
+		v, ok := value.([]byte)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRevocation(v)
+		return nil
+	case revocation.FieldHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetHash(v)
+		return nil
+	case revocation.FieldHasher:
+		v, ok := value.(uint64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetHasher(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Revocation field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *RevocationMutation) AddedFields() []string {
+	var fields []string
+	if m.addhasher != nil {
+		fields = append(fields, revocation.FieldHasher)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *RevocationMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case revocation.FieldHasher:
+		return m.AddedHasher()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *RevocationMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case revocation.FieldHasher:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddHasher(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Revocation numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *RevocationMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *RevocationMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *RevocationMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Revocation nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *RevocationMutation) ResetField(name string) error {
+	switch name {
+	case revocation.FieldRevocation:
+		m.ResetRevocation()
+		return nil
+	case revocation.FieldHash:
+		m.ResetHash()
+		return nil
+	case revocation.FieldHasher:
+		m.ResetHasher()
+		return nil
+	}
+	return fmt.Errorf("unknown Revocation field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *RevocationMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *RevocationMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *RevocationMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *RevocationMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *RevocationMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *RevocationMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *RevocationMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown Revocation unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *RevocationMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown Revocation edge %s", name)
+}
+
+// TunnelConfigMutation represents an operation that mutates the TunnelConfig nodes in the graph.
+type TunnelConfigMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	clearedFields map[string]struct{}
+	device        *int
+	cleareddevice bool
+	done          bool
+	oldValue      func(context.Context) (*TunnelConfig, error)
+	predicates    []predicate.TunnelConfig
+}
+
+var _ ent.Mutation = (*TunnelConfigMutation)(nil)
+
+// tunnelconfigOption allows management of the mutation configuration using functional options.
+type tunnelconfigOption func(*TunnelConfigMutation)
+
+// newTunnelConfigMutation creates new mutation for the TunnelConfig entity.
+func newTunnelConfigMutation(c config, op Op, opts ...tunnelconfigOption) *TunnelConfigMutation {
+	m := &TunnelConfigMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeTunnelConfig,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withTunnelConfigID sets the ID field of the mutation.
+func withTunnelConfigID(id int) tunnelconfigOption {
+	return func(m *TunnelConfigMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *TunnelConfig
+		)
+		m.oldValue = func(ctx context.Context) (*TunnelConfig, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().TunnelConfig.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withTunnelConfig sets the old TunnelConfig of the mutation.
+func withTunnelConfig(node *TunnelConfig) tunnelconfigOption {
+	return func(m *TunnelConfigMutation) {
+		m.oldValue = func(context.Context) (*TunnelConfig, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m TunnelConfigMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m TunnelConfigMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *TunnelConfigMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *TunnelConfigMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().TunnelConfig.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDeviceID sets the "device" edge to the Device entity by id.
+func (m *TunnelConfigMutation) SetDeviceID(id int) {
+	m.device = &id
+}
+
+// ClearDevice clears the "device" edge to the Device entity.
+func (m *TunnelConfigMutation) ClearDevice() {
+	m.cleareddevice = true
+}
+
+// DeviceCleared reports if the "device" edge to the Device entity was cleared.
+func (m *TunnelConfigMutation) DeviceCleared() bool {
+	return m.cleareddevice
+}
+
+// DeviceID returns the "device" edge ID in the mutation.
+func (m *TunnelConfigMutation) DeviceID() (id int, exists bool) {
+	if m.device != nil {
+		return *m.device, true
+	}
+	return
+}
+
+// DeviceIDs returns the "device" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DeviceID instead. It exists only for internal usage by the builders.
+func (m *TunnelConfigMutation) DeviceIDs() (ids []int) {
+	if id := m.device; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDevice resets all changes to the "device" edge.
+func (m *TunnelConfigMutation) ResetDevice() {
+	m.device = nil
+	m.cleareddevice = false
+}
+
+// Where appends a list predicates to the TunnelConfigMutation builder.
+func (m *TunnelConfigMutation) Where(ps ...predicate.TunnelConfig) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the TunnelConfigMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *TunnelConfigMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.TunnelConfig, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *TunnelConfigMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *TunnelConfigMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (TunnelConfig).
+func (m *TunnelConfigMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *TunnelConfigMutation) Fields() []string {
+	fields := make([]string, 0, 0)
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *TunnelConfigMutation) Field(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *TunnelConfigMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	return nil, fmt.Errorf("unknown TunnelConfig field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TunnelConfigMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown TunnelConfig field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *TunnelConfigMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *TunnelConfigMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TunnelConfigMutation) AddField(name string, value ent.Value) error {
+	return fmt.Errorf("unknown TunnelConfig numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *TunnelConfigMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *TunnelConfigMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *TunnelConfigMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown TunnelConfig nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *TunnelConfigMutation) ResetField(name string) error {
+	return fmt.Errorf("unknown TunnelConfig field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *TunnelConfigMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.device != nil {
+		edges = append(edges, tunnelconfig.EdgeDevice)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *TunnelConfigMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case tunnelconfig.EdgeDevice:
+		if id := m.device; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *TunnelConfigMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *TunnelConfigMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *TunnelConfigMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleareddevice {
+		edges = append(edges, tunnelconfig.EdgeDevice)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *TunnelConfigMutation) EdgeCleared(name string) bool {
+	switch name {
+	case tunnelconfig.EdgeDevice:
+		return m.cleareddevice
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *TunnelConfigMutation) ClearEdge(name string) error {
+	switch name {
+	case tunnelconfig.EdgeDevice:
+		m.ClearDevice()
+		return nil
+	}
+	return fmt.Errorf("unknown TunnelConfig unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *TunnelConfigMutation) ResetEdge(name string) error {
+	switch name {
+	case tunnelconfig.EdgeDevice:
+		m.ResetDevice()
+		return nil
+	}
+	return fmt.Errorf("unknown TunnelConfig edge %s", name)
 }
 
 // UserMutation represents an operation that mutates the User nodes in the graph.

@@ -14,7 +14,7 @@ func GetPendingEnrollmentsHandler() RpcCommand {
 	}
 }
 
-func NewGetPendingEnrollmentsCommand(targetMap *util.ObservableMap[string, Enrollment]) *getPendingEnrollmentsCommand {
+func NewGetPendingEnrollmentsCommand(targetMap util.ObservableMap[string, Enrollment]) *getPendingEnrollmentsCommand {
 	return &getPendingEnrollmentsCommand{
 		syncDownCommand: NewSyncDownCommand[string, Enrollment](targetMap),
 	}

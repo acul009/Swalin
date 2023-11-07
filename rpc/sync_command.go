@@ -5,14 +5,14 @@ import (
 	"rahnit-rmm/util"
 )
 
-func NewSyncDownCommand[K comparable, T any](targetMap *util.ObservableMap[K, T]) *syncDownCommand[K, T] {
+func NewSyncDownCommand[K comparable, T any](targetMap util.ObservableMap[K, T]) *syncDownCommand[K, T] {
 	return &syncDownCommand[K, T]{
 		targetMap: targetMap,
 	}
 }
 
 type syncDownCommand[K comparable, T any] struct {
-	targetMap *util.ObservableMap[K, T]
+	targetMap util.ObservableMap[K, T]
 }
 
 type updateInfo[K comparable, T any] struct {

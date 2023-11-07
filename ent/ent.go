@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"rahnit-rmm/ent/device"
+	"rahnit-rmm/ent/revocation"
+	"rahnit-rmm/ent/tunnelconfig"
 	"rahnit-rmm/ent/user"
 	"reflect"
 	"sync"
@@ -74,8 +76,10 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			device.Table: device.ValidColumn,
-			user.Table:   user.ValidColumn,
+			device.Table:       device.ValidColumn,
+			revocation.Table:   revocation.ValidColumn,
+			tunnelconfig.Table: tunnelconfig.ValidColumn,
+			user.Table:         user.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

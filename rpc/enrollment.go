@@ -14,7 +14,7 @@ import (
 )
 
 type enrollmentManager struct {
-	waitingEnrollments *util.ObservableMap[string, *enrollmentConnection]
+	waitingEnrollments util.ObservableMap[string, *enrollmentConnection]
 	upstream           *pki.Certificate
 	mutex              sync.Mutex
 }
@@ -76,7 +76,8 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 	encodedKey := session.partner.Base64Encode()
 
 	m.mutex.Lock()
-	if m.waitingEnrollments.Has(encodedKey) {
+	_, ok := m.waitingEnrollments.Get(encodedKey)
+	if ok {
 		return fmt.Errorf("enrollment already in progress")
 	}
 

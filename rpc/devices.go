@@ -19,7 +19,7 @@ func (d DeviceInfo) Name() string {
 }
 
 type DeviceList struct {
-	devices *util.ObservableMap[string, DeviceInfo]
+	devices util.ObservableMap[string, DeviceInfo]
 }
 
 func NewDeviceListFromDB() (*DeviceList, error) {
@@ -48,7 +48,8 @@ func NewDeviceListFromDB() (*DeviceList, error) {
 }
 
 func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
-	if d.devices.Has(cert.GetPublicKey().Base64Encode()) {
+	_, ok := d.devices.Get(cert.GetPublicKey().Base64Encode())
+	if ok {
 		return fmt.Errorf("device already exists")
 	}
 

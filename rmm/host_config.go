@@ -33,3 +33,12 @@ func CreateHostConfig[T any](host *pki.PublicKey, credentials pki.Credentials, c
 
 	return &hostConfig[T]{*artifact}, nil
 }
+
+func (h hostConfigPayload[T]) MayPublish(publisher *pki.Certificate) bool {
+	t := publisher.Type()
+	return t == pki.CertTypeRoot || t == pki.CertTypeUser
+}
+
+func (h hostConfigPayload[T]) Revokeable() bool {
+	return true
+}

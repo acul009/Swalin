@@ -6,6 +6,7 @@ import (
 	"rahnit-rmm/ent/predicate"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // ID filters vertices based on their ID field.
@@ -191,6 +192,29 @@ func CertificateEqualFold(v string) predicate.Device {
 // CertificateContainsFold applies the ContainsFold predicate on the "certificate" field.
 func CertificateContainsFold(v string) predicate.Device {
 	return predicate.Device(sql.FieldContainsFold(FieldCertificate, v))
+}
+
+// HasTunnelConfig applies the HasEdge predicate on the "tunnel_config" edge.
+func HasTunnelConfig() predicate.Device {
+	return predicate.Device(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, TunnelConfigTable, TunnelConfigColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasTunnelConfigWith applies the HasEdge predicate on the "tunnel_config" edge with a given conditions (other predicates).
+func HasTunnelConfigWith(preds ...predicate.TunnelConfig) predicate.Device {
+	return predicate.Device(func(s *sql.Selector) {
+		step := newTunnelConfigStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

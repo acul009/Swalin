@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"rahnit-rmm/ent/device"
+	"rahnit-rmm/ent/tunnelconfig"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -29,6 +30,25 @@ func (dc *DeviceCreate) SetPublicKey(s string) *DeviceCreate {
 func (dc *DeviceCreate) SetCertificate(s string) *DeviceCreate {
 	dc.mutation.SetCertificate(s)
 	return dc
+}
+
+// SetTunnelConfigID sets the "tunnel_config" edge to the TunnelConfig entity by ID.
+func (dc *DeviceCreate) SetTunnelConfigID(id int) *DeviceCreate {
+	dc.mutation.SetTunnelConfigID(id)
+	return dc
+}
+
+// SetNillableTunnelConfigID sets the "tunnel_config" edge to the TunnelConfig entity by ID if the given value is not nil.
+func (dc *DeviceCreate) SetNillableTunnelConfigID(id *int) *DeviceCreate {
+	if id != nil {
+		dc = dc.SetTunnelConfigID(*id)
+	}
+	return dc
+}
+
+// SetTunnelConfig sets the "tunnel_config" edge to the TunnelConfig entity.
+func (dc *DeviceCreate) SetTunnelConfig(t *TunnelConfig) *DeviceCreate {
+	return dc.SetTunnelConfigID(t.ID)
 }
 
 // Mutation returns the DeviceMutation object of the builder.
@@ -114,6 +134,23 @@ func (dc *DeviceCreate) createSpec() (*Device, *sqlgraph.CreateSpec) {
 	if value, ok := dc.mutation.Certificate(); ok {
 		_spec.SetField(device.FieldCertificate, field.TypeString, value)
 		_node.Certificate = value
+	}
+	if nodes := dc.mutation.TunnelConfigIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   device.TunnelConfigTable,
+			Columns: []string{device.TunnelConfigColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tunnelconfig.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.tunnel_config_device = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

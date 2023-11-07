@@ -12,11 +12,14 @@ import (
 	"rahnit-rmm/ent/migrate"
 
 	"rahnit-rmm/ent/device"
+	"rahnit-rmm/ent/revocation"
+	"rahnit-rmm/ent/tunnelconfig"
 	"rahnit-rmm/ent/user"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // Client is the client that holds all ent builders.
@@ -26,6 +29,10 @@ type Client struct {
 	Schema *migrate.Schema
 	// Device is the client for interacting with the Device builders.
 	Device *DeviceClient
+	// Revocation is the client for interacting with the Revocation builders.
+	Revocation *RevocationClient
+	// TunnelConfig is the client for interacting with the TunnelConfig builders.
+	TunnelConfig *TunnelConfigClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 }
@@ -42,6 +49,8 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Device = NewDeviceClient(c.config)
+	c.Revocation = NewRevocationClient(c.config)
+	c.TunnelConfig = NewTunnelConfigClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -126,10 +135,12 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		Device: NewDeviceClient(cfg),
-		User:   NewUserClient(cfg),
+		ctx:          ctx,
+		config:       cfg,
+		Device:       NewDeviceClient(cfg),
+		Revocation:   NewRevocationClient(cfg),
+		TunnelConfig: NewTunnelConfigClient(cfg),
+		User:         NewUserClient(cfg),
 	}, nil
 }
 
@@ -147,10 +158,12 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		Device: NewDeviceClient(cfg),
-		User:   NewUserClient(cfg),
+		ctx:          ctx,
+		config:       cfg,
+		Device:       NewDeviceClient(cfg),
+		Revocation:   NewRevocationClient(cfg),
+		TunnelConfig: NewTunnelConfigClient(cfg),
+		User:         NewUserClient(cfg),
 	}, nil
 }
 
@@ -180,6 +193,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	c.Device.Use(hooks...)
+	c.Revocation.Use(hooks...)
+	c.TunnelConfig.Use(hooks...)
 	c.User.Use(hooks...)
 }
 
@@ -187,6 +202,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Device.Intercept(interceptors...)
+	c.Revocation.Intercept(interceptors...)
+	c.TunnelConfig.Intercept(interceptors...)
 	c.User.Intercept(interceptors...)
 }
 
@@ -195,6 +212,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *DeviceMutation:
 		return c.Device.mutate(ctx, m)
+	case *RevocationMutation:
+		return c.Revocation.mutate(ctx, m)
+	case *TunnelConfigMutation:
+		return c.TunnelConfig.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	default:
@@ -310,6 +331,22 @@ func (c *DeviceClient) GetX(ctx context.Context, id int) *Device {
 	return obj
 }
 
+// QueryTunnelConfig queries the tunnel_config edge of a Device.
+func (c *DeviceClient) QueryTunnelConfig(d *Device) *TunnelConfigQuery {
+	query := (&TunnelConfigClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := d.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(device.Table, device.FieldID, id),
+			sqlgraph.To(tunnelconfig.Table, tunnelconfig.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, device.TunnelConfigTable, device.TunnelConfigColumn),
+		)
+		fromV = sqlgraph.Neighbors(d.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *DeviceClient) Hooks() []Hook {
 	return c.hooks.Device
@@ -332,6 +369,288 @@ func (c *DeviceClient) mutate(ctx context.Context, m *DeviceMutation) (Value, er
 		return (&DeviceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Device mutation op: %q", m.Op())
+	}
+}
+
+// RevocationClient is a client for the Revocation schema.
+type RevocationClient struct {
+	config
+}
+
+// NewRevocationClient returns a client for the Revocation from the given config.
+func NewRevocationClient(c config) *RevocationClient {
+	return &RevocationClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `revocation.Hooks(f(g(h())))`.
+func (c *RevocationClient) Use(hooks ...Hook) {
+	c.hooks.Revocation = append(c.hooks.Revocation, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `revocation.Intercept(f(g(h())))`.
+func (c *RevocationClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Revocation = append(c.inters.Revocation, interceptors...)
+}
+
+// Create returns a builder for creating a Revocation entity.
+func (c *RevocationClient) Create() *RevocationCreate {
+	mutation := newRevocationMutation(c.config, OpCreate)
+	return &RevocationCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Revocation entities.
+func (c *RevocationClient) CreateBulk(builders ...*RevocationCreate) *RevocationCreateBulk {
+	return &RevocationCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *RevocationClient) MapCreateBulk(slice any, setFunc func(*RevocationCreate, int)) *RevocationCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &RevocationCreateBulk{err: fmt.Errorf("calling to RevocationClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*RevocationCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &RevocationCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Revocation.
+func (c *RevocationClient) Update() *RevocationUpdate {
+	mutation := newRevocationMutation(c.config, OpUpdate)
+	return &RevocationUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *RevocationClient) UpdateOne(r *Revocation) *RevocationUpdateOne {
+	mutation := newRevocationMutation(c.config, OpUpdateOne, withRevocation(r))
+	return &RevocationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *RevocationClient) UpdateOneID(id int) *RevocationUpdateOne {
+	mutation := newRevocationMutation(c.config, OpUpdateOne, withRevocationID(id))
+	return &RevocationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Revocation.
+func (c *RevocationClient) Delete() *RevocationDelete {
+	mutation := newRevocationMutation(c.config, OpDelete)
+	return &RevocationDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *RevocationClient) DeleteOne(r *Revocation) *RevocationDeleteOne {
+	return c.DeleteOneID(r.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *RevocationClient) DeleteOneID(id int) *RevocationDeleteOne {
+	builder := c.Delete().Where(revocation.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &RevocationDeleteOne{builder}
+}
+
+// Query returns a query builder for Revocation.
+func (c *RevocationClient) Query() *RevocationQuery {
+	return &RevocationQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeRevocation},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Revocation entity by its id.
+func (c *RevocationClient) Get(ctx context.Context, id int) (*Revocation, error) {
+	return c.Query().Where(revocation.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *RevocationClient) GetX(ctx context.Context, id int) *Revocation {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *RevocationClient) Hooks() []Hook {
+	return c.hooks.Revocation
+}
+
+// Interceptors returns the client interceptors.
+func (c *RevocationClient) Interceptors() []Interceptor {
+	return c.inters.Revocation
+}
+
+func (c *RevocationClient) mutate(ctx context.Context, m *RevocationMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&RevocationCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&RevocationUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&RevocationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&RevocationDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Revocation mutation op: %q", m.Op())
+	}
+}
+
+// TunnelConfigClient is a client for the TunnelConfig schema.
+type TunnelConfigClient struct {
+	config
+}
+
+// NewTunnelConfigClient returns a client for the TunnelConfig from the given config.
+func NewTunnelConfigClient(c config) *TunnelConfigClient {
+	return &TunnelConfigClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `tunnelconfig.Hooks(f(g(h())))`.
+func (c *TunnelConfigClient) Use(hooks ...Hook) {
+	c.hooks.TunnelConfig = append(c.hooks.TunnelConfig, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `tunnelconfig.Intercept(f(g(h())))`.
+func (c *TunnelConfigClient) Intercept(interceptors ...Interceptor) {
+	c.inters.TunnelConfig = append(c.inters.TunnelConfig, interceptors...)
+}
+
+// Create returns a builder for creating a TunnelConfig entity.
+func (c *TunnelConfigClient) Create() *TunnelConfigCreate {
+	mutation := newTunnelConfigMutation(c.config, OpCreate)
+	return &TunnelConfigCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of TunnelConfig entities.
+func (c *TunnelConfigClient) CreateBulk(builders ...*TunnelConfigCreate) *TunnelConfigCreateBulk {
+	return &TunnelConfigCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *TunnelConfigClient) MapCreateBulk(slice any, setFunc func(*TunnelConfigCreate, int)) *TunnelConfigCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &TunnelConfigCreateBulk{err: fmt.Errorf("calling to TunnelConfigClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*TunnelConfigCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &TunnelConfigCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for TunnelConfig.
+func (c *TunnelConfigClient) Update() *TunnelConfigUpdate {
+	mutation := newTunnelConfigMutation(c.config, OpUpdate)
+	return &TunnelConfigUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TunnelConfigClient) UpdateOne(tc *TunnelConfig) *TunnelConfigUpdateOne {
+	mutation := newTunnelConfigMutation(c.config, OpUpdateOne, withTunnelConfig(tc))
+	return &TunnelConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *TunnelConfigClient) UpdateOneID(id int) *TunnelConfigUpdateOne {
+	mutation := newTunnelConfigMutation(c.config, OpUpdateOne, withTunnelConfigID(id))
+	return &TunnelConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for TunnelConfig.
+func (c *TunnelConfigClient) Delete() *TunnelConfigDelete {
+	mutation := newTunnelConfigMutation(c.config, OpDelete)
+	return &TunnelConfigDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *TunnelConfigClient) DeleteOne(tc *TunnelConfig) *TunnelConfigDeleteOne {
+	return c.DeleteOneID(tc.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *TunnelConfigClient) DeleteOneID(id int) *TunnelConfigDeleteOne {
+	builder := c.Delete().Where(tunnelconfig.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &TunnelConfigDeleteOne{builder}
+}
+
+// Query returns a query builder for TunnelConfig.
+func (c *TunnelConfigClient) Query() *TunnelConfigQuery {
+	return &TunnelConfigQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeTunnelConfig},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a TunnelConfig entity by its id.
+func (c *TunnelConfigClient) Get(ctx context.Context, id int) (*TunnelConfig, error) {
+	return c.Query().Where(tunnelconfig.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TunnelConfigClient) GetX(ctx context.Context, id int) *TunnelConfig {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryDevice queries the device edge of a TunnelConfig.
+func (c *TunnelConfigClient) QueryDevice(tc *TunnelConfig) *DeviceQuery {
+	query := (&DeviceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := tc.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(tunnelconfig.Table, tunnelconfig.FieldID, id),
+			sqlgraph.To(device.Table, device.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, tunnelconfig.DeviceTable, tunnelconfig.DeviceColumn),
+		)
+		fromV = sqlgraph.Neighbors(tc.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *TunnelConfigClient) Hooks() []Hook {
+	return c.hooks.TunnelConfig
+}
+
+// Interceptors returns the client interceptors.
+func (c *TunnelConfigClient) Interceptors() []Interceptor {
+	return c.inters.TunnelConfig
+}
+
+func (c *TunnelConfigClient) mutate(ctx context.Context, m *TunnelConfigMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&TunnelConfigCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&TunnelConfigUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&TunnelConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&TunnelConfigDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown TunnelConfig mutation op: %q", m.Op())
 	}
 }
 
@@ -471,9 +790,9 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Device, User []ent.Hook
+		Device, Revocation, TunnelConfig, User []ent.Hook
 	}
 	inters struct {
-		Device, User []ent.Interceptor
+		Device, Revocation, TunnelConfig, User []ent.Interceptor
 	}
 )

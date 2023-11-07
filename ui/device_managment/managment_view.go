@@ -13,7 +13,7 @@ import (
 type deviceManagementView struct {
 	main       *mainview.MainView
 	ep         *rpc.RpcEndpoint
-	devices    *util.ObservableMap[string, rpc.DeviceInfo]
+	devices    util.ObservableMap[string, rpc.DeviceInfo]
 	deviceList *deviceList
 	visible    bool
 }

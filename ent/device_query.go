@@ -8,6 +8,7 @@ import (
 	"math"
 	"rahnit-rmm/ent/device"
 	"rahnit-rmm/ent/predicate"
+	"rahnit-rmm/ent/tunnelconfig"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -17,10 +18,12 @@ import (
 // DeviceQuery is the builder for querying Device entities.
 type DeviceQuery struct {
 	config
-	ctx        *QueryContext
-	order      []device.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Device
+	ctx              *QueryContext
+	order            []device.OrderOption
+	inters           []Interceptor
+	predicates       []predicate.Device
+	withTunnelConfig *TunnelConfigQuery
+	withFKs          bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -55,6 +58,28 @@ func (dq *DeviceQuery) Unique(unique bool) *DeviceQuery {
 func (dq *DeviceQuery) Order(o ...device.OrderOption) *DeviceQuery {
 	dq.order = append(dq.order, o...)
 	return dq
+}
+
+// QueryTunnelConfig chains the current query on the "tunnel_config" edge.
+func (dq *DeviceQuery) QueryTunnelConfig() *TunnelConfigQuery {
+	query := (&TunnelConfigClient{config: dq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := dq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := dq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(device.Table, device.FieldID, selector),
+			sqlgraph.To(tunnelconfig.Table, tunnelconfig.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, device.TunnelConfigTable, device.TunnelConfigColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(dq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first Device entity from the query.
@@ -244,15 +269,27 @@ func (dq *DeviceQuery) Clone() *DeviceQuery {
 		return nil
 	}
 	return &DeviceQuery{
-		config:     dq.config,
-		ctx:        dq.ctx.Clone(),
-		order:      append([]device.OrderOption{}, dq.order...),
-		inters:     append([]Interceptor{}, dq.inters...),
-		predicates: append([]predicate.Device{}, dq.predicates...),
+		config:           dq.config,
+		ctx:              dq.ctx.Clone(),
+		order:            append([]device.OrderOption{}, dq.order...),
+		inters:           append([]Interceptor{}, dq.inters...),
+		predicates:       append([]predicate.Device{}, dq.predicates...),
+		withTunnelConfig: dq.withTunnelConfig.Clone(),
 		// clone intermediate query.
 		sql:  dq.sql.Clone(),
 		path: dq.path,
 	}
+}
+
+// WithTunnelConfig tells the query-builder to eager-load the nodes that are connected to
+// the "tunnel_config" edge. The optional arguments are used to configure the query builder of the edge.
+func (dq *DeviceQuery) WithTunnelConfig(opts ...func(*TunnelConfigQuery)) *DeviceQuery {
+	query := (&TunnelConfigClient{config: dq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	dq.withTunnelConfig = query
+	return dq
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -331,15 +368,26 @@ func (dq *DeviceQuery) prepareQuery(ctx context.Context) error {
 
 func (dq *DeviceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Device, error) {
 	var (
-		nodes = []*Device{}
-		_spec = dq.querySpec()
+		nodes       = []*Device{}
+		withFKs     = dq.withFKs
+		_spec       = dq.querySpec()
+		loadedTypes = [1]bool{
+			dq.withTunnelConfig != nil,
+		}
 	)
+	if dq.withTunnelConfig != nil {
+		withFKs = true
+	}
+	if withFKs {
+		_spec.Node.Columns = append(_spec.Node.Columns, device.ForeignKeys...)
+	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Device).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &Device{config: dq.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -351,7 +399,46 @@ func (dq *DeviceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Devic
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := dq.withTunnelConfig; query != nil {
+		if err := dq.loadTunnelConfig(ctx, query, nodes, nil,
+			func(n *Device, e *TunnelConfig) { n.Edges.TunnelConfig = e }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
+}
+
+func (dq *DeviceQuery) loadTunnelConfig(ctx context.Context, query *TunnelConfigQuery, nodes []*Device, init func(*Device), assign func(*Device, *TunnelConfig)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*Device)
+	for i := range nodes {
+		if nodes[i].tunnel_config_device == nil {
+			continue
+		}
+		fk := *nodes[i].tunnel_config_device
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(tunnelconfig.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "tunnel_config_device" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
 }
 
 func (dq *DeviceQuery) sqlCount(ctx context.Context) (int, error) {

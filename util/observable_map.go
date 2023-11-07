@@ -6,7 +6,16 @@ import (
 	"github.com/google/uuid"
 )
 
-type ObservableMap[K comparable, T any] struct {
+type ObservableMap[K comparable, T any] interface {
+	Subscribe(onSet func(K, T), onRemove func(K)) func()
+	Set(key K, value T)
+	Get(key K) (T, bool)
+	Delete(key K)
+	GetAll() map[K]T
+	Update(key K, updateFunc func(value T) T)
+}
+
+type genericObservableMap[K comparable, T any] struct {
 	m         map[K]T
 	observers map[uuid.UUID]mapObserver[K, T]
 	mutex     sync.RWMutex
@@ -17,15 +26,15 @@ type mapObserver[K comparable, T any] struct {
 	delete func(K)
 }
 
-func NewObservableMap[K comparable, T any]() *ObservableMap[K, T] {
-	return &ObservableMap[K, T]{
+func NewObservableMap[K comparable, T any]() *genericObservableMap[K, T] {
+	return &genericObservableMap[K, T]{
 		m:         make(map[K]T),
 		observers: make(map[uuid.UUID]mapObserver[K, T]),
 		mutex:     sync.RWMutex{},
 	}
 }
 
-func (m *ObservableMap[K, T]) Subscribe(onSet func(K, T), onRemove func(K)) func() {
+func (m *genericObservableMap[K, T]) Subscribe(onSet func(K, T), onRemove func(K)) func() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	uuid := uuid.New()
@@ -42,19 +51,19 @@ func (m *ObservableMap[K, T]) Subscribe(onSet func(K, T), onRemove func(K)) func
 	}
 }
 
-func (m *ObservableMap[K, T]) Get(key K) (T, bool) {
+func (m *genericObservableMap[K, T]) Get(key K) (T, bool) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 	value, ok := m.m[key]
 	return value, ok
 }
 
-func (m *ObservableMap[K, T]) Has(key K) bool {
+func (m *genericObservableMap[K, T]) Has(key K) bool {
 	_, ok := m.Get(key)
 	return ok
 }
 
-func (m *ObservableMap[K, T]) GetAll() map[K]T {
+func (m *genericObservableMap[K, T]) GetAll() map[K]T {
 	copy := make(map[K]T)
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
@@ -64,7 +73,7 @@ func (m *ObservableMap[K, T]) GetAll() map[K]T {
 	return copy
 }
 
-func (m *ObservableMap[K, T]) Set(key K, value T) {
+func (m *genericObservableMap[K, T]) Set(key K, value T) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.m[key] = value
@@ -73,7 +82,7 @@ func (m *ObservableMap[K, T]) Set(key K, value T) {
 	}
 }
 
-func (m *ObservableMap[K, T]) Update(key K, updateFunc func(value T) T) {
+func (m *genericObservableMap[K, T]) Update(key K, updateFunc func(value T) T) {
 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -87,7 +96,7 @@ func (m *ObservableMap[K, T]) Update(key K, updateFunc func(value T) T) {
 	}
 }
 
-func (m *ObservableMap[K, T]) Delete(key K) {
+func (m *genericObservableMap[K, T]) Delete(key K) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	delete(m.m, key)
@@ -96,18 +105,8 @@ func (m *ObservableMap[K, T]) Delete(key K) {
 	}
 }
 
-func (m *ObservableMap[K, T]) Size() int {
+func (m *genericObservableMap[K, T]) Size() int {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 	return len(m.m)
-}
-
-func (m *ObservableMap[K, T]) Values() []T {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-	values := make([]T, 0, len(m.m))
-	for _, value := range m.m {
-		values = append(values, value)
-	}
-	return values
 }

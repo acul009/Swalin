@@ -6,23 +6,24 @@ import (
 	"rahnit-rmm/util"
 )
 
-type revokeableArtifact interface {
-	CanBeRevoked() bool
+type sArtifactPayload interface {
+	MayPublish(*Certificate) bool
+	Revokeable() bool
 }
 
-type SignedArtifact[T any] struct {
+type SignedArtifact[T sArtifactPayload] struct {
 	creator *PublicKey
 	payload *artifactPayload[T]
 	raw     []byte
 }
 
-type artifactPayload[T any] struct {
+type artifactPayload[T sArtifactPayload] struct {
 	Timestamp int64
 	Nonce     util.Nonce
 	Payload   T
 }
 
-func NewSignedArtifact[T any](credentials Credentials, payload T) (*SignedArtifact[T], error) {
+func NewSignedArtifact[T sArtifactPayload](credentials Credentials, payload T) (*SignedArtifact[T], error) {
 
 	raw, err := MarshalAndSign(payload, credentials)
 	if err != nil {
@@ -32,7 +33,7 @@ func NewSignedArtifact[T any](credentials Credentials, payload T) (*SignedArtifa
 	return LoadSignedArtifact[T](raw)
 }
 
-func LoadSignedArtifact[T any](raw []byte) (*SignedArtifact[T], error) {
+func LoadSignedArtifact[T sArtifactPayload](raw []byte) (*SignedArtifact[T], error) {
 	payload := &artifactPayload[T]{}
 	creator, err := UnmarshalAndVerify(raw, payload, true)
 	if err != nil {

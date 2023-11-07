@@ -4,6 +4,7 @@ package ent
 
 import (
 	"rahnit-rmm/ent/device"
+	"rahnit-rmm/ent/revocation"
 	"rahnit-rmm/ent/schema"
 	"rahnit-rmm/ent/user"
 )
@@ -22,6 +23,12 @@ func init() {
 	deviceDescCertificate := deviceFields[1].Descriptor()
 	// device.CertificateValidator is a validator for the "certificate" field. It is called by the builders before save.
 	device.CertificateValidator = deviceDescCertificate.Validators[0].(func(string) error)
+	revocationFields := schema.Revocation{}.Fields()
+	_ = revocationFields
+	// revocationDescHash is the schema descriptor for hash field.
+	revocationDescHash := revocationFields[1].Descriptor()
+	// revocation.HashValidator is a validator for the "hash" field. It is called by the builders before save.
+	revocation.HashValidator = revocationDescHash.Validators[0].(func(string) error)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescUsername is the schema descriptor for username field.

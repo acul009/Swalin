@@ -20,7 +20,7 @@ type enrollmentView struct {
 	main        *mainview.MainView
 	ep          *rpc.RpcEndpoint
 	credentials *pki.PermanentCredentials
-	enrollments *util.ObservableMap[string, rpc.Enrollment]
+	enrollments util.ObservableMap[string, rpc.Enrollment]
 	needsUpdate bool
 	mutex       sync.Mutex
 	visible     bool
@@ -69,7 +69,11 @@ func (e *enrollmentView) Prepare() fyne.CanvasObject {
 	e.needsUpdate = true
 	e.mutex.Unlock()
 
-	values := e.enrollments.Values()
+	all := e.enrollments.GetAll()
+	values := make([]rpc.Enrollment, 0, len(all))
+	for _, v := range all {
+		values = append(values, v)
+	}
 
 	e.enrollments.Subscribe(
 		func(key string, enrollment rpc.Enrollment) {
@@ -149,7 +153,11 @@ func (e *enrollmentView) Prepare() fyne.CanvasObject {
 			time.Sleep(time.Second)
 			e.mutex.Lock()
 			if e.needsUpdate {
-				values = e.enrollments.Values()
+				all := e.enrollments.GetAll()
+				values = make([]rpc.Enrollment, 0, len(all))
+				for _, v := range all {
+					values = append(values, v)
+				}
 				e.needsUpdate = false
 				e.mutex.Unlock()
 				list.Refresh()

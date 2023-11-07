@@ -4,6 +4,7 @@ package device
 
 import (
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -15,8 +16,17 @@ const (
 	FieldPublicKey = "public_key"
 	// FieldCertificate holds the string denoting the certificate field in the database.
 	FieldCertificate = "certificate"
+	// EdgeTunnelConfig holds the string denoting the tunnel_config edge name in mutations.
+	EdgeTunnelConfig = "tunnel_config"
 	// Table holds the table name of the device in the database.
 	Table = "devices"
+	// TunnelConfigTable is the table that holds the tunnel_config relation/edge.
+	TunnelConfigTable = "devices"
+	// TunnelConfigInverseTable is the table name for the TunnelConfig entity.
+	// It exists in this package in order to avoid circular dependency with the "tunnelconfig" package.
+	TunnelConfigInverseTable = "tunnel_configs"
+	// TunnelConfigColumn is the table column denoting the tunnel_config relation/edge.
+	TunnelConfigColumn = "tunnel_config_device"
 )
 
 // Columns holds all SQL columns for device fields.
@@ -26,10 +36,21 @@ var Columns = []string{
 	FieldCertificate,
 }
 
+// ForeignKeys holds the SQL foreign-keys that are owned by the "devices"
+// table and are not defined as standalone fields in the schema.
+var ForeignKeys = []string{
+	"tunnel_config_device",
+}
+
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
+			return true
+		}
+	}
+	for i := range ForeignKeys {
+		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -59,4 +80,18 @@ func ByPublicKey(opts ...sql.OrderTermOption) OrderOption {
 // ByCertificate orders the results by the certificate field.
 func ByCertificate(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCertificate, opts...).ToFunc()
+}
+
+// ByTunnelConfigField orders the results by tunnel_config field.
+func ByTunnelConfigField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTunnelConfigStep(), sql.OrderByField(field, opts...))
+	}
+}
+func newTunnelConfigStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TunnelConfigInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, true, TunnelConfigTable, TunnelConfigColumn),
+	)
 }

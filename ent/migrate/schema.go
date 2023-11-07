@@ -13,12 +13,51 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "public_key", Type: field.TypeString, Unique: true},
 		{Name: "certificate", Type: field.TypeString, Unique: true},
+		{Name: "tunnel_config_device", Type: field.TypeInt, Unique: true, Nullable: true},
 	}
 	// DevicesTable holds the schema information for the "devices" table.
 	DevicesTable = &schema.Table{
 		Name:       "devices",
 		Columns:    DevicesColumns,
 		PrimaryKey: []*schema.Column{DevicesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "devices_tunnel_configs_device",
+				Columns:    []*schema.Column{DevicesColumns[3]},
+				RefColumns: []*schema.Column{TunnelConfigsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "device_public_key",
+				Unique:  false,
+				Columns: []*schema.Column{DevicesColumns[1]},
+			},
+		},
+	}
+	// RevocationsColumns holds the columns for the "revocations" table.
+	RevocationsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "revocation", Type: field.TypeBytes},
+		{Name: "hash", Type: field.TypeString, Unique: true},
+		{Name: "hasher", Type: field.TypeUint64},
+	}
+	// RevocationsTable holds the schema information for the "revocations" table.
+	RevocationsTable = &schema.Table{
+		Name:       "revocations",
+		Columns:    RevocationsColumns,
+		PrimaryKey: []*schema.Column{RevocationsColumns[0]},
+	}
+	// TunnelConfigsColumns holds the columns for the "tunnel_configs" table.
+	TunnelConfigsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+	}
+	// TunnelConfigsTable holds the schema information for the "tunnel_configs" table.
+	TunnelConfigsTable = &schema.Table{
+		Name:       "tunnel_configs",
+		Columns:    TunnelConfigsColumns,
+		PrimaryKey: []*schema.Column{TunnelConfigsColumns[0]},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
@@ -53,9 +92,12 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		DevicesTable,
+		RevocationsTable,
+		TunnelConfigsTable,
 		UsersTable,
 	}
 )
 
 func init() {
+	DevicesTable.ForeignKeys[0].RefTable = TunnelConfigsTable
 }
