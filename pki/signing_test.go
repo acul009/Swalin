@@ -38,7 +38,7 @@ func TestSignBytes(t *testing.T) {
 
 	unmarshalled := &testData{}
 
-	pub, err := pki.UnmarshalAndVerify(marshalled, unmarshalled, false)
+	err = pki.UnmarshalAndVerify(marshalled, unmarshalled, myPublicKey, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,14 +46,15 @@ func TestSignBytes(t *testing.T) {
 	if !reflect.DeepEqual(data, *unmarshalled) {
 		t.Errorf("expected %v, got %v", data, unmarshalled)
 	}
-
-	if !pub.Equal(myPublicKey) {
-		t.Errorf("expected %v, got %v", myPublicKey, pub)
-	}
 }
 
 func TestPackedReadWrite(t *testing.T) {
 	credentials, err := pki.GenerateCredentials()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pub, err := credentials.GetPublicKey()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,17 +112,17 @@ func TestPackedReadWrite(t *testing.T) {
 
 	unmarshalled3 := make([]byte, 10000)
 
-	pub1, err := pki.ReadAndUnmarshalAndVerify(reader, unmarshalled1, false)
+	err = pki.ReadAndUnmarshalAndVerify(reader, unmarshalled1, pub, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	pub2, err := pki.ReadAndUnmarshalAndVerify(reader, unmarshalled2, false)
+	err = pki.ReadAndUnmarshalAndVerify(reader, unmarshalled2, pub, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	pub3, err := pki.ReadAndUnmarshalAndVerify(reader, &unmarshalled3, false)
+	err = pki.ReadAndUnmarshalAndVerify(reader, &unmarshalled3, pub, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,23 +130,6 @@ func TestPackedReadWrite(t *testing.T) {
 	err, ok := <-errChan
 	if ok {
 		t.Fatal(err)
-	}
-
-	myPubKey, err := credentials.GetPublicKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !myPubKey.Equal(pub1) {
-		t.Errorf("expected %v, got %v", myPubKey, pub1)
-	}
-
-	if !myPubKey.Equal(pub2) {
-		t.Errorf("expected %v, got %v", myPubKey, pub2)
-	}
-
-	if !myPubKey.Equal(pub3) {
-		t.Errorf("expected %v, got %v", myPubKey, pub3)
 	}
 
 	if !reflect.DeepEqual(data1, *unmarshalled1) {

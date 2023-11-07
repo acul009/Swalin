@@ -34,17 +34,8 @@ func NewSignedArtifact[T sArtifactPayload](credentials Credentials, payload T) (
 }
 
 func LoadSignedArtifact[T sArtifactPayload](raw []byte) (*SignedArtifact[T], error) {
-	payload := &artifactPayload[T]{}
-	creator, err := UnmarshalAndVerify(raw, payload, true)
-	if err != nil {
-		return nil, err
-	}
-
-	return &SignedArtifact[T]{
-		creator: creator,
-		payload: payload,
-		raw:     raw,
-	}, nil
+	// TODO
+	return nil, fmt.Errorf("not implemented")
 }
 
 func (s *SignedArtifact[T]) Payload() T {

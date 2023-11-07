@@ -156,21 +156,21 @@ func SetupServer(conn *RpcConnection, rootCredentials *pki.PermanentCredentials,
 
 	log.Printf("Session opened, sending public key")
 
-	err = sendMyKey(session)
+	err = exchangeKeys(session)
 	if err != nil {
-		return fmt.Errorf("error sending public key: %w", err)
+		return fmt.Errorf("error exchanging keys: %w", err)
 	}
 
 	log.Printf("reading initialization request^...")
 
 	req := &serverInitRequest{}
 
-	sender, err := readMessageFromUnknown[*serverInitRequest](session, req)
+	err = ReadMessage[*serverInitRequest](session, req)
 	if err != nil {
 		return fmt.Errorf("error reading message: %w", err)
 	}
 
-	if !sender.Equal(req.ServerPubKey) {
+	if !session.partner.Equal(req.ServerPubKey) {
 		return fmt.Errorf("server public key does not match sender")
 	}
 

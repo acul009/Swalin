@@ -165,9 +165,9 @@ func acceptLoginRequest(conn *RpcConnection) error {
 
 	log.Printf("Session opened, sending public key")
 
-	err = sendMyKey(session)
+	err = exchangeKeys(session)
 	if err != nil {
-		return fmt.Errorf("error sending public key: %w", err)
+		return fmt.Errorf("error exchanging keys: %w", err)
 	}
 
 	// read the parameter request for the username
@@ -176,14 +176,12 @@ func acceptLoginRequest(conn *RpcConnection) error {
 
 	paramsRequest := loginParameterRequest{}
 
-	sender, err := readMessageFromUnknown[*loginParameterRequest](session, &paramsRequest)
+	err = ReadMessage[*loginParameterRequest](session, &paramsRequest)
 	if err != nil {
 		return fmt.Errorf("error reading params request: %w", err)
 	}
 
 	username := paramsRequest.Username
-
-	session.partner = sender
 
 	log.Printf("Received params request with username: %s\n", username)
 
