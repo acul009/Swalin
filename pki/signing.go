@@ -1,7 +1,6 @@
 package pki
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
@@ -9,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/big"
+	"rahnit-rmm/util"
 )
 
 var ErrSignatureInvalid = SignatureVerificationError{
@@ -59,69 +58,31 @@ func MarshalAndSign(v any, c Credentials) ([]byte, error) {
 	return msg, nil
 }
 
-func UnmarshalAndVerify(signedData []byte, v any, checkRevocation bool) (*PublicKey, error) {
+func UnmarshalAndVerify(signedData []byte, v any, publicKey *PublicKey, checkRevocation bool) error {
 	if len(signedData) == 0 {
-		return nil, fmt.Errorf("empty signed data")
+		return fmt.Errorf("empty signed data")
 	}
 
-	msg, pub, err := unpackAndVerify(signedData, checkRevocation)
+	msg, err := unpackAndVerify(signedData, publicKey, checkRevocation)
 	if err != nil {
-		return nil, fmt.Errorf("failed to verify signature: %w", err)
+		return fmt.Errorf("failed to verify signature: %w", err)
 	}
 
-	json.Unmarshal(msg, v)
+	err = json.Unmarshal(msg, v)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal data: %w", err)
+	}
 
-	return pub, nil
+	return nil
 }
 
-func ReadAndUnmarshalAndVerify(reader io.Reader, v any, checkRevocation bool) (*PublicKey, error) {
-	der, err := ReadSingleDer(reader)
+func ReadAndUnmarshalAndVerify(reader io.Reader, v any, publicKey *PublicKey, checkRevocation bool) error {
+	der, err := util.ReadSingleDer(reader)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read asn1 block: %w", err)
+		return fmt.Errorf("failed to read asn1 block: %w", err)
 	}
 
-	return UnmarshalAndVerify(der, v, checkRevocation)
-}
-
-func ReadSingleDer(reader io.Reader) ([]byte, error) {
-	derStart := make([]byte, 2)
-	_, err := io.ReadFull(reader, derStart)
-	if err != nil {
-		return nil, fmt.Errorf("failed to first two asn1 bytes: %w", err)
-	}
-
-	isMultiByteLength := derStart[1]&0b1000_0000 != 0
-	firstByteValue := derStart[1] & 0b0111_1111
-	var lengthBytes []byte
-	if isMultiByteLength {
-		lengthBytes = make([]byte, uint(firstByteValue))
-		_, err := io.ReadFull(reader, lengthBytes)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read extended asn1 length: %w", err)
-		}
-	} else {
-		lengthBytes = []byte{firstByteValue}
-	}
-
-	length := &big.Int{}
-	length.SetBytes(lengthBytes)
-
-	derBody := make([]byte, length.Int64())
-	_, err = io.ReadFull(reader, derBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read asn1 body: %w", err)
-	}
-
-	toJoin := [][]byte{
-		derStart,
-	}
-
-	if isMultiByteLength {
-		toJoin = append(toJoin, lengthBytes)
-	}
-	toJoin = append(toJoin, derBody)
-
-	return bytes.Join(toJoin, []byte{}), nil
+	return UnmarshalAndVerify(der, v, publicKey, checkRevocation)
 }
 
 type PackedData struct {
@@ -141,17 +102,9 @@ func packAndSign(data []byte, c Credentials) ([]byte, error) {
 		return nil, fmt.Errorf("failed to sign data: %w", err)
 	}
 
-	pub, err := c.GetPublicKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get public key: %w", err)
-	}
-
-	pubData := pub.BinaryEncode()
-
 	d := PackedData{
 		Data:      data,
 		Signature: signature,
-		PublicKey: pubData,
 	}
 
 	packed, err := asn1.Marshal(d)
@@ -162,28 +115,23 @@ func packAndSign(data []byte, c Credentials) ([]byte, error) {
 	return packed, nil
 }
 
-func unpackAndVerify(packed []byte, checkRevocation bool) ([]byte, *PublicKey, error) {
+func unpackAndVerify(packed []byte, publicKey *PublicKey, checkRevocation bool) ([]byte, error) {
 	d := &PackedData{}
 
 	rest, err := asn1.Unmarshal(packed, d)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal data: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 	if len(rest) > 0 {
-		return nil, nil, fmt.Errorf("found rest after unmarshaling data: %v", rest)
+		return nil, fmt.Errorf("found rest after unmarshaling data: %v", rest)
 	}
 
-	pub, err := PublicKeyFromBinary(d.PublicKey)
+	err = publicKey.verifyBytes(d.Data, d.Signature, checkRevocation)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode public key: %w", err)
+		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
 
-	err = pub.verifyBytes(d.Data, d.Signature, checkRevocation)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to verify signature: %w", err)
-	}
-
-	return d.Data, pub, nil
+	return d.Data, nil
 }
 
 func (p *PrivateKey) signBytes(data []byte) ([]byte, error) {

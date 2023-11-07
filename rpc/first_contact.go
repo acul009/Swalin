@@ -1,10 +1,12 @@
 package rpc
 
 import (
+	"encoding/asn1"
 	"fmt"
 	"io"
 	"log"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/util"
 )
 
 func exchangeKeys(session *RpcSession) error {
@@ -21,23 +23,31 @@ func exchangeKeys(session *RpcSession) error {
 	return nil
 }
 
+type keyPayload struct {
+	PubKey []byte
+}
+
 func receivePartnerKey(session *RpcSession) error {
 
 	log.Printf("Receiving partner public key...")
 
-	var pubRoot *pki.PublicKey = nil
-	sender, err := pki.ReadAndUnmarshalAndVerify(session, &pubRoot, false)
+	derMessage, err := util.ReadSingleDer(session)
 	if err != nil {
 		return fmt.Errorf("error reading public key: %w", err)
 	}
 
-	if !sender.Equal(pubRoot) {
-		return fmt.Errorf("partner public key does not match sender")
+	payload := &keyPayload{}
+	_, err = asn1.Unmarshal(derMessage, payload)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 
-	session.partner = pubRoot
+	partnerKey, err := pki.PublicKeyFromBinary(payload.PubKey)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal data: %w", err)
+	}
 
-	log.Printf("Received partner public key")
+	session.partner = partnerKey
 
 	return nil
 }
@@ -50,20 +60,20 @@ func sendMyKey(session *RpcSession) error {
 		return fmt.Errorf("error getting public key: %w", err)
 	}
 
-	payload, err := pki.MarshalAndSign(pubKey, credentials)
+	packed, err := asn1.Marshal(keyPayload{
+		PubKey: pubKey.BinaryEncode(),
+	})
 	if err != nil {
-		return fmt.Errorf("error marshalling message: %w", err)
+		return fmt.Errorf("failed to pack data to asn1: %w", err)
 	}
 
-	n, err := session.Write(payload)
+	n, err := session.Write(packed)
 	if err != nil {
 		return fmt.Errorf("error writing message: %w", err)
 	}
-	if n != len(payload) {
+	if n != len(packed) {
 		return fmt.Errorf("error writing message: %w", io.ErrShortWrite)
 	}
-
-	log.Printf("Sent my public key")
 
 	return nil
 }
