@@ -15,8 +15,7 @@ import (
 
 type windowsShell struct {
 	cpty    *conpty.ConPty
-	inPipe  io.ReadCloser
-	outPipe io.WriteCloser
+	outPipe io.ReadCloser
 }
 
 func startShell() (io.ReadWriteCloser, error) {
@@ -51,28 +50,23 @@ func startShell() (io.ReadWriteCloser, error) {
 
 	return &windowsShell{
 		cpty:    cpty,
-		inPipe:  cpty.InPipe(),
 		outPipe: cpty.OutPipe(),
 	}, nil
 }
 
 func (c *windowsShell) Read(p []byte) (n int, err error) {
-	return c.inPipe.Read(p)
+	return c.outPipe.Read(p)
 }
 
 func (c *windowsShell) Write(p []byte) (n int, err error) {
-	return c.outPipe.Write(p)
+	bytes, err := c.cpty.Write(p)
+	return int(bytes), err
 }
 
 func (c *windowsShell) Close() error {
 	var retErr error
 
 	err := c.outPipe.Close()
-	if err != nil {
-		retErr = err
-	}
-
-	err = c.inPipe.Close()
 	if err != nil {
 		retErr = err
 	}

@@ -59,12 +59,12 @@ func MarshalAndSign(v any, c Credentials) ([]byte, error) {
 	return msg, nil
 }
 
-func UnmarshalAndVerify(signedData []byte, v any) (*PublicKey, error) {
+func UnmarshalAndVerify(signedData []byte, v any, checkRevocation bool) (*PublicKey, error) {
 	if len(signedData) == 0 {
 		return nil, fmt.Errorf("empty signed data")
 	}
 
-	msg, pub, err := unpackAndVerify(signedData)
+	msg, pub, err := unpackAndVerify(signedData, checkRevocation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
@@ -74,13 +74,13 @@ func UnmarshalAndVerify(signedData []byte, v any) (*PublicKey, error) {
 	return pub, nil
 }
 
-func ReadAndUnmarshalAndVerify(reader io.Reader, v any) (*PublicKey, error) {
+func ReadAndUnmarshalAndVerify(reader io.Reader, v any, checkRevocation bool) (*PublicKey, error) {
 	der, err := ReadSingleDer(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read asn1 block: %w", err)
 	}
 
-	return UnmarshalAndVerify(der, v)
+	return UnmarshalAndVerify(der, v, checkRevocation)
 }
 
 func ReadSingleDer(reader io.Reader) ([]byte, error) {
@@ -162,7 +162,7 @@ func packAndSign(data []byte, c Credentials) ([]byte, error) {
 	return packed, nil
 }
 
-func unpackAndVerify(packed []byte) ([]byte, *PublicKey, error) {
+func unpackAndVerify(packed []byte, checkRevocation bool) ([]byte, *PublicKey, error) {
 	d := &PackedData{}
 
 	rest, err := asn1.Unmarshal(packed, d)
@@ -178,7 +178,7 @@ func unpackAndVerify(packed []byte) ([]byte, *PublicKey, error) {
 		return nil, nil, fmt.Errorf("failed to decode public key: %w", err)
 	}
 
-	err = pub.verifyBytes(d.Data, d.Signature)
+	err = pub.verifyBytes(d.Data, d.Signature, checkRevocation)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
@@ -188,10 +188,7 @@ func unpackAndVerify(packed []byte) ([]byte, *PublicKey, error) {
 
 func (p *PrivateKey) signBytes(data []byte) ([]byte, error) {
 
-	hash, err := hashBytes(data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to hash data: %w", err)
-	}
+	hash := crypto.SHA512.New().Sum(data)
 
 	signature, err := ecdsa.SignASN1(rand.Reader, p.ToEcdsa(), hash)
 	if err != nil {
@@ -201,14 +198,18 @@ func (p *PrivateKey) signBytes(data []byte) ([]byte, error) {
 	return signature, nil
 }
 
-func (pub *PublicKey) verifyBytes(data []byte, signature []byte) error {
+func (pub *PublicKey) verifyBytes(data []byte, signature []byte, checkRevocation bool) error {
 	if pub == nil {
 		return fmt.Errorf("public key cannot be nil")
 	}
 
-	hash, err := hashBytes(data)
-	if err != nil {
-		return fmt.Errorf("failed to hash data: %w", err)
+	hash := crypto.SHA512.New().Sum(data)
+
+	if checkRevocation {
+		err := RevocationManager.CheckPayload(data)
+		if err != nil {
+			return fmt.Errorf("failed revocation check: %w", err)
+		}
 	}
 
 	ok := ecdsa.VerifyASN1(pub.ToEcdsa(), hash, signature)
@@ -221,17 +222,4 @@ func (pub *PublicKey) verifyBytes(data []byte, signature []byte) error {
 	}
 
 	return nil
-}
-
-func hashBytes(data []byte) ([]byte, error) {
-	hasher := crypto.SHA512.New()
-	n, err := hasher.Write(data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to hash data: %w", err)
-	}
-	if n != len(data) {
-		return nil, fmt.Errorf("failed to hash data: short write")
-	}
-
-	return hasher.Sum(nil), nil
 }

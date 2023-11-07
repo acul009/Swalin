@@ -26,7 +26,7 @@ func receivePartnerKey(session *RpcSession) error {
 	log.Printf("Receiving partner public key...")
 
 	var pubRoot *pki.PublicKey = nil
-	sender, err := pki.ReadAndUnmarshalAndVerify(session, &pubRoot)
+	sender, err := pki.ReadAndUnmarshalAndVerify(session, &pubRoot, false)
 	if err != nil {
 		return fmt.Errorf("error reading public key: %w", err)
 	}
