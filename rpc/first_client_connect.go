@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/util"
 	"time"
 
 	"github.com/quic-go/quic-go"
@@ -25,7 +26,7 @@ func FirstClientConnect(addr string) (*RpcConnection, error) {
 		return nil, fmt.Errorf("error creating QUIC connection: %w", err)
 	}
 
-	initNonceStorage = NewNonceStorage()
+	initNonceStorage = util.NewNonceStorage()
 
 	protocol := quicConn.ConnectionState().TLS.NegotiatedProtocol
 

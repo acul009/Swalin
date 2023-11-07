@@ -3,6 +3,7 @@ package rpc
 import (
 	"fmt"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/util"
 	"time"
 )
 
@@ -11,12 +12,12 @@ const messageExpiration = 30
 type RpcMessage[P any] struct {
 	Timestamp int64
 	Receiver  *pki.PublicKey
-	Nonce     Nonce
+	Nonce     util.Nonce
 	Payload   P
 }
 
 func newRpcMessage[P any](receiver *pki.PublicKey, payload P) (*RpcMessage[P], error) {
-	nonce, err := NewNonce()
+	nonce, err := util.NewNonce()
 	if err != nil {
 		return nil, fmt.Errorf("error generating nonce: %w", err)
 	}
@@ -29,7 +30,7 @@ func newRpcMessage[P any](receiver *pki.PublicKey, payload P) (*RpcMessage[P], e
 	}, nil
 }
 
-func (m *RpcMessage[P]) Verify(store *nonceStorage, receiver *pki.PublicKey) error {
+func (m *RpcMessage[P]) Verify(store *util.NonceStorage, receiver *pki.PublicKey) error {
 
 	if err := m.VerifyTimestamp(); err != nil {
 		return err
@@ -54,7 +55,7 @@ func (m *RpcMessage[P]) VerifyTimestamp() error {
 	return nil
 }
 
-func (m *RpcMessage[P]) VerifyNonce(store *nonceStorage) error {
+func (m *RpcMessage[P]) VerifyNonce(store *util.NonceStorage) error {
 	if !store.CheckNonce(m.Nonce) {
 		return fmt.Errorf("nonce has already been used, possible replay attack")
 	}

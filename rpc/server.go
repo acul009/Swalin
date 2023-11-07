@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/util"
 	"sync"
 	"time"
 
@@ -33,7 +34,7 @@ type RpcServer struct {
 	state             RpcServerState
 	activeConnections map[uuid.UUID]*RpcConnection
 	mutex             sync.Mutex
-	nonceStorage      *nonceStorage
+	nonceStorage      *util.NonceStorage
 	credentials       *pki.PermanentCredentials
 	enrollment        *enrollmentManager
 	devices           *DeviceList
@@ -83,7 +84,7 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 		state:             RpcServerCreated,
 		activeConnections: make(map[uuid.UUID]*RpcConnection),
 		mutex:             sync.Mutex{},
-		nonceStorage:      NewNonceStorage(),
+		nonceStorage:      util.NewNonceStorage(),
 		credentials:       credentials,
 		enrollment:        newEnrollmentManager(cert),
 		devices:           devices,
@@ -305,7 +306,7 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 
 func (s *RpcServer) cleanup() {
 	s.enrollment.cleanup()
-	s.nonceStorage.cleanup()
+	s.nonceStorage.Cleanup(messageExpiration * 2)
 }
 
 func (s *RpcServer) getConnectionWith(partner *pki.Certificate) (*RpcConnection, error) {

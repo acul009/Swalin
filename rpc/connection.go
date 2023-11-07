@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/util"
 	"sync"
 
 	"github.com/google/uuid"
@@ -37,7 +38,7 @@ type RpcConnection struct {
 	role           RpcConnectionRole
 	activeSessions map[quic.StreamID]*RpcSession
 	mutex          sync.Mutex
-	nonceStorage   *nonceStorage
+	nonceStorage   *util.NonceStorage
 	protocol       TlsConnectionProto
 	credentials    pki.Credentials
 	verifier       pki.Verifier
@@ -46,7 +47,7 @@ type RpcConnection struct {
 func newRpcConnection(conn quic.Connection,
 	server *RpcServer,
 	role RpcConnectionRole,
-	nonceStorage *nonceStorage,
+	nonceStorage *util.NonceStorage,
 	partner *pki.Certificate,
 	protocol TlsConnectionProto,
 	credentials pki.Credentials,

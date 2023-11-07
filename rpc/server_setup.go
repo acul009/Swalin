@@ -6,6 +6,7 @@ import (
 	"log"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/util"
 
 	"github.com/quic-go/quic-go"
 )
@@ -28,7 +29,7 @@ func WaitForServerSetup(listenAddr string) (*pki.PermanentCredentials, error) {
 		return nil, fmt.Errorf("error creating QUIC server: %w", err)
 	}
 
-	initNonceStorage = NewNonceStorage()
+	initNonceStorage = util.NewNonceStorage()
 
 	for {
 		conn, err := listener.Accept(context.Background())
@@ -55,7 +56,7 @@ func WaitForServerSetup(listenAddr string) (*pki.PermanentCredentials, error) {
 	}
 }
 
-var initNonceStorage *nonceStorage = nil
+var initNonceStorage *util.NonceStorage = nil
 
 type serverInitRequest struct {
 	ServerPubKey *pki.PublicKey

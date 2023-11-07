@@ -26,8 +26,8 @@ func (s *windowsServiceSystem) ListServices() ([]ServiceInfo, error) {
 
 	for _, service := range services {
 		infos = append(infos, ServiceInfo{
-			Name: service.ServiceName,
-			Pid:  service.ProcessID,
+			Name: service.Name,
+			Pid:  int32(service.Status.Pid),
 		})
 	}
 

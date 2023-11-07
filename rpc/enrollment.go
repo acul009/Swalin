@@ -185,7 +185,7 @@ func EnrollWithUpstream() (*pki.PermanentCredentials, error) {
 		return nil, fmt.Errorf("error creating QUIC connection: %w", err)
 	}
 
-	initNonceStorage = NewNonceStorage()
+	initNonceStorage = util.NewNonceStorage()
 
 	tempCredentials, err := pki.GenerateCredentials()
 	if err != nil {

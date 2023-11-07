@@ -1,4 +1,4 @@
-package rpc
+package util
 
 import (
 	"crypto/rand"
@@ -22,19 +22,19 @@ func NewNonce() (Nonce, error) {
 	return Nonce(nonce), nil
 }
 
-type nonceStorage struct {
+type NonceStorage struct {
 	nonceMap map[string]int64
 	mutex    sync.RWMutex
 }
 
-func NewNonceStorage() *nonceStorage {
-	return &nonceStorage{
+func NewNonceStorage() *NonceStorage {
+	return &NonceStorage{
 		nonceMap: make(map[string]int64),
 		mutex:    sync.RWMutex{},
 	}
 }
 
-func (s *nonceStorage) CheckNonce(nonce Nonce) bool {
+func (s *NonceStorage) CheckNonce(nonce Nonce) bool {
 	key := base64.StdEncoding.EncodeToString(nonce)
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -42,19 +42,19 @@ func (s *nonceStorage) CheckNonce(nonce Nonce) bool {
 	return !ok
 }
 
-func (s *nonceStorage) AddNonce(nonce Nonce) {
+func (s *NonceStorage) AddNonce(nonce Nonce) {
 	key := base64.StdEncoding.EncodeToString(nonce)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.nonceMap[key] = time.Now().Unix()
 }
 
-func (s *nonceStorage) cleanup() {
+func (s *NonceStorage) Cleanup(expiration int64) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	for key, timestamp := range s.nonceMap {
-		if timestamp < time.Now().Unix()-messageExpiration*2 {
+		if timestamp < time.Now().Unix()-expiration {
 			delete(s.nonceMap, key)
 		}
 	}

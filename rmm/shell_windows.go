@@ -8,19 +8,21 @@ import (
 	"io"
 	"log"
 	"os"
-	"rahnit-rmm/rpc"
 	"syscall"
 
 	"github.com/ActiveState/termtest/conpty"
 )
 
 type windowsShell struct {
+	cpty    *conpty.ConPty
+	inPipe  io.ReadCloser
+	outPipe io.WriteCloser
 }
 
-func startShell() io.ReadWriteCloser {
+func startShell() (io.ReadWriteCloser, error) {
 	cpty, err := conpty.New(80, 25)
 	if err != nil {
-		return fmt.Errorf("error creating conpty: %w", err)
+		return nil, fmt.Errorf("error creating conpty: %w", err)
 	}
 
 	pid, _, err := cpty.Spawn(
@@ -31,16 +33,12 @@ func startShell() io.ReadWriteCloser {
 		},
 	)
 	if err != nil {
-		session.WriteResponseHeader(rpc.SessionResponseHeader{
-			Code: 500,
-			Msg:  "Unable to start shell",
-		})
-		return fmt.Errorf("error starting shell: %w", err)
+		return nil, fmt.Errorf("error starting shell: %w", err)
 	}
 
 	process, err := os.FindProcess(pid)
 	if err != nil {
-		return fmt.Errorf("error finding process: %w", err)
+		return nil, fmt.Errorf("error finding process: %w", err)
 	}
 
 	go func() {
@@ -50,4 +48,39 @@ func startShell() io.ReadWriteCloser {
 		}
 		cpty.Close()
 	}()
+
+	return &windowsShell{
+		cpty:    cpty,
+		inPipe:  cpty.InPipe(),
+		outPipe: cpty.OutPipe(),
+	}, nil
+}
+
+func (c *windowsShell) Read(p []byte) (n int, err error) {
+	return c.inPipe.Read(p)
+}
+
+func (c *windowsShell) Write(p []byte) (n int, err error) {
+	return c.outPipe.Write(p)
+}
+
+func (c *windowsShell) Close() error {
+	var retErr error
+
+	err := c.outPipe.Close()
+	if err != nil {
+		retErr = err
+	}
+
+	err = c.inPipe.Close()
+	if err != nil {
+		retErr = err
+	}
+
+	err = c.cpty.Close()
+	if err != nil {
+		retErr = err
+	}
+
+	return retErr
 }

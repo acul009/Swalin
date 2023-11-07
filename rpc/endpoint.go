@@ -63,7 +63,7 @@ func newRpcEndpoint(ctx context.Context, addr string, credentials pki.Credential
 		return nil, fmt.Errorf("error creating QUIC connection: %w", err)
 	}
 
-	rpcConn := newRpcConnection(quicConn, nil, RpcRoleClient, NewNonceStorage(), partner, ProtoRpc, credentials, nil)
+	rpcConn := newRpcConnection(quicConn, nil, RpcRoleClient, util.NewNonceStorage(), partner, ProtoRpc, credentials, nil)
 
 	ep := &RpcEndpoint{
 		conn:  rpcConn,
