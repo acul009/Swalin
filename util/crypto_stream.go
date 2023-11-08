@@ -7,7 +7,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"testing"
+
+	"golang.org/x/crypto/chacha20poly1305"
 )
 
 type CryptoStream struct {
@@ -20,13 +21,45 @@ type CryptoStream struct {
 	wrapped       io.ReadWriteCloser
 }
 
-func NewCryptoStream(stream io.ReadWriteCloser, cipher cipher.AEAD, t *testing.T) (*CryptoStream, error) {
+func NewDefaultCipherStream(stream io.ReadWriteCloser, key []byte) (*CryptoStream, error) {
+	return NewChaCha20CryptoStream(stream, key)
+}
+
+func NewChaCha20CryptoStream(stream io.ReadWriteCloser, key []byte) (*CryptoStream, error) {
+	if len(key) != 32 {
+		return nil, fmt.Errorf("wrong key length")
+	}
+
+	cipher, err := chacha20poly1305.NewX(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed creating cipher: %w", err)
+	}
+
+	return newCryptoStream(stream, cipher)
+}
+
+func NewAesCryptoStream(stream io.ReadWriteCloser, key []byte) (*CryptoStream, error) {
+	if len(key) != 32 {
+		return nil, fmt.Errorf("wrong key length")
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed creating cipher: %w", err)
+	}
+
+	aesGcm, err := cipher.NewGCMWithNonceSize(block, 32)
+	if err != nil {
+		return nil, fmt.Errorf("failed creating GCM: %w", err)
+	}
+
+	return newCryptoStream(stream, aesGcm)
+}
+
+func newCryptoStream(stream io.ReadWriteCloser, cipher cipher.AEAD) (*CryptoStream, error) {
 
 	bufferSize := 65535 + 2 + cipher.NonceSize()
 
 	chunkSize := 65535 - cipher.Overhead()
-
-	t.Logf("Buffer size: %d", bufferSize)
 
 	readBuffer := make([]byte, bufferSize)
 	writeBuffer := make([]byte, bufferSize)

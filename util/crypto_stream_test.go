@@ -47,22 +47,12 @@ func TestCryptoStream1M(t *testing.T) {
 
 	pipe1, pipe2 := new2WayPipe()
 
-	cipher1, err := chacha20poly1305.NewX(key)
+	stream1, err := NewDefaultCipherStream(pipe1, key)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cipher2, err := chacha20poly1305.NewX(key)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	stream1, err := NewCryptoStream(pipe1, cipher1, t)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	stream2, err := NewCryptoStream(pipe2, cipher2, t)
+	stream2, err := NewDefaultCipherStream(pipe2, key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,22 +117,12 @@ func TestCryptoStreamText(t *testing.T) {
 
 	pipe1, pipe2 := new2WayPipe()
 
-	cipher1, err := chacha20poly1305.NewX(key)
+	stream1, err := NewDefaultCipherStream(pipe1, key)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cipher2, err := chacha20poly1305.NewX(key)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	stream1, err := NewCryptoStream(pipe1, cipher1, t)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	stream2, err := NewCryptoStream(pipe2, cipher2, t)
+	stream2, err := NewDefaultCipherStream(pipe2, key)
 	if err != nil {
 		t.Fatal(err)
 	}
