@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/google/uuid"
@@ -81,7 +80,7 @@ func DeriveObservable[T any, U any](upstream Observable[T], transform func(T) U)
 		panic(fmt.Errorf("transform is nil"))
 	}
 
-	log.Printf("deriving observable...")
+	// log.Printf("deriving observable...")
 
 	derived := &derivedObservable[T, U]{
 		observable: observable[U]{
@@ -107,7 +106,7 @@ func (o *derivedObservable[T, U]) Get() U {
 func (o *derivedObservable[T, U]) Subscribe(observer func(U)) func() {
 	o.observable.mutex.Lock()
 	if len(o.observable.observers) == 0 {
-		log.Printf("connecting Observable to Upstream")
+		// log.Printf("connecting Observable to Upstream")
 		o.unsubscribe = o.upstream.Subscribe(
 			func(value T) {
 				o.observable.value = o.transform(value)

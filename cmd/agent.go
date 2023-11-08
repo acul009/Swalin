@@ -62,6 +62,7 @@ to quickly create a Cobra application.`,
 			rpc.CreateE2eDecryptCommandHandler(rpc.NewCommandCollection(
 				rpc.PingHandler,
 				rmm.MonitorSystemCommandHandler,
+				rmm.MonitorServicesCommandHandler,
 				rmm.RemoteShellCommandHandler,
 			)),
 		)

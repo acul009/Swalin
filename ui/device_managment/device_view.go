@@ -10,31 +10,31 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 	"github.com/fyne-io/terminal"
 )
 
 type deviceView struct {
-	ep        *rpc.RpcEndpoint
-	device    rpc.DeviceInfo
-	ctx       context.Context
-	cancel    context.CancelFunc
-	container *fyne.Container
-	active    util.UpdateableObservable[*rmm.ActiveStats]
-	static    util.UpdateableObservable[*rmm.StaticStats]
-	running   util.AsyncAction
+	ep                *rpc.RpcEndpoint
+	device            rpc.DeviceInfo
+	ctx               context.Context
+	cancel            context.CancelFunc
+	canvasObject      fyne.CanvasObject
+	active            util.UpdateableObservable[*rmm.ActiveStats]
+	services          util.UpdateableObservable[*rmm.ServiceStats]
+	static            util.UpdateableObservable[*rmm.StaticStats]
+	runningMonitoring util.AsyncAction
+	runningServices   util.AsyncAction
 }
 
 func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
-	osBind := binding.NewString()
-	memBind := binding.NewString()
 
 	d := &deviceView{
-		ep:     ep,
-		device: device,
-		active: util.NewObservable[*rmm.ActiveStats](nil),
-		static: util.NewObservable[*rmm.StaticStats](nil),
+		ep:       ep,
+		device:   device,
+		active:   util.NewObservable[*rmm.ActiveStats](nil),
+		static:   util.NewObservable[*rmm.StaticStats](nil),
+		services: util.NewObservable[*rmm.ServiceStats](nil),
 	}
 
 	cpuDisplay := newCpuDisplay(util.DeriveObservable[*rmm.ActiveStats, *rmm.CpuStats](d.active, func(active *rmm.ActiveStats) *rmm.CpuStats {
@@ -51,12 +51,10 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 		return active.Processes
 	}))
 
-	d.container = container.NewVBox(
+	performance := container.NewVBox(
 		widget.NewLabel(device.Name()),
-		widget.NewLabelWithData(osBind),
 		container.NewHBox(
 			cpuDisplay,
-			widget.NewLabelWithData(memBind),
 		),
 		widget.NewButton("Terminal", func() {
 			// create pipe fifo
@@ -104,34 +102,53 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 		processList,
 	)
 
+	serviceList := newServiceList(d.services)
+
+	services := container.NewVBox(
+		serviceList,
+	)
+
+	d.canvasObject = container.NewAppTabs(
+		container.NewTabItem("Performance", performance),
+		container.NewTabItem("Services", services),
+	)
+
 	return d
 }
 
 func (d *deviceView) Prepare() fyne.CanvasObject {
 	d.ctx, d.cancel = context.WithCancel(context.Background())
 
-	cmd := rmm.NewMonitorSystemCommand(d.static, d.active)
-	running, err := d.ep.SendCommandTo(d.ctx, d.device.Certificate, cmd)
+	monitorCmd := rmm.NewMonitorSystemCommand(d.static, d.active)
+	runningMonitoring, err := d.ep.SendCommandTo(d.ctx, d.device.Certificate, monitorCmd)
 	if err != nil {
 		panic(err)
 	}
 
-	d.running = running
+	d.runningMonitoring = runningMonitoring
+
+	servicesCmd := rmm.NewMonitorServicesCommand(d.services)
+	runningServices, err := d.ep.SendCommandTo(d.ctx, d.device.Certificate, servicesCmd)
+	if err != nil {
+		panic(err)
+	}
 
 	go func() {
-		err := running.Wait()
+		err := runningServices.Wait()
 		if err != nil {
 			panic(err)
 		}
 	}()
 
-	return d.container
+	d.runningServices = runningServices
+
+	return d.canvasObject
 }
 
 func (d *deviceView) Close() {
 	log.Printf("closing device view...")
 	d.cancel()
-	err := d.running.Close()
+	err := d.runningMonitoring.Close()
 	if err != nil {
 		panic(err)
 	}

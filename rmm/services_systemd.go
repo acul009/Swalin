@@ -21,7 +21,7 @@ type systemdUnit struct {
 	Description string `json:"description"`
 }
 
-func (s *systemdServiceSystem) ListServices() ([]ServiceInfo, error) {
+func (s *systemdServiceSystem) GetStats() (*ServiceStats, error) {
 	cmd := exec.Command("systemctl", "--no-pager", "list-units", "--output=json", "--type=service", "--all")
 
 	output, err := cmd.Output()
@@ -59,5 +59,5 @@ func (s *systemdServiceSystem) ListServices() ([]ServiceInfo, error) {
 		})
 	}
 
-	return services, nil
+	return &ServiceStats{Services: services}, nil
 }

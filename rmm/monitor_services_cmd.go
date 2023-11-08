@@ -11,10 +11,10 @@ func MonitorServicesCommandHandler() rpc.RpcCommand {
 }
 
 type monitorServicesCommand struct {
-	services util.UpdateableObservable[[]ServiceInfo]
+	services util.UpdateableObservable[*ServiceStats]
 }
 
-func NewMonitorServicesCommand(services util.UpdateableObservable[[]ServiceInfo]) *monitorServicesCommand {
+func NewMonitorServicesCommand(services util.UpdateableObservable[*ServiceStats]) *monitorServicesCommand {
 	return &monitorServicesCommand{
 		services: services,
 	}
@@ -40,12 +40,12 @@ func (cmd *monitorServicesCommand) ExecuteServer(session *rpc.RpcSession) error 
 	})
 
 	for {
-		services, err := system.ListServices()
+		services, err := system.GetStats()
 		if err != nil {
 			return fmt.Errorf("error listing services: %w", err)
 		}
 
-		err = rpc.WriteMessage[[]ServiceInfo](session, services)
+		err = rpc.WriteMessage[*ServiceStats](session, services)
 		if err != nil {
 			return fmt.Errorf("error writing services: %w", err)
 		}
@@ -55,15 +55,15 @@ func (cmd *monitorServicesCommand) ExecuteServer(session *rpc.RpcSession) error 
 
 func (cmd *monitorServicesCommand) ExecuteClient(session *rpc.RpcSession) error {
 
-	services := make([]ServiceInfo, 0)
+	services := &ServiceStats{}
 
 	for {
-		err := rpc.ReadMessage[[]ServiceInfo](session, services)
+		err := rpc.ReadMessage[*ServiceStats](session, services)
 		if err != nil {
 			return fmt.Errorf("error reading services: %w", err)
 		}
 
-		cmd.services.Update(func(_ []ServiceInfo) []ServiceInfo {
+		cmd.services.Update(func(_ *ServiceStats) *ServiceStats {
 			return services
 		})
 	}

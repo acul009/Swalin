@@ -2,7 +2,6 @@ package managment
 
 import (
 	"fmt"
-	"log"
 	"rahnit-rmm/rmm"
 	fynecharts "rahnit-rmm/ui/charts.go"
 	"rahnit-rmm/util"
@@ -50,7 +49,7 @@ func (d *cpuDisplay) fixBars() {
 
 	for len(d.bars) < d.cores {
 		i := len(d.bars)
-		log.Printf("adding bar for core %d", i)
+		// log.Printf("adding bar for core %d", i)
 
 		coreStat := util.DeriveObservable[*rmm.CpuStats, float64](
 			d.observable,
@@ -59,12 +58,12 @@ func (d *cpuDisplay) fixBars() {
 			},
 		)
 
-		log.Printf("crearing new widget")
+		// log.Printf("crearing new widget")
 		bar := fynecharts.NewBarWidget[float64](coreStat, 100, func(f float64) string {
 			return fmt.Sprintf("%.0f%%", f)
 		})
 
-		log.Printf("adding to layout")
+		// log.Printf("adding to layout")
 		d.bars = append(d.bars, bar)
 	}
 

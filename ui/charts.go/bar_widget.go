@@ -1,7 +1,6 @@
 package fynecharts
 
 import (
-	"log"
 	"rahnit-rmm/util"
 
 	"fyne.io/fyne/v2"
@@ -35,10 +34,10 @@ func NewBarWidget[T constraints.Integer | constraints.Float](current util.Observ
 
 	widget.text.Alignment = fyne.TextAlignCenter
 
-	log.Printf("extending basewidget")
+	// log.Printf("extending basewidget")
 	widget.BaseWidget.ExtendBaseWidget(widget)
 
-	log.Printf("subscribing to observable")
+	// log.Printf("subscribing to observable")
 	widget.onDestroy = current.Subscribe(
 		func(current T) {
 			widget.update(current)

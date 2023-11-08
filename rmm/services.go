@@ -1,7 +1,7 @@
 package rmm
 
 type ServiceSystem interface {
-	ListServices() ([]ServiceInfo, error)
+	GetStats() (*ServiceStats, error)
 }
 
 type ServiceStatus int
@@ -20,4 +20,8 @@ type ServiceInfo struct {
 	Description string
 	Enabled     bool
 	Status      ServiceStatus
+}
+
+type ServiceStats struct {
+	Services []ServiceInfo
 }

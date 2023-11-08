@@ -17,7 +17,7 @@ func GetServiceSystem() (ServiceSystem, error) {
 
 	cmd := exec.Command("systemctl", "--version")
 	err := cmd.Start()
-	if err != nil {
+	if err == nil {
 		serviceSystem = getSystemdServiceSystem()
 		return serviceSystem, nil
 	}
