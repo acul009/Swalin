@@ -24,6 +24,7 @@ func new2WayPipe() (*DoublePipe, *DoublePipe) {
 	// return &DoublePipe{b1, b2}, &DoublePipe{b2, b1}
 	r1, w1 := io.Pipe()
 	r2, w2 := io.Pipe()
+
 	return &DoublePipe{r1, w2}, &DoublePipe{r2, w1}
 }
 
@@ -38,7 +39,7 @@ func TestCryptoStream1M(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	testData := make([]byte, 1024*64)
+	testData := make([]byte, 1024*1024)
 	_, err = io.ReadFull(rand.Reader, testData)
 	if err != nil {
 		t.Fatal(err)
@@ -68,6 +69,8 @@ func TestCryptoStream1M(t *testing.T) {
 
 	errChan := make(chan error)
 
+	t.Logf("payload size: %d", len(testData))
+
 	var written int
 	go func() {
 		var err error
@@ -75,14 +78,12 @@ func TestCryptoStream1M(t *testing.T) {
 		errChan <- err
 	}()
 
-	receive := make([]byte, len(testData)-2)
+	receive := make([]byte, len(testData))
 
 	var read int
 	go func() {
 		var err error
-		read, err = io.ReadFull(stream2, receive[:len(receive)/2])
-		errChan <- err
-		read, err = io.ReadFull(stream2, receive[len(receive)/2:])
+		read, err = io.ReadFull(stream2, receive)
 		errChan <- err
 	}()
 
@@ -96,15 +97,14 @@ func TestCryptoStream1M(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = <-errChan
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Logf("goroutine 1 finished")
 
 	err = <-errChan
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	t.Logf("goroutine 2 finished")
 
 	t.Logf("written: %d", written)
 	t.Logf("read: %d", read)

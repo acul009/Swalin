@@ -18,8 +18,6 @@ type CryptoStream struct {
 	nonceBuffer   []byte
 	writeBuffer   []byte
 	wrapped       io.ReadWriteCloser
-	t             *testing.T
-	readCounter   int
 }
 
 func NewCryptoStream(stream io.ReadWriteCloser, cipher cipher.AEAD, t *testing.T) (*CryptoStream, error) {
@@ -43,14 +41,10 @@ func NewCryptoStream(stream io.ReadWriteCloser, cipher cipher.AEAD, t *testing.T
 		nonceBuffer:   nonceBuffer,
 		writeBuffer:   writeBuffer,
 		wrapped:       stream,
-		t:             t,
-		readCounter:   0,
 	}, nil
 }
 
 func (c *CryptoStream) Read(b []byte) (int, error) {
-	c.t.Logf("read counter: %d", c.readCounter)
-	c.readCounter++
 
 	if len(c.decryptBuffer) == 0 {
 		var err error
@@ -60,10 +54,7 @@ func (c *CryptoStream) Read(b []byte) (int, error) {
 		}
 	}
 
-	c.t.Logf("decrypt buffer len: %d", len(c.decryptBuffer))
-
 	n := copy(b, c.decryptBuffer)
-	c.t.Logf("n: %d", n)
 	c.decryptBuffer = c.decryptBuffer[n:]
 	return n, nil
 }
@@ -80,10 +71,6 @@ func (c *CryptoStream) readChunk() ([]byte, error) {
 	}
 	length += c.cipher.NonceSize()
 
-	c.t.Logf("length: %d", length)
-
-	c.t.Logf("to read %d", len(c.readBuffer[:length]))
-
 	_, err = io.ReadFull(c.wrapped, c.readBuffer[:length])
 	if err != nil {
 		return nil, fmt.Errorf("failed to read body: %w", err)
@@ -92,15 +79,10 @@ func (c *CryptoStream) readChunk() ([]byte, error) {
 	nonce := c.readBuffer[:c.cipher.NonceSize()]
 	ciphertext := c.readBuffer[c.cipher.NonceSize():int(length)]
 
-	// c.t.Logf("received ciphertext: %d", ciphertext)
-	c.t.Logf("received nonce: %v", nonce)
-
 	plaintext, err := c.cipher.Open(c.readBuffer[c.cipher.NonceSize():c.cipher.NonceSize()], nonce, ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt: %w", err)
 	}
-
-	c.t.Logf("received plaintext length: %d", len(plaintext))
 
 	return plaintext, nil
 }
@@ -110,18 +92,15 @@ func (c *CryptoStream) Write(b []byte) (int, error) {
 	for offset < len(b) {
 		size := len(b) - offset
 
-		c.t.Logf("full write size: %d", size)
-
 		if size > c.chunkSize {
 			size = c.chunkSize
 		}
-
-		c.t.Logf("writing chunk size: %d", size)
 
 		n, err := c.writeChunk(b[offset : offset+size])
 		if err != nil {
 			return offset, fmt.Errorf("failed to write encrypted chunk: %w", err)
 		}
+
 		offset += n
 	}
 
@@ -136,28 +115,19 @@ func (c *CryptoStream) writeChunk(chunk []byte) (int, error) {
 
 	copy(c.writeBuffer[2:], c.nonceBuffer)
 
-	c.t.Logf("nonce: %v", c.nonceBuffer)
-
 	ciphertext := c.cipher.Seal(c.writeBuffer[:len(c.nonceBuffer)+2], c.nonceBuffer, chunk, nil)
 
 	size := len(ciphertext) - 2 - c.cipher.NonceSize()
 
-	c.t.Logf("ciphertext length: %d", size)
-	c.t.Logf("plaintext length: %d", len(chunk))
-
 	ciphertext[0] = byte(size >> 8)
 	ciphertext[1] = byte(size)
-
-	c.t.Logf("writing data with size %d", len(ciphertext))
 
 	n, err := c.wrapped.Write(ciphertext)
 	if err != nil {
 		return n, fmt.Errorf("failed to write encrypted chunk: %w", err)
 	}
 
-	c.t.Logf("wrote %d bytes", n)
-
-	return n, nil
+	return len(chunk), nil
 }
 
 func (c *CryptoStream) Close() error {
