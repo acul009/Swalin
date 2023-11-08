@@ -1,11 +1,9 @@
 package rpc
 
 import (
-	"crypto/aes"
 	"crypto/ecdh"
 	"crypto/rand"
 	"fmt"
-	"io"
 	"log"
 	"rahnit-rmm/util"
 )
@@ -27,7 +25,7 @@ type e2eEncryptCommand struct {
 
 type e2eResponse struct {
 	ServerPublicKey []byte
-	IV              []byte
+	HashingParams   util.ArgonParameters
 }
 
 func newE2eEncryptCommand(cmd RpcCommand) (*e2eEncryptCommand, error) {
@@ -81,19 +79,27 @@ func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
 
 	log.Printf("Shared secret computed")
 
-	iv := make([]byte, aes.BlockSize)
-	_, err = io.ReadFull(rand.Reader, iv)
+	argonParams, err := util.GenerateArgonParameters(util.ArgonStrengthDefault)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,
-			Msg:  "Error generating iv",
+			Msg:  "Error generating argon parameters",
 		})
-		return fmt.Errorf("error generating iv: %w", err)
+		return fmt.Errorf("error generating argon parameters: %w", err)
+	}
+
+	encryptionKey, err := util.HashPassword(shared, argonParams)
+	if err != nil {
+		session.WriteResponseHeader(SessionResponseHeader{
+			Code: 500,
+			Msg:  "Error deriving encryption key",
+		})
+		return fmt.Errorf("error deriving encryption key: %w", err)
 	}
 
 	log.Printf("initializing crypto stream...")
 
-	cryptoStream, err := util.NewInsecureCryptoStream(session.stream, shared, iv)
+	cryptoStream, err := util.NewDefaultCipherStream(session.stream, encryptionKey)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,
@@ -116,7 +122,7 @@ func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
 
 	err = WriteMessage[e2eResponse](session, e2eResponse{
 		ServerPublicKey: key.PublicKey().Bytes(),
-		IV:              iv,
+		HashingParams:   argonParams,
 	})
 	if err != nil {
 		return fmt.Errorf("error writing message: %w", err)
@@ -160,7 +166,16 @@ func (e *e2eEncryptCommand) ExecuteClient(session *RpcSession) error {
 		return fmt.Errorf("error computing shared secret: %w", err)
 	}
 
-	cipherStream, err := util.NewInsecureCryptoStream(session.stream, shared, resp.IV)
+	encryptionKey, err := util.HashPassword(shared, resp.HashingParams)
+	if err != nil {
+		session.WriteResponseHeader(SessionResponseHeader{
+			Code: 500,
+			Msg:  "Error deriving encryption key",
+		})
+		return fmt.Errorf("error deriving encryption key: %w", err)
+	}
+
+	cipherStream, err := util.NewDefaultCipherStream(session.stream, encryptionKey)
 	if err != nil {
 		return fmt.Errorf("error creating crypto stream: %w", err)
 	}
