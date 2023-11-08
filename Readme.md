@@ -12,9 +12,9 @@ These goals are not reached yet, but are intended to guide the development to ev
 
 These systems should be in place before publishing the very first version.
 
-[] Multiuser
-[] TCP-Passthrough
-[] Revocations
-[] Shell
-[X] Signature Chain verification
-[X] End to End encryption
+- [ ] Multiuser
+- [ ] TCP-Passthrough
+- [ ] Revocations
+- [ ] Shell
+- [X] Signature Chain verification
+- [X] End to End encryption
