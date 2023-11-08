@@ -13,12 +13,12 @@ func TestEncryptDataWithPassword(t *testing.T) {
 
 	encryptedData, err := util.EncryptDataWithPassword(password, data)
 	if err != nil {
-		t.Fatalf("failed encrypting data: %w", err)
+		t.Fatalf("failed encrypting data: %v", err)
 	}
 
 	decryptedData, err := util.DecryptDataWithPassword(password, encryptedData)
 	if err != nil {
-		t.Fatalf("failed decrypting data: %w", err)
+		t.Fatalf("failed decrypting data: %v", err)
 	}
 
 	if !bytes.Equal(decryptedData, data) {

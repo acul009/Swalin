@@ -93,7 +93,7 @@ func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
 
 	log.Printf("initializing crypto stream...")
 
-	cryptoStream, err := util.NewCryptoStream(session.stream, shared, iv)
+	cryptoStream, err := util.NewInsecureCryptoStream(session.stream, shared, iv)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 500,
@@ -160,7 +160,7 @@ func (e *e2eEncryptCommand) ExecuteClient(session *RpcSession) error {
 		return fmt.Errorf("error computing shared secret: %w", err)
 	}
 
-	cipherStream, err := util.NewCryptoStream(session.stream, shared, resp.IV)
+	cipherStream, err := util.NewInsecureCryptoStream(session.stream, shared, resp.IV)
 	if err != nil {
 		return fmt.Errorf("error creating crypto stream: %w", err)
 	}
