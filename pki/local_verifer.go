@@ -52,14 +52,6 @@ func NewLocalVerify() (*localVerify, error) {
 	}, nil
 }
 
-func (v *localVerify) options() x509.VerifyOptions {
-
-	return x509.VerifyOptions{
-		Roots:         v.rootPool,
-		Intermediates: v.intermediates,
-	}
-}
-
 func (v *localVerify) Verify(cert *Certificate) ([]*Certificate, error) {
 	if cert == nil {
 		return nil, fmt.Errorf("certificate is nil")

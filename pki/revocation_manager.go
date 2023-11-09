@@ -12,6 +12,21 @@ import (
 	"rahnit-rmm/ent/revocation"
 )
 
+var ErrRevoked = &revokedError{}
+
+type revokedError struct {
+	Revocation *Revocation
+}
+
+func (e *revokedError) Error() string {
+	return fmt.Sprintf("revoked: %v", e.Revocation)
+}
+
+func (e *revokedError) Is(target error) bool {
+	_, ok := target.(*revokedError)
+	return ok
+}
+
 var RevocationManager *revocationManager
 
 type revocationManager struct {
@@ -38,30 +53,33 @@ func (r *revocationManager) CheckPayload(payload []byte) error {
 	for _, hasher := range r.getHashers() {
 		hash := hasher.New().Sum(payload)
 
-		if r.isRevokedHash(hash, hasher) {
-			return fmt.Errorf("hash %x is revoked", hash)
+		err := r.checkRevokedHash(hash, hasher)
+		if err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-func (r *revocationManager) isRevokedHash(hash []byte, hasher crypto.Hash) bool {
+func (r *revocationManager) checkRevokedHash(hash []byte, hasher crypto.Hash) error {
 	baseHash := base64.StdEncoding.EncodeToString(hash)
 
 	revModel, err := r.db.Revocation.Query().Where(revocation.HashEQ(baseHash), revocation.HasherEQ(uint64(hasher))).Only(context.Background())
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return false
+			return nil
 		}
-		log.Printf("WARNING: failed to query revocation: %v", err)
-		return true
+		errDangerous := fmt.Errorf("WARNING: failed to query revocation: %w", err)
+		log.Print(errDangerous)
+		return errDangerous
 	}
 
 	revocation, err := RevocationFromBinary(revModel.Revocation)
 	if err != nil {
-		log.Printf("WARNING: failed to load revocation: %v", err)
-		return false
+		errDangerous := fmt.Errorf("WARNING: failed to decode revocation: %w", err)
+		log.Print(errDangerous)
+		return fmt.Errorf("WARNING: failed to load revocation: %w", err)
 	}
 
 	revoked := revocation.Hasher == hasher && bytes.Equal(revocation.Hash, hash)
@@ -69,5 +87,11 @@ func (r *revocationManager) isRevokedHash(hash []byte, hasher crypto.Hash) bool 
 		log.Printf("WARNING: revocation for %x has broken index", hash)
 	}
 
-	return revoked
+	if revoked {
+		return &revokedError{
+			Revocation: revocation,
+		}
+	}
+
+	return nil
 }

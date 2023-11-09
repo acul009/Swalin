@@ -88,7 +88,6 @@ func ReadAndUnmarshalAndVerify(reader io.Reader, v any, publicKey *PublicKey, ch
 type PackedData struct {
 	Data      []byte `asn1:"tag:0"`
 	Signature []byte `asn1:"tag:1"`
-	PublicKey []byte `asn1:"tag:2"`
 }
 
 func packAndSign(data []byte, c Credentials) ([]byte, error) {
@@ -116,6 +115,20 @@ func packAndSign(data []byte, c Credentials) ([]byte, error) {
 }
 
 func unpackAndVerify(packed []byte, publicKey *PublicKey, checkRevocation bool) ([]byte, error) {
+	d, err := unpack(packed)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unpack data: %w", err)
+	}
+
+	err = publicKey.verifyBytes(d.Data, d.Signature, checkRevocation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify signature: %w", err)
+	}
+
+	return d.Data, nil
+}
+
+func unpack(packed []byte) (*PackedData, error) {
 	d := &PackedData{}
 
 	rest, err := asn1.Unmarshal(packed, d)
@@ -126,12 +139,7 @@ func unpackAndVerify(packed []byte, publicKey *PublicKey, checkRevocation bool) 
 		return nil, fmt.Errorf("found rest after unmarshaling data: %v", rest)
 	}
 
-	err = publicKey.verifyBytes(d.Data, d.Signature, checkRevocation)
-	if err != nil {
-		return nil, fmt.Errorf("failed to verify signature: %w", err)
-	}
-
-	return d.Data, nil
+	return d, nil
 }
 
 func (p *PrivateKey) signBytes(data []byte) ([]byte, error) {

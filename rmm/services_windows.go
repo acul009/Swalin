@@ -16,7 +16,7 @@ func GetServiceSystem() (ServiceSystem, error) {
 	return &windowsServiceSystem{}, nil
 }
 
-func (s *windowsServiceSystem) ListServices() ([]ServiceInfo, error) {
+func (s *windowsServiceSystem) GetStats() (*ServiceStats, error) {
 	services, err := winservices.ListServices()
 	if err != nil {
 		return nil, fmt.Errorf("error listing services: %w", err)
@@ -27,9 +27,8 @@ func (s *windowsServiceSystem) ListServices() ([]ServiceInfo, error) {
 	for _, service := range services {
 		infos = append(infos, ServiceInfo{
 			Name: service.Name,
-			Pid:  int32(service.Status.Pid),
 		})
 	}
 
-	return infos, nil
+	return &ServiceStats{Services: infos}, nil
 }
