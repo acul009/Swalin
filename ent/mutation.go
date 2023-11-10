@@ -956,6 +956,7 @@ type TunnelConfigMutation struct {
 	op            Op
 	typ           string
 	id            *int
+	_config       *[]byte
 	clearedFields map[string]struct{}
 	device        *int
 	cleareddevice bool
@@ -1062,6 +1063,42 @@ func (m *TunnelConfigMutation) IDs(ctx context.Context) ([]int, error) {
 	}
 }
 
+// SetConfig sets the "config" field.
+func (m *TunnelConfigMutation) SetConfig(b []byte) {
+	m._config = &b
+}
+
+// Config returns the value of the "config" field in the mutation.
+func (m *TunnelConfigMutation) Config() (r []byte, exists bool) {
+	v := m._config
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConfig returns the old "config" field's value of the TunnelConfig entity.
+// If the TunnelConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TunnelConfigMutation) OldConfig(ctx context.Context) (v []byte, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConfig is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConfig requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConfig: %w", err)
+	}
+	return oldValue.Config, nil
+}
+
+// ResetConfig resets all changes to the "config" field.
+func (m *TunnelConfigMutation) ResetConfig() {
+	m._config = nil
+}
+
 // SetDeviceID sets the "device" edge to the Device entity by id.
 func (m *TunnelConfigMutation) SetDeviceID(id int) {
 	m.device = &id
@@ -1135,7 +1172,10 @@ func (m *TunnelConfigMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TunnelConfigMutation) Fields() []string {
-	fields := make([]string, 0, 0)
+	fields := make([]string, 0, 1)
+	if m._config != nil {
+		fields = append(fields, tunnelconfig.FieldConfig)
+	}
 	return fields
 }
 
@@ -1143,6 +1183,10 @@ func (m *TunnelConfigMutation) Fields() []string {
 // return value indicates that this field was not set, or was not defined in the
 // schema.
 func (m *TunnelConfigMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case tunnelconfig.FieldConfig:
+		return m.Config()
+	}
 	return nil, false
 }
 
@@ -1150,6 +1194,10 @@ func (m *TunnelConfigMutation) Field(name string) (ent.Value, bool) {
 // returned if the mutation operation is not UpdateOne, or the query to the
 // database failed.
 func (m *TunnelConfigMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case tunnelconfig.FieldConfig:
+		return m.OldConfig(ctx)
+	}
 	return nil, fmt.Errorf("unknown TunnelConfig field %s", name)
 }
 
@@ -1158,6 +1206,13 @@ func (m *TunnelConfigMutation) OldField(ctx context.Context, name string) (ent.V
 // type.
 func (m *TunnelConfigMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case tunnelconfig.FieldConfig:
+		v, ok := value.([]byte)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConfig(v)
+		return nil
 	}
 	return fmt.Errorf("unknown TunnelConfig field %s", name)
 }
@@ -1179,6 +1234,8 @@ func (m *TunnelConfigMutation) AddedField(name string) (ent.Value, bool) {
 // the field is not defined in the schema, or if the type mismatched the field
 // type.
 func (m *TunnelConfigMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown TunnelConfig numeric field %s", name)
 }
 
@@ -1204,6 +1261,11 @@ func (m *TunnelConfigMutation) ClearField(name string) error {
 // ResetField resets all changes in the mutation for the field with the given name.
 // It returns an error if the field is not defined in the schema.
 func (m *TunnelConfigMutation) ResetField(name string) error {
+	switch name {
+	case tunnelconfig.FieldConfig:
+		m.ResetConfig()
+		return nil
+	}
 	return fmt.Errorf("unknown TunnelConfig field %s", name)
 }
 

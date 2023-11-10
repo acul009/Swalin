@@ -26,7 +26,7 @@ func newForwardCommand(target *pki.Certificate, cmd RpcCommand) *forwardCommand 
 func (f *forwardCommand) ExecuteServer(session *RpcSession) error {
 	// Verify certificate first
 
-	_, err := session.connection.verifier.Verify(f.Target)
+	_, err := session.Verifier().Verify(f.Target)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 400,

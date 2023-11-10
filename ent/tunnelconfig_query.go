@@ -294,6 +294,18 @@ func (tcq *TunnelConfigQuery) WithDevice(opts ...func(*DeviceQuery)) *TunnelConf
 
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
+//
+// Example:
+//
+//	var v []struct {
+//		Config []byte `json:"config,omitempty"`
+//		Count int `json:"count,omitempty"`
+//	}
+//
+//	client.TunnelConfig.Query().
+//		GroupBy(tunnelconfig.FieldConfig).
+//		Aggregate(ent.Count()).
+//		Scan(ctx, &v)
 func (tcq *TunnelConfigQuery) GroupBy(field string, fields ...string) *TunnelConfigGroupBy {
 	tcq.ctx.Fields = append([]string{field}, fields...)
 	grbuild := &TunnelConfigGroupBy{build: tcq}
@@ -305,6 +317,16 @@ func (tcq *TunnelConfigQuery) GroupBy(field string, fields ...string) *TunnelCon
 
 // Select allows the selection one or more fields/columns for the given query,
 // instead of selecting all fields in the entity.
+//
+// Example:
+//
+//	var v []struct {
+//		Config []byte `json:"config,omitempty"`
+//	}
+//
+//	client.TunnelConfig.Query().
+//		Select(tunnelconfig.FieldConfig).
+//		Scan(ctx, &v)
 func (tcq *TunnelConfigQuery) Select(fields ...string) *TunnelConfigSelect {
 	tcq.ctx.Fields = append(tcq.ctx.Fields, fields...)
 	sbuild := &TunnelConfigSelect{TunnelConfigQuery: tcq}

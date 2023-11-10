@@ -14,9 +14,11 @@ import (
 
 // TunnelConfig is the model entity for the TunnelConfig schema.
 type TunnelConfig struct {
-	config
+	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// Config holds the value of the "config" field.
+	Config []byte `json:"config,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the TunnelConfigQuery when eager-loading is set.
 	Edges        TunnelConfigEdges `json:"edges"`
@@ -50,6 +52,8 @@ func (*TunnelConfig) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case tunnelconfig.FieldConfig:
+			values[i] = new([]byte)
 		case tunnelconfig.FieldID:
 			values[i] = new(sql.NullInt64)
 		default:
@@ -73,6 +77,12 @@ func (tc *TunnelConfig) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			tc.ID = int(value.Int64)
+		case tunnelconfig.FieldConfig:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field config", values[i])
+			} else if value != nil {
+				tc.Config = *value
+			}
 		default:
 			tc.selectValues.Set(columns[i], values[i])
 		}
@@ -113,7 +123,9 @@ func (tc *TunnelConfig) Unwrap() *TunnelConfig {
 func (tc *TunnelConfig) String() string {
 	var builder strings.Builder
 	builder.WriteString("TunnelConfig(")
-	builder.WriteString(fmt.Sprintf("id=%v", tc.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", tc.ID))
+	builder.WriteString("config=")
+	builder.WriteString(fmt.Sprintf("%v", tc.Config))
 	builder.WriteByte(')')
 	return builder.String()
 }

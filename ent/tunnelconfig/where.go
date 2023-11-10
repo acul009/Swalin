@@ -54,6 +54,51 @@ func IDLTE(id int) predicate.TunnelConfig {
 	return predicate.TunnelConfig(sql.FieldLTE(FieldID, id))
 }
 
+// Config applies equality check predicate on the "config" field. It's identical to ConfigEQ.
+func Config(v []byte) predicate.TunnelConfig {
+	return predicate.TunnelConfig(sql.FieldEQ(FieldConfig, v))
+}
+
+// ConfigEQ applies the EQ predicate on the "config" field.
+func ConfigEQ(v []byte) predicate.TunnelConfig {
+	return predicate.TunnelConfig(sql.FieldEQ(FieldConfig, v))
+}
+
+// ConfigNEQ applies the NEQ predicate on the "config" field.
+func ConfigNEQ(v []byte) predicate.TunnelConfig {
+	return predicate.TunnelConfig(sql.FieldNEQ(FieldConfig, v))
+}
+
+// ConfigIn applies the In predicate on the "config" field.
+func ConfigIn(vs ...[]byte) predicate.TunnelConfig {
+	return predicate.TunnelConfig(sql.FieldIn(FieldConfig, vs...))
+}
+
+// ConfigNotIn applies the NotIn predicate on the "config" field.
+func ConfigNotIn(vs ...[]byte) predicate.TunnelConfig {
+	return predicate.TunnelConfig(sql.FieldNotIn(FieldConfig, vs...))
+}
+
+// ConfigGT applies the GT predicate on the "config" field.
+func ConfigGT(v []byte) predicate.TunnelConfig {
+	return predicate.TunnelConfig(sql.FieldGT(FieldConfig, v))
+}
+
+// ConfigGTE applies the GTE predicate on the "config" field.
+func ConfigGTE(v []byte) predicate.TunnelConfig {
+	return predicate.TunnelConfig(sql.FieldGTE(FieldConfig, v))
+}
+
+// ConfigLT applies the LT predicate on the "config" field.
+func ConfigLT(v []byte) predicate.TunnelConfig {
+	return predicate.TunnelConfig(sql.FieldLT(FieldConfig, v))
+}
+
+// ConfigLTE applies the LTE predicate on the "config" field.
+func ConfigLTE(v []byte) predicate.TunnelConfig {
+	return predicate.TunnelConfig(sql.FieldLTE(FieldConfig, v))
+}
+
 // HasDevice applies the HasEdge predicate on the "device" edge.
 func HasDevice() predicate.TunnelConfig {
 	return predicate.TunnelConfig(func(s *sql.Selector) {

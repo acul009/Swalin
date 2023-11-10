@@ -2,6 +2,7 @@ package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/schema/field"
 )
 
 // Device holds the schema definition for the Device entity.
@@ -10,7 +11,9 @@ type TunnelConfig struct {
 }
 
 func (TunnelConfig) Fields() []ent.Field {
-	return nil
+	return []ent.Field{
+		field.Bytes("config").NotEmpty(),
+	}
 }
 
 func (TunnelConfig) Mixin() []ent.Mixin {

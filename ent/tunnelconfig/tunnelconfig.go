@@ -12,6 +12,8 @@ const (
 	Label = "tunnel_config"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldConfig holds the string denoting the config field in the database.
+	FieldConfig = "config"
 	// EdgeDevice holds the string denoting the device edge name in mutations.
 	EdgeDevice = "device"
 	// Table holds the table name of the tunnelconfig in the database.
@@ -28,6 +30,7 @@ const (
 // Columns holds all SQL columns for tunnelconfig fields.
 var Columns = []string{
 	FieldID,
+	FieldConfig,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -39,6 +42,11 @@ func ValidColumn(column string) bool {
 	}
 	return false
 }
+
+var (
+	// ConfigValidator is a validator for the "config" field. It is called by the builders before save.
+	ConfigValidator func([]byte) error
+)
 
 // OrderOption defines the ordering options for the TunnelConfig queries.
 type OrderOption func(*sql.Selector)

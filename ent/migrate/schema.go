@@ -52,6 +52,7 @@ var (
 	// TunnelConfigsColumns holds the columns for the "tunnel_configs" table.
 	TunnelConfigsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "config", Type: field.TypeBytes},
 	}
 	// TunnelConfigsTable holds the schema information for the "tunnel_configs" table.
 	TunnelConfigsTable = &schema.Table{

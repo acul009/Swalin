@@ -20,6 +20,12 @@ type TunnelConfigCreate struct {
 	hooks    []Hook
 }
 
+// SetConfig sets the "config" field.
+func (tcc *TunnelConfigCreate) SetConfig(b []byte) *TunnelConfigCreate {
+	tcc.mutation.SetConfig(b)
+	return tcc
+}
+
 // SetDeviceID sets the "device" edge to the Device entity by ID.
 func (tcc *TunnelConfigCreate) SetDeviceID(id int) *TunnelConfigCreate {
 	tcc.mutation.SetDeviceID(id)
@@ -65,6 +71,14 @@ func (tcc *TunnelConfigCreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (tcc *TunnelConfigCreate) check() error {
+	if _, ok := tcc.mutation.Config(); !ok {
+		return &ValidationError{Name: "config", err: errors.New(`ent: missing required field "TunnelConfig.config"`)}
+	}
+	if v, ok := tcc.mutation.Config(); ok {
+		if err := tunnelconfig.ConfigValidator(v); err != nil {
+			return &ValidationError{Name: "config", err: fmt.Errorf(`ent: validator failed for field "TunnelConfig.config": %w`, err)}
+		}
+	}
 	if _, ok := tcc.mutation.DeviceID(); !ok {
 		return &ValidationError{Name: "device", err: errors.New(`ent: missing required edge "TunnelConfig.device"`)}
 	}
@@ -94,6 +108,10 @@ func (tcc *TunnelConfigCreate) createSpec() (*TunnelConfig, *sqlgraph.CreateSpec
 		_node = &TunnelConfig{config: tcc.config}
 		_spec = sqlgraph.NewCreateSpec(tunnelconfig.Table, sqlgraph.NewFieldSpec(tunnelconfig.FieldID, field.TypeInt))
 	)
+	if value, ok := tcc.mutation.Config(); ok {
+		_spec.SetField(tunnelconfig.FieldConfig, field.TypeBytes, value)
+		_node.Config = value
+	}
 	if nodes := tcc.mutation.DeviceIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2O,

@@ -28,6 +28,12 @@ func (tcu *TunnelConfigUpdate) Where(ps ...predicate.TunnelConfig) *TunnelConfig
 	return tcu
 }
 
+// SetConfig sets the "config" field.
+func (tcu *TunnelConfigUpdate) SetConfig(b []byte) *TunnelConfigUpdate {
+	tcu.mutation.SetConfig(b)
+	return tcu
+}
+
 // SetDeviceID sets the "device" edge to the Device entity by ID.
 func (tcu *TunnelConfigUpdate) SetDeviceID(id int) *TunnelConfigUpdate {
 	tcu.mutation.SetDeviceID(id)
@@ -79,6 +85,11 @@ func (tcu *TunnelConfigUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (tcu *TunnelConfigUpdate) check() error {
+	if v, ok := tcu.mutation.Config(); ok {
+		if err := tunnelconfig.ConfigValidator(v); err != nil {
+			return &ValidationError{Name: "config", err: fmt.Errorf(`ent: validator failed for field "TunnelConfig.config": %w`, err)}
+		}
+	}
 	if _, ok := tcu.mutation.DeviceID(); tcu.mutation.DeviceCleared() && !ok {
 		return errors.New(`ent: clearing a required unique edge "TunnelConfig.device"`)
 	}
@@ -96,6 +107,9 @@ func (tcu *TunnelConfigUpdate) sqlSave(ctx context.Context) (n int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := tcu.mutation.Config(); ok {
+		_spec.SetField(tunnelconfig.FieldConfig, field.TypeBytes, value)
 	}
 	if tcu.mutation.DeviceCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -144,6 +158,12 @@ type TunnelConfigUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *TunnelConfigMutation
+}
+
+// SetConfig sets the "config" field.
+func (tcuo *TunnelConfigUpdateOne) SetConfig(b []byte) *TunnelConfigUpdateOne {
+	tcuo.mutation.SetConfig(b)
+	return tcuo
 }
 
 // SetDeviceID sets the "device" edge to the Device entity by ID.
@@ -210,6 +230,11 @@ func (tcuo *TunnelConfigUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (tcuo *TunnelConfigUpdateOne) check() error {
+	if v, ok := tcuo.mutation.Config(); ok {
+		if err := tunnelconfig.ConfigValidator(v); err != nil {
+			return &ValidationError{Name: "config", err: fmt.Errorf(`ent: validator failed for field "TunnelConfig.config": %w`, err)}
+		}
+	}
 	if _, ok := tcuo.mutation.DeviceID(); tcuo.mutation.DeviceCleared() && !ok {
 		return errors.New(`ent: clearing a required unique edge "TunnelConfig.device"`)
 	}
@@ -244,6 +269,9 @@ func (tcuo *TunnelConfigUpdateOne) sqlSave(ctx context.Context) (_node *TunnelCo
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := tcuo.mutation.Config(); ok {
+		_spec.SetField(tunnelconfig.FieldConfig, field.TypeBytes, value)
 	}
 	if tcuo.mutation.DeviceCleared() {
 		edge := &sqlgraph.EdgeSpec{

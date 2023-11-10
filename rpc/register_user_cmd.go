@@ -77,7 +77,7 @@ func (r *registerUserCmd) ExecuteServer(session *RpcSession) error {
 
 	cert := r.Cert
 
-	_, err := session.connection.verifier.Verify(cert)
+	_, err := session.Verifier().Verify(cert)
 	if err != nil {
 		session.WriteResponseHeader(SessionResponseHeader{
 			Code: 400,

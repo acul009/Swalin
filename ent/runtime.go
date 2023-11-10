@@ -6,6 +6,7 @@ import (
 	"rahnit-rmm/ent/device"
 	"rahnit-rmm/ent/revocation"
 	"rahnit-rmm/ent/schema"
+	"rahnit-rmm/ent/tunnelconfig"
 	"rahnit-rmm/ent/user"
 )
 
@@ -29,6 +30,12 @@ func init() {
 	revocationDescHash := revocationFields[1].Descriptor()
 	// revocation.HashValidator is a validator for the "hash" field. It is called by the builders before save.
 	revocation.HashValidator = revocationDescHash.Validators[0].(func(string) error)
+	tunnelconfigFields := schema.TunnelConfig{}.Fields()
+	_ = tunnelconfigFields
+	// tunnelconfigDescConfig is the schema descriptor for config field.
+	tunnelconfigDescConfig := tunnelconfigFields[0].Descriptor()
+	// tunnelconfig.ConfigValidator is a validator for the "config" field. It is called by the builders before save.
+	tunnelconfig.ConfigValidator = tunnelconfigDescConfig.Validators[0].(func([]byte) error)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescUsername is the schema descriptor for username field.

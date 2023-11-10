@@ -3,77 +3,72 @@ package pki
 import (
 	"encoding/json"
 	"fmt"
-	"rahnit-rmm/util"
+	"log"
 )
 
 type sArtifactPayload interface {
 	MayPublish(*Certificate) bool
-	Revokeable() bool
 }
 
 type SignedArtifact[T sArtifactPayload] struct {
-	creator *PublicKey
-	payload *artifactPayload[T]
-	raw     []byte
+	blob     SignedBlob
+	artifact T
 }
 
-type artifactPayload[T sArtifactPayload] struct {
-	Timestamp int64
-	Nonce     util.Nonce
-	Payload   T
-}
+func NewSignedArtifact[T sArtifactPayload](credentials *PermanentCredentials, artifact T) (*SignedArtifact[T], error) {
 
-func NewSignedArtifact[T sArtifactPayload](credentials Credentials, payload T) (*SignedArtifact[T], error) {
-
-	raw, err := MarshalAndSign(payload, credentials)
+	cert, err := credentials.GetCertificate()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get current cert: %w", err)
 	}
 
-	return LoadSignedArtifact[T](raw)
+	if !artifact.MayPublish(cert) {
+		return nil, fmt.Errorf("not authorized to publish this artifact")
+	}
+
+	marshalled, err := json.Marshal(artifact)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	blob, err := NewSignedBlob(credentials, marshalled)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign payload: %w", err)
+	}
+
+	return &SignedArtifact[T]{
+		blob:     *blob,
+		artifact: artifact,
+	}, nil
 }
 
-func LoadSignedArtifact[T sArtifactPayload](raw []byte) (*SignedArtifact[T], error) {
-	// TODO
-	return nil, fmt.Errorf("not implemented")
-}
+func LoadSignedArtifact[T sArtifactPayload](raw []byte, verifier Verifier, target T) (*SignedArtifact[T], error) {
+	blob, err := LoadSignedBlob(raw, verifier)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load blob: %w", err)
+	}
 
-func (s *SignedArtifact[T]) Payload() T {
-	return s.payload.Payload
-}
+	err = json.Unmarshal(blob.Payload(), target)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
 
-func (s *SignedArtifact[T]) Creator() *PublicKey {
-	return s.creator
-}
+	if !target.MayPublish(blob.Creator()) {
+		errDangerous := fmt.Errorf("the creator of this artifact was not allowed to publish it")
+		log.Print(errDangerous)
+		return nil, errDangerous
+	}
 
-func (s *SignedArtifact[T]) Timestamp() int64 {
-	return s.payload.Timestamp
-}
-
-func (s *SignedArtifact[T]) Nonce() util.Nonce {
-	return s.payload.Nonce
-}
-
-func (s *SignedArtifact[T]) Raw() []byte {
-	return s.raw
+	return &SignedArtifact[T]{
+		blob:     *blob,
+		artifact: target,
+	}, nil
 }
 
 func (s *SignedArtifact[T]) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.raw)
+	return json.Marshal(s.blob.Raw())
 }
 
-func (s *SignedArtifact[T]) UnmarshalJSON(data []byte) error {
-	raw := make([]byte, 0, len(data))
-	err := json.Unmarshal(data, &raw)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal raw artifact: %w", err)
-	}
-
-	artifact, err := LoadSignedArtifact[T](raw)
-	if err != nil {
-		return fmt.Errorf("failed to load signed artifact: %w", err)
-	}
-
-	*s = *artifact
-	return nil
+func (s *SignedArtifact[T]) Artifact() T {
+	return s.artifact
 }

@@ -73,7 +73,7 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 
 	s.mutateState(RpcSessionOpen, RpcSessionCreated)
 
-	_, err = s.connection.verifier.VerifyPublicKey(s.partner)
+	_, err = s.Verifier().VerifyPublicKey(s.partner)
 	if err != nil {
 		s.mutateState(RpcSessionCreated, RpcSessionRequested)
 		s.WriteResponseHeader(SessionResponseHeader{
@@ -164,6 +164,7 @@ func (s *RpcSession) Read(p []byte) (n int, err error) {
 func (s *RpcSession) Context() context.Context {
 	return s.ctx
 }
+
 func ReadMessage[P any](s *RpcSession, payload P) error {
 	if s.partner == nil {
 		return fmt.Errorf("can't read message from unknown sender: session has no partner specified")
@@ -223,13 +224,13 @@ func WriteMessage[P any](s *RpcSession, payload P) error {
 	return nil
 }
 
-func (s *RpcSession) writeRequestHeader(header SessionRequestHeader) error {
+func (s *RpcSession) writeRequestHeader(header sessionRequestHeader) error {
 	err := s.mutateState(RpcSessionCreated, RpcSessionOpen)
 	if err != nil {
 		return fmt.Errorf("error mutating state: %w", err)
 	}
 
-	err = WriteMessage[SessionRequestHeader](s, header)
+	err = WriteMessage[sessionRequestHeader](s, header)
 	if err != nil {
 		s.mutateState(RpcSessionOpen, RpcSessionClosed)
 		return fmt.Errorf("error writing request header: %w", err)
@@ -301,7 +302,7 @@ func (s *RpcSession) sendCommand(cmd RpcCommand) (util.AsyncAction, error) {
 		return nil, fmt.Errorf("error encoding command: %w", err)
 	}
 
-	header := SessionRequestHeader{
+	header := sessionRequestHeader{
 		Cmd:  cmd.GetKey(),
 		Args: args,
 	}
@@ -392,7 +393,7 @@ func (s *RpcSession) Close() error {
 	return nil
 }
 
-type SessionRequestHeader struct {
+type sessionRequestHeader struct {
 	Cmd  string                 `json:"cmd"`
 	Args map[string]interface{} `json:"args"`
 }
@@ -403,16 +404,16 @@ type SessionResponseHeader struct {
 	Info interface{} `json:"info"`
 }
 
-func (s *RpcSession) readRequestHeader() (SessionRequestHeader, error) {
-	header := SessionRequestHeader{}
-	err := ReadMessage[*SessionRequestHeader](s, &header)
+func (s *RpcSession) readRequestHeader() (sessionRequestHeader, error) {
+	header := sessionRequestHeader{}
+	err := ReadMessage[*sessionRequestHeader](s, &header)
 	if err != nil {
-		return SessionRequestHeader{}, fmt.Errorf("error reading request header: %w", err)
+		return sessionRequestHeader{}, fmt.Errorf("error reading request header: %w", err)
 	}
 
 	err = s.mutateState(RpcSessionCreated, RpcSessionRequested)
 	if err != nil {
-		return SessionRequestHeader{}, fmt.Errorf("error setting session state: %w", err)
+		return sessionRequestHeader{}, fmt.Errorf("error setting session state: %w", err)
 	}
 
 	return header, nil
@@ -471,4 +472,8 @@ func (s *streamWrapper) Close() error {
 	}
 	s.Stream.CancelRead(200)
 	return nil
+}
+
+func (s *RpcSession) Verifier() pki.Verifier {
+	return s.connection.verifier
 }

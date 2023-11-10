@@ -18,7 +18,7 @@ type verifyCertificateChainCmd struct {
 
 func (c *verifyCertificateChainCmd) ExecuteServer(session *RpcSession) error {
 	if c.Key != nil {
-		chain, err := session.connection.verifier.VerifyPublicKey(c.Key)
+		chain, err := session.Verifier().VerifyPublicKey(c.Key)
 		if err != nil {
 			session.WriteResponseHeader(SessionResponseHeader{
 				Code: 500,
@@ -41,7 +41,7 @@ func (c *verifyCertificateChainCmd) ExecuteServer(session *RpcSession) error {
 	}
 
 	if c.Cert != nil {
-		chain, err := session.connection.verifier.Verify(c.Cert)
+		chain, err := session.Verifier().Verify(c.Cert)
 		if err != nil {
 			session.WriteResponseHeader(SessionResponseHeader{
 				Code: 500,
