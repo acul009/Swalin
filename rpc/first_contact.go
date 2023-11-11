@@ -47,7 +47,7 @@ func receivePartnerKey(session *RpcSession) error {
 		return fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 
-	session.partner = partnerKey
+	session.partnerKey = partnerKey
 
 	return nil
 }

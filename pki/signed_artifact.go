@@ -11,11 +11,11 @@ type ArtifactPayload interface {
 }
 
 type SignedArtifact[T ArtifactPayload] struct {
-	blob     SignedBlob
+	blob     *SignedBlob
 	artifact T
 }
 
-func NewSignedArtifact[T ArtifactPayload](credentials *PermanentCredentials, artifact T) (*SignedArtifact[T], error) {
+func NewSignedArtifact[T ArtifactPayload](credentials *PermanentCredentials, artifact T) (SignedArtifact[T], error) {
 
 	cert, err := credentials.GetCertificate()
 	if err != nil {
@@ -36,13 +36,13 @@ func NewSignedArtifact[T ArtifactPayload](credentials *PermanentCredentials, art
 		return nil, fmt.Errorf("failed to sign payload: %w", err)
 	}
 
-	return &SignedArtifact[T]{
-		blob:     *blob,
+	return SignedArtifact[T]{
+		blob:     blob,
 		artifact: artifact,
 	}, nil
 }
 
-func LoadSignedArtifact[T ArtifactPayload](raw []byte, verifier Verifier, target T) (*SignedArtifact[T], error) {
+func LoadSignedArtifact[T ArtifactPayload](raw []byte, verifier Verifier, target T) (SignedArtifact[T], error) {
 	blob, err := LoadSignedBlob(raw, verifier)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load blob: %w", err)
@@ -59,7 +59,7 @@ func LoadSignedArtifact[T ArtifactPayload](raw []byte, verifier Verifier, target
 		return nil, errDangerous
 	}
 
-	return &SignedArtifact[T]{
+	return SignedArtifact[T]{
 		blob:     *blob,
 		artifact: target,
 	}, nil

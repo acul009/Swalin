@@ -32,7 +32,8 @@ type RpcSession struct {
 	id          quic.StreamID
 	state       RpcSessionState
 	mutex       sync.Mutex
-	partner     *pki.PublicKey
+	partnerKey  *pki.PublicKey
+	partner     *pki.Certificate
 	credentials pki.Credentials
 }
 
@@ -51,7 +52,7 @@ func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 		id:          stream.StreamID(),
 		state:       RpcSessionCreated,
 		mutex:       sync.Mutex{},
-		partner:     pubkey,
+		partnerKey:  pubkey,
 		credentials: conn.credentials,
 	}
 
@@ -73,7 +74,7 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 
 	s.mutateState(RpcSessionOpen, RpcSessionCreated)
 
-	_, err = s.Verifier().VerifyPublicKey(s.partner)
+	chain, err := s.Verifier().VerifyPublicKey(s.partnerKey)
 	if err != nil {
 		s.mutateState(RpcSessionCreated, RpcSessionRequested)
 		s.WriteResponseHeader(SessionResponseHeader{
@@ -82,6 +83,8 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 		})
 		return fmt.Errorf("error verifying public key: %w", err)
 	}
+
+	s.partner = chain[0]
 
 	header, err := s.readRequestHeader()
 
@@ -95,7 +98,7 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 
 	log.Printf("Header: %+v", header)
 
-	err = permissions.MayStartCommand(s.partner, header.Cmd)
+	err = permissions.MayStartCommand(s.partnerKey, header.Cmd)
 	if err != nil {
 		s.WriteResponseHeader(SessionResponseHeader{
 			Code: 403,
@@ -166,7 +169,7 @@ func (s *RpcSession) Context() context.Context {
 }
 
 func ReadMessage[P any](s *RpcSession, payload P) error {
-	if s.partner == nil {
+	if s.partnerKey == nil {
 		return fmt.Errorf("can't read message from unknown sender: session has no partner specified")
 	}
 
@@ -174,7 +177,7 @@ func ReadMessage[P any](s *RpcSession, payload P) error {
 		Payload: payload,
 	}
 
-	err := pki.ReadAndUnmarshalAndVerify(s.stream, message, s.partner, false)
+	err := pki.ReadAndUnmarshalAndVerify(s.stream, message, s.partnerKey, false)
 	if err != nil {
 		return fmt.Errorf("error reading message: %w", err)
 	}
@@ -193,13 +196,13 @@ func ReadMessage[P any](s *RpcSession, payload P) error {
 }
 
 func WriteMessage[P any](s *RpcSession, payload P) error {
-	if s.partner == nil {
+	if s.partnerKey == nil {
 		return fmt.Errorf("can't address message to unknown sender: session has no partner specified")
 	}
 
 	// log.Printf("creating message...")
 
-	message, err := newRpcMessage[P](s.partner, payload)
+	message, err := newRpcMessage[P](s.partnerKey, payload)
 	if err != nil {
 		return fmt.Errorf("error creating message: %w", err)
 	}
@@ -476,4 +479,8 @@ func (s *streamWrapper) Close() error {
 
 func (s *RpcSession) Verifier() pki.Verifier {
 	return s.connection.verifier
+}
+
+func (s *RpcSession) Partner() *pki.Certificate {
+	return s.partner
 }

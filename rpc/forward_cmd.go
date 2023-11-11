@@ -109,7 +109,7 @@ func (f *forwardCommand) ExecuteClient(session *RpcSession) error {
 		return fmt.Errorf("error mutating session state: %w", err)
 	}
 
-	session.partner = f.Target.GetPublicKey()
+	session.partnerKey = f.Target.GetPublicKey()
 
 	log.Printf("Session forwarded, starting next command...")
 

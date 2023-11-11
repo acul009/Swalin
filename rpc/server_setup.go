@@ -119,7 +119,7 @@ func acceptServerInitialization(quicConn quic.Connection, credentials *pki.TempC
 
 	rootCert := response.RootCa
 
-	if !session.partner.Equal(rootCert.GetPublicKey()) {
+	if !session.partnerKey.Equal(rootCert.GetPublicKey()) {
 		return nil, fmt.Errorf("root public key does not match certificate")
 	}
 
@@ -170,11 +170,11 @@ func SetupServer(conn *RpcConnection, rootCredentials *pki.PermanentCredentials,
 		return fmt.Errorf("error reading message: %w", err)
 	}
 
-	if !session.partner.Equal(req.ServerPubKey) {
+	if !session.partnerKey.Equal(req.ServerPubKey) {
 		return fmt.Errorf("server public key does not match sender")
 	}
 
-	session.partner = req.ServerPubKey
+	session.partnerKey = req.ServerPubKey
 
 	log.Printf("Received request with pubkey: %s\n", req.ServerPubKey)
 

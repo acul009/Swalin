@@ -73,7 +73,7 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 		return fmt.Errorf("error exchanging keys: %w", err)
 	}
 
-	encodedKey := session.partner.Base64Encode()
+	encodedKey := session.partnerKey.Base64Encode()
 
 	m.mutex.Lock()
 	_, ok := m.waitingEnrollments.Get(encodedKey)
@@ -87,7 +87,7 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 			session:    session,
 			mutex:      sync.Mutex{},
 			enrollment: Enrollment{
-				PublicKey:   session.partner,
+				PublicKey:   session.partnerKey,
 				Addr:        conn.connection.RemoteAddr().String(),
 				RequestTime: time.Now(),
 			},
