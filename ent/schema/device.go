@@ -23,7 +23,7 @@ func (Device) Fields() []ent.Field {
 // Edges of the Device.
 func (Device) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("tunnel_config", TunnelConfig.Type).Ref("device").Unique(),
+		edge.To("configs", HostConfig.Type),
 	}
 }
 

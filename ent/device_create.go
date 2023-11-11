@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"rahnit-rmm/ent/device"
-	"rahnit-rmm/ent/tunnelconfig"
+	"rahnit-rmm/ent/hostconfig"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -32,23 +32,19 @@ func (dc *DeviceCreate) SetCertificate(s string) *DeviceCreate {
 	return dc
 }
 
-// SetTunnelConfigID sets the "tunnel_config" edge to the TunnelConfig entity by ID.
-func (dc *DeviceCreate) SetTunnelConfigID(id int) *DeviceCreate {
-	dc.mutation.SetTunnelConfigID(id)
+// AddConfigIDs adds the "configs" edge to the HostConfig entity by IDs.
+func (dc *DeviceCreate) AddConfigIDs(ids ...int) *DeviceCreate {
+	dc.mutation.AddConfigIDs(ids...)
 	return dc
 }
 
-// SetNillableTunnelConfigID sets the "tunnel_config" edge to the TunnelConfig entity by ID if the given value is not nil.
-func (dc *DeviceCreate) SetNillableTunnelConfigID(id *int) *DeviceCreate {
-	if id != nil {
-		dc = dc.SetTunnelConfigID(*id)
+// AddConfigs adds the "configs" edges to the HostConfig entity.
+func (dc *DeviceCreate) AddConfigs(h ...*HostConfig) *DeviceCreate {
+	ids := make([]int, len(h))
+	for i := range h {
+		ids[i] = h[i].ID
 	}
-	return dc
-}
-
-// SetTunnelConfig sets the "tunnel_config" edge to the TunnelConfig entity.
-func (dc *DeviceCreate) SetTunnelConfig(t *TunnelConfig) *DeviceCreate {
-	return dc.SetTunnelConfigID(t.ID)
+	return dc.AddConfigIDs(ids...)
 }
 
 // Mutation returns the DeviceMutation object of the builder.
@@ -135,21 +131,20 @@ func (dc *DeviceCreate) createSpec() (*Device, *sqlgraph.CreateSpec) {
 		_spec.SetField(device.FieldCertificate, field.TypeString, value)
 		_node.Certificate = value
 	}
-	if nodes := dc.mutation.TunnelConfigIDs(); len(nodes) > 0 {
+	if nodes := dc.mutation.ConfigsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: true,
-			Table:   device.TunnelConfigTable,
-			Columns: []string{device.TunnelConfigColumn},
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   device.ConfigsTable,
+			Columns: []string{device.ConfigsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tunnelconfig.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(hostconfig.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.tunnel_config_device = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

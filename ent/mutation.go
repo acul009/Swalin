@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"rahnit-rmm/ent/device"
+	"rahnit-rmm/ent/hostconfig"
 	"rahnit-rmm/ent/predicate"
 	"rahnit-rmm/ent/revocation"
-	"rahnit-rmm/ent/tunnelconfig"
 	"rahnit-rmm/ent/user"
 	"rahnit-rmm/util"
 	"sync"
@@ -27,26 +27,27 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeDevice       = "Device"
-	TypeRevocation   = "Revocation"
-	TypeTunnelConfig = "TunnelConfig"
-	TypeUser         = "User"
+	TypeDevice     = "Device"
+	TypeHostConfig = "HostConfig"
+	TypeRevocation = "Revocation"
+	TypeUser       = "User"
 )
 
 // DeviceMutation represents an operation that mutates the Device nodes in the graph.
 type DeviceMutation struct {
 	config
-	op                   Op
-	typ                  string
-	id                   *int
-	public_key           *string
-	certificate          *string
-	clearedFields        map[string]struct{}
-	tunnel_config        *int
-	clearedtunnel_config bool
-	done                 bool
-	oldValue             func(context.Context) (*Device, error)
-	predicates           []predicate.Device
+	op             Op
+	typ            string
+	id             *int
+	public_key     *string
+	certificate    *string
+	clearedFields  map[string]struct{}
+	configs        map[int]struct{}
+	removedconfigs map[int]struct{}
+	clearedconfigs bool
+	done           bool
+	oldValue       func(context.Context) (*Device, error)
+	predicates     []predicate.Device
 }
 
 var _ ent.Mutation = (*DeviceMutation)(nil)
@@ -219,43 +220,58 @@ func (m *DeviceMutation) ResetCertificate() {
 	m.certificate = nil
 }
 
-// SetTunnelConfigID sets the "tunnel_config" edge to the TunnelConfig entity by id.
-func (m *DeviceMutation) SetTunnelConfigID(id int) {
-	m.tunnel_config = &id
+// AddConfigIDs adds the "configs" edge to the HostConfig entity by ids.
+func (m *DeviceMutation) AddConfigIDs(ids ...int) {
+	if m.configs == nil {
+		m.configs = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.configs[ids[i]] = struct{}{}
+	}
 }
 
-// ClearTunnelConfig clears the "tunnel_config" edge to the TunnelConfig entity.
-func (m *DeviceMutation) ClearTunnelConfig() {
-	m.clearedtunnel_config = true
+// ClearConfigs clears the "configs" edge to the HostConfig entity.
+func (m *DeviceMutation) ClearConfigs() {
+	m.clearedconfigs = true
 }
 
-// TunnelConfigCleared reports if the "tunnel_config" edge to the TunnelConfig entity was cleared.
-func (m *DeviceMutation) TunnelConfigCleared() bool {
-	return m.clearedtunnel_config
+// ConfigsCleared reports if the "configs" edge to the HostConfig entity was cleared.
+func (m *DeviceMutation) ConfigsCleared() bool {
+	return m.clearedconfigs
 }
 
-// TunnelConfigID returns the "tunnel_config" edge ID in the mutation.
-func (m *DeviceMutation) TunnelConfigID() (id int, exists bool) {
-	if m.tunnel_config != nil {
-		return *m.tunnel_config, true
+// RemoveConfigIDs removes the "configs" edge to the HostConfig entity by IDs.
+func (m *DeviceMutation) RemoveConfigIDs(ids ...int) {
+	if m.removedconfigs == nil {
+		m.removedconfigs = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.configs, ids[i])
+		m.removedconfigs[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedConfigs returns the removed IDs of the "configs" edge to the HostConfig entity.
+func (m *DeviceMutation) RemovedConfigsIDs() (ids []int) {
+	for id := range m.removedconfigs {
+		ids = append(ids, id)
 	}
 	return
 }
 
-// TunnelConfigIDs returns the "tunnel_config" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// TunnelConfigID instead. It exists only for internal usage by the builders.
-func (m *DeviceMutation) TunnelConfigIDs() (ids []int) {
-	if id := m.tunnel_config; id != nil {
-		ids = append(ids, *id)
+// ConfigsIDs returns the "configs" edge IDs in the mutation.
+func (m *DeviceMutation) ConfigsIDs() (ids []int) {
+	for id := range m.configs {
+		ids = append(ids, id)
 	}
 	return
 }
 
-// ResetTunnelConfig resets all changes to the "tunnel_config" edge.
-func (m *DeviceMutation) ResetTunnelConfig() {
-	m.tunnel_config = nil
-	m.clearedtunnel_config = false
+// ResetConfigs resets all changes to the "configs" edge.
+func (m *DeviceMutation) ResetConfigs() {
+	m.configs = nil
+	m.clearedconfigs = false
+	m.removedconfigs = nil
 }
 
 // Where appends a list predicates to the DeviceMutation builder.
@@ -409,8 +425,8 @@ func (m *DeviceMutation) ResetField(name string) error {
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *DeviceMutation) AddedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.tunnel_config != nil {
-		edges = append(edges, device.EdgeTunnelConfig)
+	if m.configs != nil {
+		edges = append(edges, device.EdgeConfigs)
 	}
 	return edges
 }
@@ -419,10 +435,12 @@ func (m *DeviceMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *DeviceMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case device.EdgeTunnelConfig:
-		if id := m.tunnel_config; id != nil {
-			return []ent.Value{*id}
+	case device.EdgeConfigs:
+		ids := make([]ent.Value, 0, len(m.configs))
+		for id := range m.configs {
+			ids = append(ids, id)
 		}
+		return ids
 	}
 	return nil
 }
@@ -430,20 +448,31 @@ func (m *DeviceMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *DeviceMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 1)
+	if m.removedconfigs != nil {
+		edges = append(edges, device.EdgeConfigs)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *DeviceMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case device.EdgeConfigs:
+		ids := make([]ent.Value, 0, len(m.removedconfigs))
+		for id := range m.removedconfigs {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *DeviceMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.clearedtunnel_config {
-		edges = append(edges, device.EdgeTunnelConfig)
+	if m.clearedconfigs {
+		edges = append(edges, device.EdgeConfigs)
 	}
 	return edges
 }
@@ -452,8 +481,8 @@ func (m *DeviceMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *DeviceMutation) EdgeCleared(name string) bool {
 	switch name {
-	case device.EdgeTunnelConfig:
-		return m.clearedtunnel_config
+	case device.EdgeConfigs:
+		return m.clearedconfigs
 	}
 	return false
 }
@@ -462,9 +491,6 @@ func (m *DeviceMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *DeviceMutation) ClearEdge(name string) error {
 	switch name {
-	case device.EdgeTunnelConfig:
-		m.ClearTunnelConfig()
-		return nil
 	}
 	return fmt.Errorf("unknown Device unique edge %s", name)
 }
@@ -473,11 +499,458 @@ func (m *DeviceMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *DeviceMutation) ResetEdge(name string) error {
 	switch name {
-	case device.EdgeTunnelConfig:
-		m.ResetTunnelConfig()
+	case device.EdgeConfigs:
+		m.ResetConfigs()
 		return nil
 	}
 	return fmt.Errorf("unknown Device edge %s", name)
+}
+
+// HostConfigMutation represents an operation that mutates the HostConfig nodes in the graph.
+type HostConfigMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	_config       *[]byte
+	_type         *string
+	clearedFields map[string]struct{}
+	device        *int
+	cleareddevice bool
+	done          bool
+	oldValue      func(context.Context) (*HostConfig, error)
+	predicates    []predicate.HostConfig
+}
+
+var _ ent.Mutation = (*HostConfigMutation)(nil)
+
+// hostconfigOption allows management of the mutation configuration using functional options.
+type hostconfigOption func(*HostConfigMutation)
+
+// newHostConfigMutation creates new mutation for the HostConfig entity.
+func newHostConfigMutation(c config, op Op, opts ...hostconfigOption) *HostConfigMutation {
+	m := &HostConfigMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeHostConfig,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withHostConfigID sets the ID field of the mutation.
+func withHostConfigID(id int) hostconfigOption {
+	return func(m *HostConfigMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *HostConfig
+		)
+		m.oldValue = func(ctx context.Context) (*HostConfig, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().HostConfig.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withHostConfig sets the old HostConfig of the mutation.
+func withHostConfig(node *HostConfig) hostconfigOption {
+	return func(m *HostConfigMutation) {
+		m.oldValue = func(context.Context) (*HostConfig, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m HostConfigMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m HostConfigMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *HostConfigMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *HostConfigMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().HostConfig.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetConfig sets the "config" field.
+func (m *HostConfigMutation) SetConfig(b []byte) {
+	m._config = &b
+}
+
+// Config returns the value of the "config" field in the mutation.
+func (m *HostConfigMutation) Config() (r []byte, exists bool) {
+	v := m._config
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConfig returns the old "config" field's value of the HostConfig entity.
+// If the HostConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *HostConfigMutation) OldConfig(ctx context.Context) (v []byte, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConfig is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConfig requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConfig: %w", err)
+	}
+	return oldValue.Config, nil
+}
+
+// ResetConfig resets all changes to the "config" field.
+func (m *HostConfigMutation) ResetConfig() {
+	m._config = nil
+}
+
+// SetType sets the "type" field.
+func (m *HostConfigMutation) SetType(s string) {
+	m._type = &s
+}
+
+// GetType returns the value of the "type" field in the mutation.
+func (m *HostConfigMutation) GetType() (r string, exists bool) {
+	v := m._type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldType returns the old "type" field's value of the HostConfig entity.
+// If the HostConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *HostConfigMutation) OldType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldType: %w", err)
+	}
+	return oldValue.Type, nil
+}
+
+// ResetType resets all changes to the "type" field.
+func (m *HostConfigMutation) ResetType() {
+	m._type = nil
+}
+
+// SetDeviceID sets the "device" edge to the Device entity by id.
+func (m *HostConfigMutation) SetDeviceID(id int) {
+	m.device = &id
+}
+
+// ClearDevice clears the "device" edge to the Device entity.
+func (m *HostConfigMutation) ClearDevice() {
+	m.cleareddevice = true
+}
+
+// DeviceCleared reports if the "device" edge to the Device entity was cleared.
+func (m *HostConfigMutation) DeviceCleared() bool {
+	return m.cleareddevice
+}
+
+// DeviceID returns the "device" edge ID in the mutation.
+func (m *HostConfigMutation) DeviceID() (id int, exists bool) {
+	if m.device != nil {
+		return *m.device, true
+	}
+	return
+}
+
+// DeviceIDs returns the "device" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DeviceID instead. It exists only for internal usage by the builders.
+func (m *HostConfigMutation) DeviceIDs() (ids []int) {
+	if id := m.device; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDevice resets all changes to the "device" edge.
+func (m *HostConfigMutation) ResetDevice() {
+	m.device = nil
+	m.cleareddevice = false
+}
+
+// Where appends a list predicates to the HostConfigMutation builder.
+func (m *HostConfigMutation) Where(ps ...predicate.HostConfig) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the HostConfigMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *HostConfigMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.HostConfig, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *HostConfigMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *HostConfigMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (HostConfig).
+func (m *HostConfigMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *HostConfigMutation) Fields() []string {
+	fields := make([]string, 0, 2)
+	if m._config != nil {
+		fields = append(fields, hostconfig.FieldConfig)
+	}
+	if m._type != nil {
+		fields = append(fields, hostconfig.FieldType)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *HostConfigMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case hostconfig.FieldConfig:
+		return m.Config()
+	case hostconfig.FieldType:
+		return m.GetType()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *HostConfigMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case hostconfig.FieldConfig:
+		return m.OldConfig(ctx)
+	case hostconfig.FieldType:
+		return m.OldType(ctx)
+	}
+	return nil, fmt.Errorf("unknown HostConfig field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *HostConfigMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case hostconfig.FieldConfig:
+		v, ok := value.([]byte)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConfig(v)
+		return nil
+	case hostconfig.FieldType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetType(v)
+		return nil
+	}
+	return fmt.Errorf("unknown HostConfig field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *HostConfigMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *HostConfigMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *HostConfigMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown HostConfig numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *HostConfigMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *HostConfigMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *HostConfigMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown HostConfig nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *HostConfigMutation) ResetField(name string) error {
+	switch name {
+	case hostconfig.FieldConfig:
+		m.ResetConfig()
+		return nil
+	case hostconfig.FieldType:
+		m.ResetType()
+		return nil
+	}
+	return fmt.Errorf("unknown HostConfig field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *HostConfigMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.device != nil {
+		edges = append(edges, hostconfig.EdgeDevice)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *HostConfigMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case hostconfig.EdgeDevice:
+		if id := m.device; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *HostConfigMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *HostConfigMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *HostConfigMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleareddevice {
+		edges = append(edges, hostconfig.EdgeDevice)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *HostConfigMutation) EdgeCleared(name string) bool {
+	switch name {
+	case hostconfig.EdgeDevice:
+		return m.cleareddevice
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *HostConfigMutation) ClearEdge(name string) error {
+	switch name {
+	case hostconfig.EdgeDevice:
+		m.ClearDevice()
+		return nil
+	}
+	return fmt.Errorf("unknown HostConfig unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *HostConfigMutation) ResetEdge(name string) error {
+	switch name {
+	case hostconfig.EdgeDevice:
+		m.ResetDevice()
+		return nil
+	}
+	return fmt.Errorf("unknown HostConfig edge %s", name)
 }
 
 // RevocationMutation represents an operation that mutates the Revocation nodes in the graph.
@@ -948,399 +1421,6 @@ func (m *RevocationMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *RevocationMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Revocation edge %s", name)
-}
-
-// TunnelConfigMutation represents an operation that mutates the TunnelConfig nodes in the graph.
-type TunnelConfigMutation struct {
-	config
-	op            Op
-	typ           string
-	id            *int
-	_config       *[]byte
-	clearedFields map[string]struct{}
-	device        *int
-	cleareddevice bool
-	done          bool
-	oldValue      func(context.Context) (*TunnelConfig, error)
-	predicates    []predicate.TunnelConfig
-}
-
-var _ ent.Mutation = (*TunnelConfigMutation)(nil)
-
-// tunnelconfigOption allows management of the mutation configuration using functional options.
-type tunnelconfigOption func(*TunnelConfigMutation)
-
-// newTunnelConfigMutation creates new mutation for the TunnelConfig entity.
-func newTunnelConfigMutation(c config, op Op, opts ...tunnelconfigOption) *TunnelConfigMutation {
-	m := &TunnelConfigMutation{
-		config:        c,
-		op:            op,
-		typ:           TypeTunnelConfig,
-		clearedFields: make(map[string]struct{}),
-	}
-	for _, opt := range opts {
-		opt(m)
-	}
-	return m
-}
-
-// withTunnelConfigID sets the ID field of the mutation.
-func withTunnelConfigID(id int) tunnelconfigOption {
-	return func(m *TunnelConfigMutation) {
-		var (
-			err   error
-			once  sync.Once
-			value *TunnelConfig
-		)
-		m.oldValue = func(ctx context.Context) (*TunnelConfig, error) {
-			once.Do(func() {
-				if m.done {
-					err = errors.New("querying old values post mutation is not allowed")
-				} else {
-					value, err = m.Client().TunnelConfig.Get(ctx, id)
-				}
-			})
-			return value, err
-		}
-		m.id = &id
-	}
-}
-
-// withTunnelConfig sets the old TunnelConfig of the mutation.
-func withTunnelConfig(node *TunnelConfig) tunnelconfigOption {
-	return func(m *TunnelConfigMutation) {
-		m.oldValue = func(context.Context) (*TunnelConfig, error) {
-			return node, nil
-		}
-		m.id = &node.ID
-	}
-}
-
-// Client returns a new `ent.Client` from the mutation. If the mutation was
-// executed in a transaction (ent.Tx), a transactional client is returned.
-func (m TunnelConfigMutation) Client() *Client {
-	client := &Client{config: m.config}
-	client.init()
-	return client
-}
-
-// Tx returns an `ent.Tx` for mutations that were executed in transactions;
-// it returns an error otherwise.
-func (m TunnelConfigMutation) Tx() (*Tx, error) {
-	if _, ok := m.driver.(*txDriver); !ok {
-		return nil, errors.New("ent: mutation is not running in a transaction")
-	}
-	tx := &Tx{config: m.config}
-	tx.init()
-	return tx, nil
-}
-
-// ID returns the ID value in the mutation. Note that the ID is only available
-// if it was provided to the builder or after it was returned from the database.
-func (m *TunnelConfigMutation) ID() (id int, exists bool) {
-	if m.id == nil {
-		return
-	}
-	return *m.id, true
-}
-
-// IDs queries the database and returns the entity ids that match the mutation's predicate.
-// That means, if the mutation is applied within a transaction with an isolation level such
-// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
-// or updated by the mutation.
-func (m *TunnelConfigMutation) IDs(ctx context.Context) ([]int, error) {
-	switch {
-	case m.op.Is(OpUpdateOne | OpDeleteOne):
-		id, exists := m.ID()
-		if exists {
-			return []int{id}, nil
-		}
-		fallthrough
-	case m.op.Is(OpUpdate | OpDelete):
-		return m.Client().TunnelConfig.Query().Where(m.predicates...).IDs(ctx)
-	default:
-		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
-	}
-}
-
-// SetConfig sets the "config" field.
-func (m *TunnelConfigMutation) SetConfig(b []byte) {
-	m._config = &b
-}
-
-// Config returns the value of the "config" field in the mutation.
-func (m *TunnelConfigMutation) Config() (r []byte, exists bool) {
-	v := m._config
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldConfig returns the old "config" field's value of the TunnelConfig entity.
-// If the TunnelConfig object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *TunnelConfigMutation) OldConfig(ctx context.Context) (v []byte, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldConfig is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldConfig requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldConfig: %w", err)
-	}
-	return oldValue.Config, nil
-}
-
-// ResetConfig resets all changes to the "config" field.
-func (m *TunnelConfigMutation) ResetConfig() {
-	m._config = nil
-}
-
-// SetDeviceID sets the "device" edge to the Device entity by id.
-func (m *TunnelConfigMutation) SetDeviceID(id int) {
-	m.device = &id
-}
-
-// ClearDevice clears the "device" edge to the Device entity.
-func (m *TunnelConfigMutation) ClearDevice() {
-	m.cleareddevice = true
-}
-
-// DeviceCleared reports if the "device" edge to the Device entity was cleared.
-func (m *TunnelConfigMutation) DeviceCleared() bool {
-	return m.cleareddevice
-}
-
-// DeviceID returns the "device" edge ID in the mutation.
-func (m *TunnelConfigMutation) DeviceID() (id int, exists bool) {
-	if m.device != nil {
-		return *m.device, true
-	}
-	return
-}
-
-// DeviceIDs returns the "device" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// DeviceID instead. It exists only for internal usage by the builders.
-func (m *TunnelConfigMutation) DeviceIDs() (ids []int) {
-	if id := m.device; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetDevice resets all changes to the "device" edge.
-func (m *TunnelConfigMutation) ResetDevice() {
-	m.device = nil
-	m.cleareddevice = false
-}
-
-// Where appends a list predicates to the TunnelConfigMutation builder.
-func (m *TunnelConfigMutation) Where(ps ...predicate.TunnelConfig) {
-	m.predicates = append(m.predicates, ps...)
-}
-
-// WhereP appends storage-level predicates to the TunnelConfigMutation builder. Using this method,
-// users can use type-assertion to append predicates that do not depend on any generated package.
-func (m *TunnelConfigMutation) WhereP(ps ...func(*sql.Selector)) {
-	p := make([]predicate.TunnelConfig, len(ps))
-	for i := range ps {
-		p[i] = ps[i]
-	}
-	m.Where(p...)
-}
-
-// Op returns the operation name.
-func (m *TunnelConfigMutation) Op() Op {
-	return m.op
-}
-
-// SetOp allows setting the mutation operation.
-func (m *TunnelConfigMutation) SetOp(op Op) {
-	m.op = op
-}
-
-// Type returns the node type of this mutation (TunnelConfig).
-func (m *TunnelConfigMutation) Type() string {
-	return m.typ
-}
-
-// Fields returns all fields that were changed during this mutation. Note that in
-// order to get all numeric fields that were incremented/decremented, call
-// AddedFields().
-func (m *TunnelConfigMutation) Fields() []string {
-	fields := make([]string, 0, 1)
-	if m._config != nil {
-		fields = append(fields, tunnelconfig.FieldConfig)
-	}
-	return fields
-}
-
-// Field returns the value of a field with the given name. The second boolean
-// return value indicates that this field was not set, or was not defined in the
-// schema.
-func (m *TunnelConfigMutation) Field(name string) (ent.Value, bool) {
-	switch name {
-	case tunnelconfig.FieldConfig:
-		return m.Config()
-	}
-	return nil, false
-}
-
-// OldField returns the old value of the field from the database. An error is
-// returned if the mutation operation is not UpdateOne, or the query to the
-// database failed.
-func (m *TunnelConfigMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
-	switch name {
-	case tunnelconfig.FieldConfig:
-		return m.OldConfig(ctx)
-	}
-	return nil, fmt.Errorf("unknown TunnelConfig field %s", name)
-}
-
-// SetField sets the value of a field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *TunnelConfigMutation) SetField(name string, value ent.Value) error {
-	switch name {
-	case tunnelconfig.FieldConfig:
-		v, ok := value.([]byte)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetConfig(v)
-		return nil
-	}
-	return fmt.Errorf("unknown TunnelConfig field %s", name)
-}
-
-// AddedFields returns all numeric fields that were incremented/decremented during
-// this mutation.
-func (m *TunnelConfigMutation) AddedFields() []string {
-	return nil
-}
-
-// AddedField returns the numeric value that was incremented/decremented on a field
-// with the given name. The second boolean return value indicates that this field
-// was not set, or was not defined in the schema.
-func (m *TunnelConfigMutation) AddedField(name string) (ent.Value, bool) {
-	return nil, false
-}
-
-// AddField adds the value to the field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *TunnelConfigMutation) AddField(name string, value ent.Value) error {
-	switch name {
-	}
-	return fmt.Errorf("unknown TunnelConfig numeric field %s", name)
-}
-
-// ClearedFields returns all nullable fields that were cleared during this
-// mutation.
-func (m *TunnelConfigMutation) ClearedFields() []string {
-	return nil
-}
-
-// FieldCleared returns a boolean indicating if a field with the given name was
-// cleared in this mutation.
-func (m *TunnelConfigMutation) FieldCleared(name string) bool {
-	_, ok := m.clearedFields[name]
-	return ok
-}
-
-// ClearField clears the value of the field with the given name. It returns an
-// error if the field is not defined in the schema.
-func (m *TunnelConfigMutation) ClearField(name string) error {
-	return fmt.Errorf("unknown TunnelConfig nullable field %s", name)
-}
-
-// ResetField resets all changes in the mutation for the field with the given name.
-// It returns an error if the field is not defined in the schema.
-func (m *TunnelConfigMutation) ResetField(name string) error {
-	switch name {
-	case tunnelconfig.FieldConfig:
-		m.ResetConfig()
-		return nil
-	}
-	return fmt.Errorf("unknown TunnelConfig field %s", name)
-}
-
-// AddedEdges returns all edge names that were set/added in this mutation.
-func (m *TunnelConfigMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
-	if m.device != nil {
-		edges = append(edges, tunnelconfig.EdgeDevice)
-	}
-	return edges
-}
-
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
-// name in this mutation.
-func (m *TunnelConfigMutation) AddedIDs(name string) []ent.Value {
-	switch name {
-	case tunnelconfig.EdgeDevice:
-		if id := m.device; id != nil {
-			return []ent.Value{*id}
-		}
-	}
-	return nil
-}
-
-// RemovedEdges returns all edge names that were removed in this mutation.
-func (m *TunnelConfigMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
-	return edges
-}
-
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
-// the given name in this mutation.
-func (m *TunnelConfigMutation) RemovedIDs(name string) []ent.Value {
-	return nil
-}
-
-// ClearedEdges returns all edge names that were cleared in this mutation.
-func (m *TunnelConfigMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
-	if m.cleareddevice {
-		edges = append(edges, tunnelconfig.EdgeDevice)
-	}
-	return edges
-}
-
-// EdgeCleared returns a boolean which indicates if the edge with the given name
-// was cleared in this mutation.
-func (m *TunnelConfigMutation) EdgeCleared(name string) bool {
-	switch name {
-	case tunnelconfig.EdgeDevice:
-		return m.cleareddevice
-	}
-	return false
-}
-
-// ClearEdge clears the value of the edge with the given name. It returns an error
-// if that edge is not defined in the schema.
-func (m *TunnelConfigMutation) ClearEdge(name string) error {
-	switch name {
-	case tunnelconfig.EdgeDevice:
-		m.ClearDevice()
-		return nil
-	}
-	return fmt.Errorf("unknown TunnelConfig unique edge %s", name)
-}
-
-// ResetEdge resets all changes to the edge with the given name in this mutation.
-// It returns an error if the edge is not defined in the schema.
-func (m *TunnelConfigMutation) ResetEdge(name string) error {
-	switch name {
-	case tunnelconfig.EdgeDevice:
-		m.ResetDevice()
-		return nil
-	}
-	return fmt.Errorf("unknown TunnelConfig edge %s", name)
 }
 
 // UserMutation represents an operation that mutates the User nodes in the graph.

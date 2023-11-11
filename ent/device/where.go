@@ -194,21 +194,21 @@ func CertificateContainsFold(v string) predicate.Device {
 	return predicate.Device(sql.FieldContainsFold(FieldCertificate, v))
 }
 
-// HasTunnelConfig applies the HasEdge predicate on the "tunnel_config" edge.
-func HasTunnelConfig() predicate.Device {
+// HasConfigs applies the HasEdge predicate on the "configs" edge.
+func HasConfigs() predicate.Device {
 	return predicate.Device(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, true, TunnelConfigTable, TunnelConfigColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, ConfigsTable, ConfigsColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasTunnelConfigWith applies the HasEdge predicate on the "tunnel_config" edge with a given conditions (other predicates).
-func HasTunnelConfigWith(preds ...predicate.TunnelConfig) predicate.Device {
+// HasConfigsWith applies the HasEdge predicate on the "configs" edge with a given conditions (other predicates).
+func HasConfigsWith(preds ...predicate.HostConfig) predicate.Device {
 	return predicate.Device(func(s *sql.Selector) {
-		step := newTunnelConfigStep()
+		step := newConfigsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

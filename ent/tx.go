@@ -14,10 +14,10 @@ type Tx struct {
 	config
 	// Device is the client for interacting with the Device builders.
 	Device *DeviceClient
+	// HostConfig is the client for interacting with the HostConfig builders.
+	HostConfig *HostConfigClient
 	// Revocation is the client for interacting with the Revocation builders.
 	Revocation *RevocationClient
-	// TunnelConfig is the client for interacting with the TunnelConfig builders.
-	TunnelConfig *TunnelConfigClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -152,8 +152,8 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Device = NewDeviceClient(tx.config)
+	tx.HostConfig = NewHostConfigClient(tx.config)
 	tx.Revocation = NewRevocationClient(tx.config)
-	tx.TunnelConfig = NewTunnelConfigClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 

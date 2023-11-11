@@ -4,11 +4,12 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 	"rahnit-rmm/ent/device"
+	"rahnit-rmm/ent/hostconfig"
 	"rahnit-rmm/ent/predicate"
-	"rahnit-rmm/ent/tunnelconfig"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -18,12 +19,11 @@ import (
 // DeviceQuery is the builder for querying Device entities.
 type DeviceQuery struct {
 	config
-	ctx              *QueryContext
-	order            []device.OrderOption
-	inters           []Interceptor
-	predicates       []predicate.Device
-	withTunnelConfig *TunnelConfigQuery
-	withFKs          bool
+	ctx         *QueryContext
+	order       []device.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.Device
+	withConfigs *HostConfigQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -60,9 +60,9 @@ func (dq *DeviceQuery) Order(o ...device.OrderOption) *DeviceQuery {
 	return dq
 }
 
-// QueryTunnelConfig chains the current query on the "tunnel_config" edge.
-func (dq *DeviceQuery) QueryTunnelConfig() *TunnelConfigQuery {
-	query := (&TunnelConfigClient{config: dq.config}).Query()
+// QueryConfigs chains the current query on the "configs" edge.
+func (dq *DeviceQuery) QueryConfigs() *HostConfigQuery {
+	query := (&HostConfigClient{config: dq.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := dq.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -73,8 +73,8 @@ func (dq *DeviceQuery) QueryTunnelConfig() *TunnelConfigQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(device.Table, device.FieldID, selector),
-			sqlgraph.To(tunnelconfig.Table, tunnelconfig.FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, true, device.TunnelConfigTable, device.TunnelConfigColumn),
+			sqlgraph.To(hostconfig.Table, hostconfig.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, device.ConfigsTable, device.ConfigsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(dq.driver.Dialect(), step)
 		return fromU, nil
@@ -269,26 +269,26 @@ func (dq *DeviceQuery) Clone() *DeviceQuery {
 		return nil
 	}
 	return &DeviceQuery{
-		config:           dq.config,
-		ctx:              dq.ctx.Clone(),
-		order:            append([]device.OrderOption{}, dq.order...),
-		inters:           append([]Interceptor{}, dq.inters...),
-		predicates:       append([]predicate.Device{}, dq.predicates...),
-		withTunnelConfig: dq.withTunnelConfig.Clone(),
+		config:      dq.config,
+		ctx:         dq.ctx.Clone(),
+		order:       append([]device.OrderOption{}, dq.order...),
+		inters:      append([]Interceptor{}, dq.inters...),
+		predicates:  append([]predicate.Device{}, dq.predicates...),
+		withConfigs: dq.withConfigs.Clone(),
 		// clone intermediate query.
 		sql:  dq.sql.Clone(),
 		path: dq.path,
 	}
 }
 
-// WithTunnelConfig tells the query-builder to eager-load the nodes that are connected to
-// the "tunnel_config" edge. The optional arguments are used to configure the query builder of the edge.
-func (dq *DeviceQuery) WithTunnelConfig(opts ...func(*TunnelConfigQuery)) *DeviceQuery {
-	query := (&TunnelConfigClient{config: dq.config}).Query()
+// WithConfigs tells the query-builder to eager-load the nodes that are connected to
+// the "configs" edge. The optional arguments are used to configure the query builder of the edge.
+func (dq *DeviceQuery) WithConfigs(opts ...func(*HostConfigQuery)) *DeviceQuery {
+	query := (&HostConfigClient{config: dq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	dq.withTunnelConfig = query
+	dq.withConfigs = query
 	return dq
 }
 
@@ -369,18 +369,11 @@ func (dq *DeviceQuery) prepareQuery(ctx context.Context) error {
 func (dq *DeviceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Device, error) {
 	var (
 		nodes       = []*Device{}
-		withFKs     = dq.withFKs
 		_spec       = dq.querySpec()
 		loadedTypes = [1]bool{
-			dq.withTunnelConfig != nil,
+			dq.withConfigs != nil,
 		}
 	)
-	if dq.withTunnelConfig != nil {
-		withFKs = true
-	}
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, device.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Device).scanValues(nil, columns)
 	}
@@ -399,44 +392,44 @@ func (dq *DeviceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Devic
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := dq.withTunnelConfig; query != nil {
-		if err := dq.loadTunnelConfig(ctx, query, nodes, nil,
-			func(n *Device, e *TunnelConfig) { n.Edges.TunnelConfig = e }); err != nil {
+	if query := dq.withConfigs; query != nil {
+		if err := dq.loadConfigs(ctx, query, nodes,
+			func(n *Device) { n.Edges.Configs = []*HostConfig{} },
+			func(n *Device, e *HostConfig) { n.Edges.Configs = append(n.Edges.Configs, e) }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (dq *DeviceQuery) loadTunnelConfig(ctx context.Context, query *TunnelConfigQuery, nodes []*Device, init func(*Device), assign func(*Device, *TunnelConfig)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*Device)
+func (dq *DeviceQuery) loadConfigs(ctx context.Context, query *HostConfigQuery, nodes []*Device, init func(*Device), assign func(*Device, *HostConfig)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Device)
 	for i := range nodes {
-		if nodes[i].tunnel_config_device == nil {
-			continue
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
 		}
-		fk := *nodes[i].tunnel_config_device
-		if _, ok := nodeids[fk]; !ok {
-			ids = append(ids, fk)
-		}
-		nodeids[fk] = append(nodeids[fk], nodes[i])
 	}
-	if len(ids) == 0 {
-		return nil
-	}
-	query.Where(tunnelconfig.IDIn(ids...))
+	query.withFKs = true
+	query.Where(predicate.HostConfig(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(device.ConfigsColumn), fks...))
+	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
+		fk := n.device_configs
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "device_configs" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "tunnel_config_device" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "device_configs" returned %v for node %v`, *fk, n.ID)
 		}
-		for i := range nodes {
-			assign(nodes[i], n)
-		}
+		assign(node, n)
 	}
 	return nil
 }

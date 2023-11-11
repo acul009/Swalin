@@ -4,9 +4,9 @@ package ent
 
 import (
 	"rahnit-rmm/ent/device"
+	"rahnit-rmm/ent/hostconfig"
 	"rahnit-rmm/ent/revocation"
 	"rahnit-rmm/ent/schema"
-	"rahnit-rmm/ent/tunnelconfig"
 	"rahnit-rmm/ent/user"
 )
 
@@ -24,18 +24,22 @@ func init() {
 	deviceDescCertificate := deviceFields[1].Descriptor()
 	// device.CertificateValidator is a validator for the "certificate" field. It is called by the builders before save.
 	device.CertificateValidator = deviceDescCertificate.Validators[0].(func(string) error)
+	hostconfigFields := schema.HostConfig{}.Fields()
+	_ = hostconfigFields
+	// hostconfigDescConfig is the schema descriptor for config field.
+	hostconfigDescConfig := hostconfigFields[0].Descriptor()
+	// hostconfig.ConfigValidator is a validator for the "config" field. It is called by the builders before save.
+	hostconfig.ConfigValidator = hostconfigDescConfig.Validators[0].(func([]byte) error)
+	// hostconfigDescType is the schema descriptor for type field.
+	hostconfigDescType := hostconfigFields[1].Descriptor()
+	// hostconfig.TypeValidator is a validator for the "type" field. It is called by the builders before save.
+	hostconfig.TypeValidator = hostconfigDescType.Validators[0].(func(string) error)
 	revocationFields := schema.Revocation{}.Fields()
 	_ = revocationFields
 	// revocationDescHash is the schema descriptor for hash field.
 	revocationDescHash := revocationFields[1].Descriptor()
 	// revocation.HashValidator is a validator for the "hash" field. It is called by the builders before save.
 	revocation.HashValidator = revocationDescHash.Validators[0].(func(string) error)
-	tunnelconfigFields := schema.TunnelConfig{}.Fields()
-	_ = tunnelconfigFields
-	// tunnelconfigDescConfig is the schema descriptor for config field.
-	tunnelconfigDescConfig := tunnelconfigFields[0].Descriptor()
-	// tunnelconfig.ConfigValidator is a validator for the "config" field. It is called by the builders before save.
-	tunnelconfig.ConfigValidator = tunnelconfigDescConfig.Validators[0].(func([]byte) error)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescUsername is the schema descriptor for username field.

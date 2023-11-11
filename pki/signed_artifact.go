@@ -6,16 +6,16 @@ import (
 	"log"
 )
 
-type sArtifactPayload interface {
+type ArtifactPayload interface {
 	MayPublish(*Certificate) bool
 }
 
-type SignedArtifact[T sArtifactPayload] struct {
+type SignedArtifact[T ArtifactPayload] struct {
 	blob     SignedBlob
 	artifact T
 }
 
-func NewSignedArtifact[T sArtifactPayload](credentials *PermanentCredentials, artifact T) (*SignedArtifact[T], error) {
+func NewSignedArtifact[T ArtifactPayload](credentials *PermanentCredentials, artifact T) (*SignedArtifact[T], error) {
 
 	cert, err := credentials.GetCertificate()
 	if err != nil {
@@ -42,7 +42,7 @@ func NewSignedArtifact[T sArtifactPayload](credentials *PermanentCredentials, ar
 	}, nil
 }
 
-func LoadSignedArtifact[T sArtifactPayload](raw []byte, verifier Verifier, target T) (*SignedArtifact[T], error) {
+func LoadSignedArtifact[T ArtifactPayload](raw []byte, verifier Verifier, target T) (*SignedArtifact[T], error) {
 	blob, err := LoadSignedBlob(raw, verifier)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load blob: %w", err)

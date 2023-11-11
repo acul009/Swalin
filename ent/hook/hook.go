@@ -20,6 +20,18 @@ func (f DeviceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DeviceMutation", m)
 }
 
+// The HostConfigFunc type is an adapter to allow the use of ordinary
+// function as HostConfig mutator.
+type HostConfigFunc func(context.Context, *ent.HostConfigMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f HostConfigFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.HostConfigMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.HostConfigMutation", m)
+}
+
 // The RevocationFunc type is an adapter to allow the use of ordinary
 // function as Revocation mutator.
 type RevocationFunc func(context.Context, *ent.RevocationMutation) (ent.Value, error)
@@ -30,18 +42,6 @@ func (f RevocationFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, 
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RevocationMutation", m)
-}
-
-// The TunnelConfigFunc type is an adapter to allow the use of ordinary
-// function as TunnelConfig mutator.
-type TunnelConfigFunc func(context.Context, *ent.TunnelConfigMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f TunnelConfigFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.TunnelConfigMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TunnelConfigMutation", m)
 }
 
 // The UserFunc type is an adapter to allow the use of ordinary

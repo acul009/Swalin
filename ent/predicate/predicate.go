@@ -9,11 +9,11 @@ import (
 // Device is the predicate function for device builders.
 type Device func(*sql.Selector)
 
+// HostConfig is the predicate function for hostconfig builders.
+type HostConfig func(*sql.Selector)
+
 // Revocation is the predicate function for revocation builders.
 type Revocation func(*sql.Selector)
-
-// TunnelConfig is the predicate function for tunnelconfig builders.
-type TunnelConfig func(*sql.Selector)
 
 // User is the predicate function for user builders.
 type User func(*sql.Selector)

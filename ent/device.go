@@ -5,7 +5,6 @@ package ent
 import (
 	"fmt"
 	"rahnit-rmm/ent/device"
-	"rahnit-rmm/ent/tunnelconfig"
 	"strings"
 
 	"entgo.io/ent"
@@ -23,31 +22,26 @@ type Device struct {
 	Certificate string `json:"certificate,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DeviceQuery when eager-loading is set.
-	Edges                DeviceEdges `json:"edges"`
-	tunnel_config_device *int
-	selectValues         sql.SelectValues
+	Edges        DeviceEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // DeviceEdges holds the relations/edges for other nodes in the graph.
 type DeviceEdges struct {
-	// TunnelConfig holds the value of the tunnel_config edge.
-	TunnelConfig *TunnelConfig `json:"tunnel_config,omitempty"`
+	// Configs holds the value of the configs edge.
+	Configs []*HostConfig `json:"configs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
 }
 
-// TunnelConfigOrErr returns the TunnelConfig value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e DeviceEdges) TunnelConfigOrErr() (*TunnelConfig, error) {
+// ConfigsOrErr returns the Configs value or an error if the edge
+// was not loaded in eager-loading.
+func (e DeviceEdges) ConfigsOrErr() ([]*HostConfig, error) {
 	if e.loadedTypes[0] {
-		if e.TunnelConfig == nil {
-			// Edge was loaded but was not found.
-			return nil, &NotFoundError{label: tunnelconfig.Label}
-		}
-		return e.TunnelConfig, nil
+		return e.Configs, nil
 	}
-	return nil, &NotLoadedError{edge: "tunnel_config"}
+	return nil, &NotLoadedError{edge: "configs"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -59,8 +53,6 @@ func (*Device) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case device.FieldPublicKey, device.FieldCertificate:
 			values[i] = new(sql.NullString)
-		case device.ForeignKeys[0]: // tunnel_config_device
-			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -94,13 +86,6 @@ func (d *Device) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				d.Certificate = value.String
 			}
-		case device.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field tunnel_config_device", value)
-			} else if value.Valid {
-				d.tunnel_config_device = new(int)
-				*d.tunnel_config_device = int(value.Int64)
-			}
 		default:
 			d.selectValues.Set(columns[i], values[i])
 		}
@@ -114,9 +99,9 @@ func (d *Device) Value(name string) (ent.Value, error) {
 	return d.selectValues.Get(name)
 }
 
-// QueryTunnelConfig queries the "tunnel_config" edge of the Device entity.
-func (d *Device) QueryTunnelConfig() *TunnelConfigQuery {
-	return NewDeviceClient(d.config).QueryTunnelConfig(d)
+// QueryConfigs queries the "configs" edge of the Device entity.
+func (d *Device) QueryConfigs() *HostConfigQuery {
+	return NewDeviceClient(d.config).QueryConfigs(d)
 }
 
 // Update returns a builder for updating this Device.

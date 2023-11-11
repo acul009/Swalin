@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"rahnit-rmm/ent/device"
+	"rahnit-rmm/ent/hostconfig"
 	"rahnit-rmm/ent/predicate"
-	"rahnit-rmm/ent/tunnelconfig"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -34,23 +34,19 @@ func (du *DeviceUpdate) SetCertificate(s string) *DeviceUpdate {
 	return du
 }
 
-// SetTunnelConfigID sets the "tunnel_config" edge to the TunnelConfig entity by ID.
-func (du *DeviceUpdate) SetTunnelConfigID(id int) *DeviceUpdate {
-	du.mutation.SetTunnelConfigID(id)
+// AddConfigIDs adds the "configs" edge to the HostConfig entity by IDs.
+func (du *DeviceUpdate) AddConfigIDs(ids ...int) *DeviceUpdate {
+	du.mutation.AddConfigIDs(ids...)
 	return du
 }
 
-// SetNillableTunnelConfigID sets the "tunnel_config" edge to the TunnelConfig entity by ID if the given value is not nil.
-func (du *DeviceUpdate) SetNillableTunnelConfigID(id *int) *DeviceUpdate {
-	if id != nil {
-		du = du.SetTunnelConfigID(*id)
+// AddConfigs adds the "configs" edges to the HostConfig entity.
+func (du *DeviceUpdate) AddConfigs(h ...*HostConfig) *DeviceUpdate {
+	ids := make([]int, len(h))
+	for i := range h {
+		ids[i] = h[i].ID
 	}
-	return du
-}
-
-// SetTunnelConfig sets the "tunnel_config" edge to the TunnelConfig entity.
-func (du *DeviceUpdate) SetTunnelConfig(t *TunnelConfig) *DeviceUpdate {
-	return du.SetTunnelConfigID(t.ID)
+	return du.AddConfigIDs(ids...)
 }
 
 // Mutation returns the DeviceMutation object of the builder.
@@ -58,10 +54,25 @@ func (du *DeviceUpdate) Mutation() *DeviceMutation {
 	return du.mutation
 }
 
-// ClearTunnelConfig clears the "tunnel_config" edge to the TunnelConfig entity.
-func (du *DeviceUpdate) ClearTunnelConfig() *DeviceUpdate {
-	du.mutation.ClearTunnelConfig()
+// ClearConfigs clears all "configs" edges to the HostConfig entity.
+func (du *DeviceUpdate) ClearConfigs() *DeviceUpdate {
+	du.mutation.ClearConfigs()
 	return du
+}
+
+// RemoveConfigIDs removes the "configs" edge to HostConfig entities by IDs.
+func (du *DeviceUpdate) RemoveConfigIDs(ids ...int) *DeviceUpdate {
+	du.mutation.RemoveConfigIDs(ids...)
+	return du
+}
+
+// RemoveConfigs removes "configs" edges to HostConfig entities.
+func (du *DeviceUpdate) RemoveConfigs(h ...*HostConfig) *DeviceUpdate {
+	ids := make([]int, len(h))
+	for i := range h {
+		ids[i] = h[i].ID
+	}
+	return du.RemoveConfigIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -116,28 +127,44 @@ func (du *DeviceUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := du.mutation.Certificate(); ok {
 		_spec.SetField(device.FieldCertificate, field.TypeString, value)
 	}
-	if du.mutation.TunnelConfigCleared() {
+	if du.mutation.ConfigsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: true,
-			Table:   device.TunnelConfigTable,
-			Columns: []string{device.TunnelConfigColumn},
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   device.ConfigsTable,
+			Columns: []string{device.ConfigsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tunnelconfig.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(hostconfig.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := du.mutation.TunnelConfigIDs(); len(nodes) > 0 {
+	if nodes := du.mutation.RemovedConfigsIDs(); len(nodes) > 0 && !du.mutation.ConfigsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: true,
-			Table:   device.TunnelConfigTable,
-			Columns: []string{device.TunnelConfigColumn},
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   device.ConfigsTable,
+			Columns: []string{device.ConfigsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tunnelconfig.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(hostconfig.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := du.mutation.ConfigsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   device.ConfigsTable,
+			Columns: []string{device.ConfigsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(hostconfig.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -171,23 +198,19 @@ func (duo *DeviceUpdateOne) SetCertificate(s string) *DeviceUpdateOne {
 	return duo
 }
 
-// SetTunnelConfigID sets the "tunnel_config" edge to the TunnelConfig entity by ID.
-func (duo *DeviceUpdateOne) SetTunnelConfigID(id int) *DeviceUpdateOne {
-	duo.mutation.SetTunnelConfigID(id)
+// AddConfigIDs adds the "configs" edge to the HostConfig entity by IDs.
+func (duo *DeviceUpdateOne) AddConfigIDs(ids ...int) *DeviceUpdateOne {
+	duo.mutation.AddConfigIDs(ids...)
 	return duo
 }
 
-// SetNillableTunnelConfigID sets the "tunnel_config" edge to the TunnelConfig entity by ID if the given value is not nil.
-func (duo *DeviceUpdateOne) SetNillableTunnelConfigID(id *int) *DeviceUpdateOne {
-	if id != nil {
-		duo = duo.SetTunnelConfigID(*id)
+// AddConfigs adds the "configs" edges to the HostConfig entity.
+func (duo *DeviceUpdateOne) AddConfigs(h ...*HostConfig) *DeviceUpdateOne {
+	ids := make([]int, len(h))
+	for i := range h {
+		ids[i] = h[i].ID
 	}
-	return duo
-}
-
-// SetTunnelConfig sets the "tunnel_config" edge to the TunnelConfig entity.
-func (duo *DeviceUpdateOne) SetTunnelConfig(t *TunnelConfig) *DeviceUpdateOne {
-	return duo.SetTunnelConfigID(t.ID)
+	return duo.AddConfigIDs(ids...)
 }
 
 // Mutation returns the DeviceMutation object of the builder.
@@ -195,10 +218,25 @@ func (duo *DeviceUpdateOne) Mutation() *DeviceMutation {
 	return duo.mutation
 }
 
-// ClearTunnelConfig clears the "tunnel_config" edge to the TunnelConfig entity.
-func (duo *DeviceUpdateOne) ClearTunnelConfig() *DeviceUpdateOne {
-	duo.mutation.ClearTunnelConfig()
+// ClearConfigs clears all "configs" edges to the HostConfig entity.
+func (duo *DeviceUpdateOne) ClearConfigs() *DeviceUpdateOne {
+	duo.mutation.ClearConfigs()
 	return duo
+}
+
+// RemoveConfigIDs removes the "configs" edge to HostConfig entities by IDs.
+func (duo *DeviceUpdateOne) RemoveConfigIDs(ids ...int) *DeviceUpdateOne {
+	duo.mutation.RemoveConfigIDs(ids...)
+	return duo
+}
+
+// RemoveConfigs removes "configs" edges to HostConfig entities.
+func (duo *DeviceUpdateOne) RemoveConfigs(h ...*HostConfig) *DeviceUpdateOne {
+	ids := make([]int, len(h))
+	for i := range h {
+		ids[i] = h[i].ID
+	}
+	return duo.RemoveConfigIDs(ids...)
 }
 
 // Where appends a list predicates to the DeviceUpdate builder.
@@ -283,28 +321,44 @@ func (duo *DeviceUpdateOne) sqlSave(ctx context.Context) (_node *Device, err err
 	if value, ok := duo.mutation.Certificate(); ok {
 		_spec.SetField(device.FieldCertificate, field.TypeString, value)
 	}
-	if duo.mutation.TunnelConfigCleared() {
+	if duo.mutation.ConfigsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: true,
-			Table:   device.TunnelConfigTable,
-			Columns: []string{device.TunnelConfigColumn},
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   device.ConfigsTable,
+			Columns: []string{device.ConfigsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tunnelconfig.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(hostconfig.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := duo.mutation.TunnelConfigIDs(); len(nodes) > 0 {
+	if nodes := duo.mutation.RemovedConfigsIDs(); len(nodes) > 0 && !duo.mutation.ConfigsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: true,
-			Table:   device.TunnelConfigTable,
-			Columns: []string{device.TunnelConfigColumn},
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   device.ConfigsTable,
+			Columns: []string{device.ConfigsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tunnelconfig.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(hostconfig.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := duo.mutation.ConfigsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   device.ConfigsTable,
+			Columns: []string{device.ConfigsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(hostconfig.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
