@@ -6,9 +6,19 @@ import (
 	"rahnit-rmm/rpc"
 )
 
+func GetHostConfigCommandHandler[T HostConfig]() rpc.RpcCommand {
+	return &GetConfigCommand[T]{}
+}
+
 type GetConfigCommand[T HostConfig] struct {
 	Host   *pki.PublicKey
 	config *pki.SignedArtifact[T]
+}
+
+func NewGetConfigCommand[T HostConfig](host *pki.PublicKey) *GetConfigCommand[T] {
+	return &GetConfigCommand[T]{
+		Host: host,
+	}
 }
 
 func (c *GetConfigCommand[T]) GetKey() string {
@@ -40,7 +50,7 @@ func (c *GetConfigCommand[T]) ExecuteServer(session *rpc.RpcSession) error {
 		Msg:  "Tunnel config found",
 	})
 
-	err = rpc.WriteMessage[*pki.SignedArtifact[T]](session, artifact)
+	err = rpc.WriteMessage[[]byte](session, artifact.Raw())
 	if err != nil {
 		return fmt.Errorf("error writing artifact: %w", err)
 	}
@@ -49,10 +59,18 @@ func (c *GetConfigCommand[T]) ExecuteServer(session *rpc.RpcSession) error {
 }
 
 func (c *GetConfigCommand[T]) ExecuteClient(session *rpc.RpcSession) error {
-	err := rpc.ReadMessage[*pki.SignedArtifact[T]](session, c.config)
+	raw := make([]byte, 0)
+	err := rpc.ReadMessage[[]byte](session, raw)
 	if err != nil {
 		return fmt.Errorf("error receiving tunnel config: %w", err)
 	}
+
+	conf, err := pki.LoadSignedArtifact[T](raw, session.Verifier())
+	if err != nil {
+		return fmt.Errorf("error unmarshaling config: %w", err)
+	}
+
+	*c.config = *conf
 
 	return nil
 }

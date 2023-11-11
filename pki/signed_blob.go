@@ -78,6 +78,15 @@ func (s *SignedBlob) Creator() *Certificate {
 	return s.creator
 }
 
+func (s *SignedBlob) Verify(verifier Verifier) error {
+	_, err := verifier.Verify(s.creator)
+	if err != nil {
+		return fmt.Errorf("failed to verify blob creator: %w", err)
+	}
+
+	return nil
+}
+
 func LoadSignedBlob(raw []byte, verifier Verifier) (*SignedBlob, error) {
 	packed, err := unpack(raw)
 	if err != nil {

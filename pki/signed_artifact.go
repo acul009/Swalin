@@ -11,11 +11,11 @@ type ArtifactPayload interface {
 }
 
 type SignedArtifact[T ArtifactPayload] struct {
-	blob     *SignedBlob
+	*SignedBlob
 	artifact T
 }
 
-func NewSignedArtifact[T ArtifactPayload](credentials *PermanentCredentials, artifact T) (SignedArtifact[T], error) {
+func NewSignedArtifact[T ArtifactPayload](credentials *PermanentCredentials, artifact T) (*SignedArtifact[T], error) {
 
 	cert, err := credentials.GetCertificate()
 	if err != nil {
@@ -36,17 +36,19 @@ func NewSignedArtifact[T ArtifactPayload](credentials *PermanentCredentials, art
 		return nil, fmt.Errorf("failed to sign payload: %w", err)
 	}
 
-	return SignedArtifact[T]{
-		blob:     blob,
-		artifact: artifact,
+	return &SignedArtifact[T]{
+		SignedBlob: blob,
+		artifact:   artifact,
 	}, nil
 }
 
-func LoadSignedArtifact[T ArtifactPayload](raw []byte, verifier Verifier, target T) (SignedArtifact[T], error) {
+func LoadSignedArtifact[T ArtifactPayload](raw []byte, verifier Verifier) (*SignedArtifact[T], error) {
 	blob, err := LoadSignedBlob(raw, verifier)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load blob: %w", err)
 	}
+
+	var target T
 
 	err = json.Unmarshal(blob.Payload(), target)
 	if err != nil {
@@ -59,16 +61,29 @@ func LoadSignedArtifact[T ArtifactPayload](raw []byte, verifier Verifier, target
 		return nil, errDangerous
 	}
 
-	return SignedArtifact[T]{
-		blob:     *blob,
-		artifact: target,
+	return &SignedArtifact[T]{
+		SignedBlob: blob,
+		artifact:   target,
 	}, nil
-}
-
-func (s *SignedArtifact[T]) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.blob.Raw())
 }
 
 func (s *SignedArtifact[T]) Artifact() T {
 	return s.artifact
+}
+
+func (s *SignedArtifact[T]) Verify(verifier Verifier) error {
+	err := s.SignedBlob.Verify(verifier)
+	if err != nil {
+		return fmt.Errorf("failed to verify underling blob: %w", err)
+	}
+
+	creator := s.SignedBlob.Creator()
+	var payload T
+	if !payload.MayPublish(creator) {
+		errDangerous := fmt.Errorf("the creator of this artifact was not allowed to publish it")
+		log.Print(errDangerous)
+		return errDangerous
+	}
+
+	return nil
 }
