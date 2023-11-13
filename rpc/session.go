@@ -16,6 +16,32 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
+type SessionError struct {
+	code int
+	msg  string
+}
+
+func (e *SessionError) Error() string {
+	return fmt.Sprintf("%d: %s", e.code, e.msg)
+}
+
+func (e *SessionError) Is(target error) bool {
+	_, ok := target.(*SessionError)
+	return ok
+}
+
+func (e *SessionError) As(target interface{}) bool {
+	if err, ok := target.(*SessionError); ok {
+		*err = *e
+		return true
+	}
+	return false
+}
+
+func (e *SessionError) Code() int {
+	return e.code
+}
+
 type RpcSessionState int16
 
 const (
@@ -110,7 +136,7 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 	handler, ok := commands.Get(header.Cmd)
 	if !ok {
 		s.WriteResponseHeader(SessionResponseHeader{
-			Code: 404,
+			Code: 405,
 			Msg:  "command not found",
 		})
 		return fmt.Errorf("unknown command: %s", header.Cmd)
@@ -296,7 +322,10 @@ func (s *RpcSession) sendCommand(cmd RpcCommand) (util.AsyncAction, error) {
 		return nil, fmt.Errorf("error sending my public key: %w", err)
 	}
 
-	s.mutateState(RpcSessionOpen, RpcSessionCreated)
+	err = s.mutateState(RpcSessionOpen, RpcSessionCreated)
+	if err != nil {
+		return nil, fmt.Errorf("error mutating state: %w", err)
+	}
 
 	args := make(map[string]interface{})
 	err = reEncode(cmd, &args)
@@ -317,18 +346,22 @@ func (s *RpcSession) sendCommand(cmd RpcCommand) (util.AsyncAction, error) {
 	}
 
 	response, err := s.readResponseHeader()
-
 	if err != nil {
 		s.Close()
 		return nil, fmt.Errorf("error reading response header: %w", err)
 	}
 
-	fmt.Printf("Response Header:\n%v\n", response)
+	log.Printf("Response Header:\n%v\n", response)
 
 	if response.Code != 200 {
 		s.Close()
-		return nil, fmt.Errorf("error sending command: %v", response.Msg)
+		return nil, fmt.Errorf("error sending command: %w", &SessionError{
+			code: response.Code,
+			msg:  response.Msg,
+		})
 	}
+
+	log.Printf("Command sent successfully: %s", cmd.GetKey())
 
 	running := &runningCommand{
 		session: s,
@@ -336,13 +369,11 @@ func (s *RpcSession) sendCommand(cmd RpcCommand) (util.AsyncAction, error) {
 	}
 
 	go func() {
-		defer func() {
-			err := s.Close()
-			if err != nil {
-				panic(err)
-			}
-		}()
 		running.errChan <- cmd.ExecuteClient(s)
+		err := s.Close()
+		if err != nil {
+			panic(err)
+		}
 	}()
 
 	return running, nil

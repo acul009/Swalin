@@ -1,7 +1,6 @@
 package rmm
 
 import (
-	"net"
 	"rahnit-rmm/pki"
 )
 
@@ -9,13 +8,13 @@ var _ HostConfig = (*TunnelConfig)(nil)
 
 type TunnelConfig struct {
 	Host *pki.PublicKey
-	Tcp  []tcpTunnel
+	Tcp  []TcpTunnel
 }
 
-type tcpTunnel struct {
-	Name        string
-	InboundPort uint16
-	Target      net.TCPAddr
+type TcpTunnel struct {
+	Name       string
+	ListenPort uint16
+	Target     string
 }
 
 func (t *TunnelConfig) MayPublish(cert *pki.Certificate) bool {

@@ -2,6 +2,7 @@ package rmm
 
 import (
 	"fmt"
+	"rahnit-rmm/ent"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
 )
@@ -30,6 +31,13 @@ func (c *GetConfigCommand[T]) ExecuteServer(session *rpc.RpcSession) error {
 
 	artifact, err := LoadHostConfigFromDB[T](c.Host, session.Verifier())
 	if err != nil {
+		if ent.IsNotFound(err) {
+			session.WriteResponseHeader(rpc.SessionResponseHeader{
+				Code: 404,
+				Msg:  "Tunnel config not found",
+			})
+			return nil
+		}
 		session.WriteResponseHeader(rpc.SessionResponseHeader{
 			Code: 500,
 			Msg:  "Error unmarshaling config",

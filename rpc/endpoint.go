@@ -96,7 +96,12 @@ func (r *RpcEndpoint) SendCommand(ctx context.Context, cmd RpcCommand) (util.Asy
 		return nil, fmt.Errorf("error opening session: %w", err)
 	}
 
-	return session.sendCommand(cmd)
+	running, err := session.sendCommand(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("error sending command: %w", err)
+	}
+
+	return running, nil
 }
 
 func (r *RpcEndpoint) SendSyncCommand(ctx context.Context, cmd RpcCommand) error {
@@ -173,6 +178,21 @@ func (r *RpcEndpoint) ServeRpc(commands *CommandCollection) error {
 	}
 
 	return r.conn.serveRpc(commands)
+}
+
+func (r *RpcEndpoint) Credentials() *pki.PermanentCredentials {
+	credentials := r.conn.credentials
+
+	if credentials == nil {
+		panic("credentials is nil")
+	}
+
+	perm, ok := credentials.(*pki.PermanentCredentials)
+	if !ok {
+		panic("credentials is not permanent")
+	}
+
+	return perm
 }
 
 func (r *RpcEndpoint) ensureState(state RpcEndpointState) error {

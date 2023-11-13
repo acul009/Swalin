@@ -90,6 +90,8 @@ func unlock(w fyne.Window) {
 		infoLabel,
 		form,
 	))
+
+	w.Canvas().Focus(passwordField)
 }
 
 func setup(w fyne.Window) {

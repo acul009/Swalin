@@ -25,6 +25,7 @@ type deviceView struct {
 	static            util.UpdateableObservable[*rmm.StaticStats]
 	runningMonitoring util.AsyncAction
 	runningServices   util.AsyncAction
+	tunnelDisp        *tunnelDisplay
 }
 
 func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
@@ -108,9 +109,12 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 		serviceList,
 	)
 
+	d.tunnelDisp = newTunnelDisplay(d.ep, device)
+
 	d.canvasObject = container.NewAppTabs(
 		container.NewTabItem("Performance", performance),
 		container.NewTabItem("Services", services),
+		container.NewTabItem("Tunnels", d.tunnelDisp),
 	)
 
 	return d

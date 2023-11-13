@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/rmm"
 	"rahnit-rmm/rpc"
 	"sync"
 	"syscall"
@@ -65,6 +66,7 @@ to quickly create a Cobra application.`,
 			rpc.GetDevicesCommandHandler,
 			rpc.ForwardCommandHandler,
 			rpc.VerifyCertificateChainHandler,
+			rmm.GetHostConfigCommandHandler[*rmm.TunnelConfig],
 		)
 
 		server, err := rpc.NewRpcServer(addr, rpcCommands, credentials)
