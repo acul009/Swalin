@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"rahnit-rmm/rmm"
 	"rahnit-rmm/rpc"
 	"strconv"
@@ -137,6 +136,14 @@ func newTunnelDisplay(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *tunnelDisplay
 	return d
 }
 
+func (t *tunnelDisplay) Show() {
+	t.BaseWidget.Show()
+}
+
+func (t *tunnelDisplay) Hide() {
+	t.BaseWidget.Hide()
+}
+
 func (t *tunnelDisplay) Close() error {
 	return nil
 }
@@ -152,7 +159,6 @@ type tunnelDisplayRenderer struct {
 }
 
 func (t *tunnelDisplayRenderer) Destroy() {
-	log.Printf("destroying tunnel display")
 }
 
 func (t *tunnelDisplayRenderer) Layout(size fyne.Size) {

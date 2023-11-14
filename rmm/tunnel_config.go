@@ -36,5 +36,5 @@ func (t *TunnelConfig) MayAccess(cert *pki.Certificate) bool {
 		return true
 	}
 
-	return cert.GetPublicKey().Equal(t.Host)
+	return false
 }
