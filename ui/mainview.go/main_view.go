@@ -8,21 +8,14 @@ import (
 )
 
 type MainView struct {
-	currentView   View
-	viewStack     []View
-	currentObject fyne.CanvasObject
+	viewStack     *ViewStack
 	mainContainer *fyne.Container
 	leftMenu      *fyne.Container
 	backButton    *widget.Button
 }
 
-type View interface {
-	Prepare() fyne.CanvasObject
-	Close()
-}
-
 type MenuView interface {
-	View
+	fyne.CanvasObject
 	Name() string
 	Icon() fyne.Resource
 }
@@ -55,8 +48,7 @@ func NewMainView() *MainView {
 		nil,
 	)
 	m := &MainView{
-		currentView:   nil,
-		viewStack:     []View{},
+		viewStack:     NewViewStack(),
 		mainContainer: main,
 		leftMenu:      leftMenu,
 		backButton:    backButton,
@@ -68,43 +60,17 @@ func NewMainView() *MainView {
 	return m
 }
 
-func (m *MainView) SetView(v View) {
-	m.viewStack = make([]View, 0)
-	m.backButton.Disable()
-	m.display(v)
+func (m *MainView) SetView(v fyne.CanvasObject) {
+	m.viewStack.Set(v)
 }
 
-func (m *MainView) display(v View) {
-	if m.currentObject != nil {
-		m.mainContainer.Remove(m.currentObject)
-	}
-
-	if m.currentView != nil {
-		m.currentView.Close()
-	}
-	m.currentObject = v.Prepare()
-
-	m.currentView = v
-	m.mainContainer.Objects = append(m.mainContainer.Objects, m.currentObject)
-	m.mainContainer.Refresh()
-}
-
-func (m *MainView) PushView(v View) {
-	if m.currentView != nil {
-		m.viewStack = append(m.viewStack, m.currentView)
-		m.backButton.Enable()
-	}
-
-	m.display(v)
+func (m *MainView) PushView(v fyne.CanvasObject) {
+	m.viewStack.Push(v)
 }
 
 func (m *MainView) popView() {
-	if len(m.viewStack) > 0 {
-		v := m.viewStack[len(m.viewStack)-1]
-		m.viewStack = m.viewStack[:len(m.viewStack)-1]
-		m.display(v)
-	}
-	if len(m.viewStack) == 0 {
+	m.viewStack.Pop()
+	if m.viewStack.StackSize() < 2 {
 		m.backButton.Disable()
 	} else {
 		m.backButton.Enable()

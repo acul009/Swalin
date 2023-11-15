@@ -23,6 +23,12 @@ func (v *ViewStack) Push(obj fyne.CanvasObject) {
 	v.Refresh()
 }
 
+func (v *ViewStack) Set(obj fyne.CanvasObject) {
+	v.stack = v.stack[:0]
+	v.stack = append(v.stack, obj)
+	v.Refresh()
+}
+
 func (v *ViewStack) Pop() {
 	if len(v.stack) <= 1 {
 		return
@@ -32,6 +38,10 @@ func (v *ViewStack) Pop() {
 	v.stack[len(v.stack)-1].Resize(v.Size())
 	v.stack[len(v.stack)-1].Show()
 	v.Refresh()
+}
+
+func (v *ViewStack) StackSize() int {
+	return len(v.stack)
 }
 
 func (v *ViewStack) CreateRenderer() fyne.WidgetRenderer {

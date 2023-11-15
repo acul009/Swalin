@@ -8,9 +8,13 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 )
 
+var _ fyne.Widget = (*deviceManagementView)(nil)
+
 type deviceManagementView struct {
+	widget.BaseWidget
 	main       *mainview.MainView
 	ep         *rpc.RpcEndpoint
 	devices    util.ObservableMap[string, rpc.DeviceInfo]
@@ -38,13 +42,17 @@ func NewDeviceManagementView(main *mainview.MainView, ep *rpc.RpcEndpoint) *devi
 		}
 	}()
 
-	return &deviceManagementView{
+	m := &deviceManagementView{
 		main:       main,
 		ep:         ep,
 		devices:    devices,
 		deviceList: list,
 		visible:    false,
 	}
+
+	m.ExtendBaseWidget(m)
+
+	return m
 }
 
 func (m *deviceManagementView) Icon() fyne.Resource {
@@ -55,10 +63,34 @@ func (m *deviceManagementView) Name() string {
 	return "Devices"
 }
 
-func (m *deviceManagementView) Prepare() fyne.CanvasObject {
-	return m.deviceList.Display
+func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
+	return &deviceViewRenderer{
+		widget: m,
+	}
 }
 
-func (m *deviceManagementView) Close() {
+type deviceViewRenderer struct {
+	widget *deviceManagementView
+}
 
+func (v *deviceViewRenderer) Layout(size fyne.Size) {
+
+}
+
+func (v *deviceViewRenderer) MinSize() fyne.Size {
+	return fyne.NewSize(0, 0)
+}
+
+func (v *deviceViewRenderer) Refresh() {
+
+}
+
+func (v *deviceViewRenderer) Destroy() {
+
+}
+
+func (v *deviceViewRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{
+		v.widget.deviceList,
+	}
 }
