@@ -33,9 +33,9 @@ func Login(conn *RpcConnection, username string, password []byte, totpCode strin
 		return nil, fmt.Errorf("error mutating session state: %w", err)
 	}
 
-	err = receivePartnerKey(session)
+	err = exchangeKeys(session)
 	if err != nil {
-		return nil, fmt.Errorf("error receiving partner key: %w", err)
+		return nil, fmt.Errorf("error exchanging keys: %w", err)
 	}
 
 	paramRequest := &loginParameterRequest{

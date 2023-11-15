@@ -84,9 +84,9 @@ func acceptServerInitialization(quicConn quic.Connection, credentials *pki.TempC
 
 	log.Printf("Session opened, reading public key...")
 
-	err = receivePartnerKey(session)
+	err = exchangeKeys(session)
 	if err != nil {
-		return nil, fmt.Errorf("error receiving partner key: %w", err)
+		return nil, fmt.Errorf("error exchanging keys: %w", err)
 	}
 
 	log.Printf("preparing init request...")
