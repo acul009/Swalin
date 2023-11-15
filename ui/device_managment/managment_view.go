@@ -7,6 +7,7 @@ import (
 	"rahnit-rmm/util"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -15,25 +16,39 @@ var _ fyne.Widget = (*deviceManagementView)(nil)
 
 type deviceManagementView struct {
 	widget.BaseWidget
-	main       *mainview.MainView
-	ep         *rpc.RpcEndpoint
-	devices    util.ObservableMap[string, rpc.DeviceInfo]
-	deviceList *deviceList
-	visible    bool
+	running util.AsyncAction
+	main    *mainview.MainView
+	ep      *rpc.RpcEndpoint
+	devices util.ObservableMap[string, rpc.DeviceInfo]
 }
 
 func NewDeviceManagementView(main *mainview.MainView, ep *rpc.RpcEndpoint) *deviceManagementView {
-	list := newDeviceList(main, ep)
 	devices := util.NewObservableMap[string, rpc.DeviceInfo]()
 
-	devices.Subscribe(list.Set, list.Remove)
+	m := &deviceManagementView{
+		main:    main,
+		ep:      ep,
+		devices: devices,
+	}
 
-	cmd := rpc.NewGetDevicesCommand(devices)
+	m.ExtendBaseWidget(m)
 
-	running, err := ep.SendCommand(context.Background(), cmd)
+	return m
+}
+
+func (m *deviceManagementView) Show() {
+	if m.running != nil {
+		return
+	}
+
+	cmd := rpc.NewGetDevicesCommand(m.devices)
+
+	running, err := m.ep.SendCommand(context.Background(), cmd)
 	if err != nil {
 		panic(err)
 	}
+
+	m.running = running
 
 	go func() {
 		err := running.Wait()
@@ -41,18 +56,19 @@ func NewDeviceManagementView(main *mainview.MainView, ep *rpc.RpcEndpoint) *devi
 			panic(err)
 		}
 	}()
+}
 
-	m := &deviceManagementView{
-		main:       main,
-		ep:         ep,
-		devices:    devices,
-		deviceList: list,
-		visible:    false,
+func (m *deviceManagementView) Hide() {
+	if m.running == nil {
+		return
 	}
 
-	m.ExtendBaseWidget(m)
-
-	return m
+	go func() {
+		err := m.running.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 }
 
 func (m *deviceManagementView) Icon() fyne.Resource {
@@ -64,33 +80,42 @@ func (m *deviceManagementView) Name() string {
 }
 
 func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
-	return &deviceViewRenderer{
-		widget: m,
+	icon := theme.ComputerIcon()
+	onlineIcon := theme.NewSuccessThemedResource(icon)
+	offlineIcon := theme.NewErrorThemedResource(icon)
+
+	return &deviceManagmentViewRenderer{
+		widget:      m,
+		layout:      layout.NewGridLayoutWithColumns(4),
+		onlineIcon:  widget.NewIcon(onlineIcon),
+		offlineIcon: offlineIcon,
 	}
 }
 
-type deviceViewRenderer struct {
-	widget *deviceManagementView
+type deviceManagmentViewRenderer struct {
+	widget       *deviceManagementView
+	layout       fyne.Layout
+	onlineIcon   *widget.Icon
+	offlineIcon  fyne.Resource
+	devices      util.ObservableMap[string, rpc.DeviceInfo]
+	deviceLabels []*widget.Label
 }
 
-func (v *deviceViewRenderer) Layout(size fyne.Size) {
+func (v *deviceManagmentViewRenderer) Layout(size fyne.Size) {
 
 }
 
-func (v *deviceViewRenderer) MinSize() fyne.Size {
+func (v *deviceManagmentViewRenderer) MinSize() fyne.Size {
 	return fyne.NewSize(0, 0)
 }
 
-func (v *deviceViewRenderer) Refresh() {
+func (v *deviceManagmentViewRenderer) Refresh() {
 
 }
 
-func (v *deviceViewRenderer) Destroy() {
+func (v *deviceManagmentViewRenderer) Destroy() {
 
 }
 
-func (v *deviceViewRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{
-		v.widget.deviceList,
-	}
+func (v *deviceManagmentViewRenderer) Objects() []fyne.CanvasObject {
 }

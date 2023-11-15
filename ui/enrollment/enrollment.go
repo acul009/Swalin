@@ -17,6 +17,7 @@ import (
 )
 
 type enrollmentView struct {
+	widget.BaseWidget
 	main        *mainview.MainView
 	ep          *rpc.RpcEndpoint
 	credentials *pki.PermanentCredentials
@@ -37,6 +38,8 @@ func NewEnrollmentView(main *mainview.MainView, ep *rpc.RpcEndpoint, credentials
 		mutex:       sync.Mutex{},
 		visible:     false,
 	}
+
+	e.ExtendBaseWidget(e)
 
 	updateCommand := rpc.NewGetPendingEnrollmentsCommand(e.enrollments)
 
@@ -174,4 +177,34 @@ func (e *enrollmentView) Close() {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	e.visible = false
+}
+
+func (e *enrollmentView) CreateRenderer() fyne.WidgetRenderer {
+	return &enrollmentViewRenderer{
+		widget: e,
+	}
+}
+
+type enrollmentViewRenderer struct {
+	widget *enrollmentView
+}
+
+func (e *enrollmentViewRenderer) Layout(size fyne.Size) {
+
+}
+
+func (e *enrollmentViewRenderer) MinSize() fyne.Size {
+	return fyne.NewSize(0, 0)
+}
+
+func (e *enrollmentViewRenderer) Refresh() {
+
+}
+
+func (e *enrollmentViewRenderer) Destroy() {
+
+}
+
+func (e *enrollmentViewRenderer) Objects() []fyne.CanvasObject {
+	return nil
 }

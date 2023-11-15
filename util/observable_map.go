@@ -11,6 +11,7 @@ type ObservableMap[K comparable, T any] interface {
 	Set(key K, value T)
 	Get(key K) (T, bool)
 	Delete(key K)
+	Size() int
 	GetAll() map[K]T
 	Update(key K, updateFunc func(value T) T)
 }

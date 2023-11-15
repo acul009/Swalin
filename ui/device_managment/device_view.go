@@ -15,6 +15,7 @@ import (
 )
 
 type deviceView struct {
+	widget.BaseWidget
 	ep                *rpc.RpcEndpoint
 	device            rpc.DeviceInfo
 	ctx               context.Context
@@ -37,6 +38,8 @@ func newDeviceView(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *deviceView {
 		static:   util.NewObservable[*rmm.StaticStats](nil),
 		services: util.NewObservable[*rmm.ServiceStats](nil),
 	}
+
+	d.ExtendBaseWidget(d)
 
 	cpuDisplay := newCpuDisplay(util.DeriveObservable[*rmm.ActiveStats, *rmm.CpuStats](d.active, func(active *rmm.ActiveStats) *rmm.CpuStats {
 		if active == nil {
@@ -156,4 +159,34 @@ func (d *deviceView) Close() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (d *deviceView) CreateRenderer() fyne.WidgetRenderer {
+	return &deviceViewRenderer{
+		widget: d,
+	}
+}
+
+type deviceViewRenderer struct {
+	widget *deviceView
+}
+
+func (d *deviceViewRenderer) Layout(size fyne.Size) {
+
+}
+
+func (d *deviceViewRenderer) MinSize() fyne.Size {
+	return fyne.NewSize(0, 0)
+}
+
+func (d *deviceViewRenderer) Refresh() {
+
+}
+
+func (d *deviceViewRenderer) Destroy() {
+
+}
+
+func (d *deviceViewRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{}
 }
