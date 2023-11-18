@@ -1,6 +1,8 @@
 package mainview
 
 import (
+	"log"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
@@ -25,6 +27,8 @@ func NewMainView() *MainView {
 
 	backButton := widget.NewButtonWithIcon("", theme.NavigateBackIcon(), nil)
 
+	viewStack := NewViewStack()
+
 	main := container.NewBorder(
 		container.NewVBox(
 			container.NewHBox(
@@ -46,9 +50,10 @@ func NewMainView() *MainView {
 			widget.NewSeparator(),
 		),
 		nil,
+		viewStack,
 	)
 	m := &MainView{
-		viewStack:     NewViewStack(),
+		viewStack:     viewStack,
 		mainContainer: main,
 		leftMenu:      leftMenu,
 		backButton:    backButton,
@@ -61,6 +66,7 @@ func NewMainView() *MainView {
 }
 
 func (m *MainView) SetView(v fyne.CanvasObject) {
+	log.Printf("Setting new view")
 	m.viewStack.Set(v)
 }
 

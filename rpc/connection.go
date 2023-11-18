@@ -77,7 +77,7 @@ func (conn *RpcConnection) serveRpc(commands *CommandCollection) error {
 	}
 
 	if conn.server != nil {
-		conn.server.devices.UpdateDeviceStatus(conn.partner.GetPublicKey().Base64Encode(), func(device DeviceInfo) DeviceInfo {
+		conn.server.devices.UpdateDeviceStatus(conn.partner.GetPublicKey().Base64Encode(), func(device *DeviceInfo) *DeviceInfo {
 			device.Online = true
 			return device
 		})

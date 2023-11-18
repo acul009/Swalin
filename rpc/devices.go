@@ -19,12 +19,12 @@ func (d DeviceInfo) Name() string {
 }
 
 type DeviceList struct {
-	devices util.ObservableMap[string, DeviceInfo]
+	devices util.ObservableMap[string, *DeviceInfo]
 }
 
 func NewDeviceListFromDB() (*DeviceList, error) {
 	d := &DeviceList{
-		devices: util.NewObservableMap[string, DeviceInfo](),
+		devices: util.NewObservableMap[string, *DeviceInfo](),
 	}
 
 	db := config.DB()
@@ -38,7 +38,7 @@ func NewDeviceListFromDB() (*DeviceList, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse device certificate: %w", err)
 		}
-		d.devices.Set(cert.GetPublicKey().Base64Encode(), DeviceInfo{
+		d.devices.Set(cert.GetPublicKey().Base64Encode(), &DeviceInfo{
 			Certificate: cert,
 			Online:      false,
 		})
@@ -59,7 +59,7 @@ func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
 		return fmt.Errorf("failed to create device: %w", err)
 	}
 
-	d.devices.Set(cert.GetPublicKey().Base64Encode(), DeviceInfo{
+	d.devices.Set(cert.GetPublicKey().Base64Encode(), &DeviceInfo{
 		Certificate: cert,
 		Online:      false,
 	})
@@ -67,15 +67,15 @@ func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
 	return nil
 }
 
-func (d *DeviceList) Subscribe(onSet func(string, DeviceInfo), onRemove func(string)) func() {
+func (d *DeviceList) Subscribe(onSet func(string, *DeviceInfo), onRemove func(string)) func() {
 	return d.devices.Subscribe(onSet, onRemove)
 }
 
-func (d *DeviceList) UpdateDeviceStatus(pubKey string, update func(device DeviceInfo) DeviceInfo) {
+func (d *DeviceList) UpdateDeviceStatus(pubKey string, update func(device *DeviceInfo) *DeviceInfo) {
 	log.Printf("Updating device status for %s", pubKey)
 	d.devices.Update(pubKey, update)
 }
 
-func (d *DeviceList) GetAll() map[string]DeviceInfo {
+func (d *DeviceList) GetAll() map[string]*DeviceInfo {
 	return d.devices.GetAll()
 }

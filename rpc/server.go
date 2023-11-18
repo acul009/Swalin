@@ -185,7 +185,7 @@ func (s *RpcServer) removeConnection(uuid uuid.UUID) {
 	defer s.mutex.Unlock()
 	if conn, ok := s.activeConnections[uuid]; ok {
 		if conn.partner != nil {
-			s.devices.UpdateDeviceStatus(conn.partner.GetPublicKey().Base64Encode(), func(device DeviceInfo) DeviceInfo {
+			s.devices.UpdateDeviceStatus(conn.partner.GetPublicKey().Base64Encode(), func(device *DeviceInfo) *DeviceInfo {
 				device.Online = false
 				return device
 			})

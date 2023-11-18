@@ -5,18 +5,18 @@ import (
 )
 
 type getDevicesCommand struct {
-	*syncDownCommand[string, DeviceInfo]
+	*syncDownCommand[string, *DeviceInfo]
 }
 
 func GetDevicesCommandHandler() RpcCommand {
 	return &getDevicesCommand{
-		syncDownCommand: NewSyncDownCommand[string, DeviceInfo](nil),
+		syncDownCommand: NewSyncDownCommand[string, *DeviceInfo](nil),
 	}
 }
 
-func NewGetDevicesCommand(targetMap util.ObservableMap[string, DeviceInfo]) *getDevicesCommand {
+func NewGetDevicesCommand(targetMap util.ObservableMap[string, *DeviceInfo]) *getDevicesCommand {
 	return &getDevicesCommand{
-		syncDownCommand: NewSyncDownCommand[string, DeviceInfo](targetMap),
+		syncDownCommand: NewSyncDownCommand[string, *DeviceInfo](targetMap),
 	}
 }
 

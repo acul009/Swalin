@@ -1,6 +1,8 @@
 package mainview
 
 import (
+	"log"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 )
@@ -19,14 +21,17 @@ func NewViewStack() *ViewStack {
 }
 
 func (v *ViewStack) Push(obj fyne.CanvasObject) {
+	if len(v.stack) > 0 {
+		v.stack[len(v.stack)-1].Hide()
+	}
 	v.stack = append(v.stack, obj)
-	v.Refresh()
+	v.showTop()
 }
 
 func (v *ViewStack) Set(obj fyne.CanvasObject) {
 	v.stack = v.stack[:0]
 	v.stack = append(v.stack, obj)
-	v.Refresh()
+	v.showTop()
 }
 
 func (v *ViewStack) Pop() {
@@ -35,13 +40,24 @@ func (v *ViewStack) Pop() {
 	}
 	v.stack[len(v.stack)-1].Hide()
 	v.stack = v.stack[:len(v.stack)-1]
-	v.stack[len(v.stack)-1].Resize(v.Size())
-	v.stack[len(v.stack)-1].Show()
-	v.Refresh()
+	v.showTop()
 }
 
 func (v *ViewStack) StackSize() int {
 	return len(v.stack)
+}
+
+func (v *ViewStack) showTop() {
+	if len(v.stack) == 0 {
+		return
+	}
+
+	log.Printf("view stack size: %v", v.Size())
+
+	top := v.stack[len(v.stack)-1]
+	top.Resize(v.Size())
+	top.Show()
+	top.Refresh()
 }
 
 func (v *ViewStack) CreateRenderer() fyne.WidgetRenderer {
@@ -55,6 +71,10 @@ type viewStackRenderer struct {
 }
 
 func (v *viewStackRenderer) Layout(size fyne.Size) {
+	if len(v.widget.stack) == 0 {
+		return
+	}
+	log.Printf("ViewStack size: %v", size)
 	v.widget.stack[len(v.widget.stack)-1].Resize(size)
 }
 
