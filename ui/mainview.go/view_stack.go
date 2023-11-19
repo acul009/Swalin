@@ -15,7 +15,9 @@ type ViewStack struct {
 }
 
 func NewViewStack() *ViewStack {
-	v := &ViewStack{}
+	v := &ViewStack{
+		stack: make([]fyne.CanvasObject, 0, 5),
+	}
 	v.ExtendBaseWidget(v)
 	return v
 }

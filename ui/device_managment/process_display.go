@@ -3,61 +3,61 @@ package managment
 import (
 	"fmt"
 	"rahnit-rmm/rmm"
+	"rahnit-rmm/rpc"
+	"rahnit-rmm/ui/components"
 	"rahnit-rmm/util"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
 
 type processList struct {
 	widget.BaseWidget
-	onDestroy    func()
-	processStats *rmm.ProcessStats
-	list         *widget.List
+	onDestroy func()
+	processes util.ObservableMap[int32, *rmm.ProcessInfo]
+	running   util.AsyncAction
 }
 
-func newProcessList(processes util.Observable[*rmm.ProcessStats]) *processList {
+func newProcessList(ep *rpc.RpcEndpoint, device *rpc.DeviceInfo) *processList {
+
 	p := &processList{
-		processStats: &rmm.ProcessStats{
-			Processes: []rmm.ProcessInfo{},
-		},
+		processes: util.NewObservableMap[int32, *rmm.ProcessInfo](),
 	}
-
-	p.list = widget.NewList(
-		func() int {
-			return len(p.processStats.Processes)
-		},
-		func() fyne.CanvasObject {
-			pid := widget.NewLabel("PID   ")
-			name := widget.NewLabel("Name")
-
-			return container.NewHBox(
-				pid,
-				name,
-			)
-		},
-		func(i int, o fyne.CanvasObject) {
-			pid := o.(*fyne.Container).Objects[0].(*widget.Label)
-			name := o.(*fyne.Container).Objects[1].(*widget.Label)
-			processInfo := p.processStats.Processes[i]
-			pidString := fmt.Sprintf("%d", processInfo.Pid)
-			pid.Text = fmt.Sprintf("%*s", 6-len(pidString), pidString)
-			name.Text = processInfo.Name
-			o.Refresh()
-		},
-	)
-
 	p.ExtendBaseWidget(p)
 
-	p.onDestroy = processes.Subscribe(
-		func(processes *rmm.ProcessStats) {
-			p.processStats = processes
-			p.list.Refresh()
-		},
+	components.NewTable[int32, *rmm.ProcessInfo](p.processes,
+		components.TableColumn(
+			func() *widget.Label {
+				return widget.NewLabel("PID")
+			},
+			func(process *rmm.ProcessInfo, label *widget.Label) {
+				label.SetText(fmt.Sprintf("%d", process.Pid))
+				label.Refresh()
+			},
+		),
+		components.TableColumn(
+			func() *widget.Label {
+				return widget.NewLabel("Name")
+			},
+			func(process *rmm.ProcessInfo, label *widget.Label) {
+				label.SetText(process.Name)
+				label.Refresh()
+			},
+		),
 	)
 
 	return p
+}
+
+func (p *processList) Show() {
+	if p.running != nil {
+		return
+	}
+
+}
+
+func (p *processList) Hide() {
+
 }
 
 func (p *processList) CreateRenderer() fyne.WidgetRenderer {

@@ -2,6 +2,7 @@ package rmm
 
 import (
 	"fmt"
+	"rahnit-rmm/util"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/host"
@@ -119,4 +120,8 @@ func GetProcessInfo() (*ProcessStats, error) {
 	}
 
 	return &ProcessStats{Processes: processesInfo}, nil
+}
+
+func MonitorProcesses() util.ObservableMap[int32, *ProcessInfo] {
+	return util.NewObservableMap[int32, *ProcessInfo]()
 }

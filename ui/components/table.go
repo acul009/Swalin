@@ -1,7 +1,6 @@
 package components
 
 import (
-	"log"
 	"rahnit-rmm/util"
 
 	"fyne.io/fyne/v2"
@@ -125,12 +124,12 @@ type tableRenderer[T comparable, U any] struct {
 }
 
 func (tr *tableRenderer[T, U]) Layout(size fyne.Size) {
-	log.Printf("layout with size %v", size)
-	tr.layout.Layout(tr.Objects(), size)
+	minSize := tr.layout.MinSize(tr.Objects())
+	tr.layout.Layout(tr.Objects(), fyne.Size{Width: size.Width, Height: minSize.Height})
 }
 
 func (tr *tableRenderer[T, U]) MinSize() fyne.Size {
-	return fyne.NewSize(400, 400)
+	return tr.layout.MinSize(tr.Objects())
 }
 
 func (tr *tableRenderer[T, U]) Refresh() {

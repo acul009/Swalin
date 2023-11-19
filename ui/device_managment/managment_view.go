@@ -9,6 +9,7 @@ import (
 	"rahnit-rmm/util"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -112,6 +113,23 @@ func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
 			func(device *rpc.DeviceInfo, label *widget.Label) {
 				label.SetText(device.Name())
 				label.Refresh()
+			},
+		),
+		components.TableColumn(
+			func() *layout.Spacer {
+				return layout.NewSpacer().(*layout.Spacer)
+			},
+			func(device *rpc.DeviceInfo, spacer *layout.Spacer) {
+			},
+		),
+		components.TableColumn(
+			func() *widget.Button {
+				return widget.NewButton("Connect", func() {})
+			},
+			func(device *rpc.DeviceInfo, button *widget.Button) {
+				button.OnTapped = func() {
+					m.main.PushView(newOldDeviceView(m.ep, device))
+				}
 			},
 		),
 	)

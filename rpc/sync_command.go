@@ -5,13 +5,13 @@ import (
 	"rahnit-rmm/util"
 )
 
-func NewSyncDownCommand[K comparable, T any](targetMap util.ObservableMap[K, T]) *syncDownCommand[K, T] {
-	return &syncDownCommand[K, T]{
+func NewSyncDownCommand[K comparable, T any](targetMap util.ObservableMap[K, T]) *SyncDownCommand[K, T] {
+	return &SyncDownCommand[K, T]{
 		targetMap: targetMap,
 	}
 }
 
-type syncDownCommand[K comparable, T any] struct {
+type SyncDownCommand[K comparable, T any] struct {
 	targetMap util.ObservableMap[K, T]
 }
 
@@ -21,7 +21,7 @@ type updateInfo[K comparable, T any] struct {
 	Value  T
 }
 
-func (s *syncDownCommand[K, T]) ExecuteClient(session *RpcSession) error {
+func (s *SyncDownCommand[K, T]) ExecuteClient(session *RpcSession) error {
 
 	initial := make(map[K]T)
 	err := ReadMessage[map[K]T](session, initial)
@@ -53,7 +53,7 @@ func (s *syncDownCommand[K, T]) ExecuteClient(session *RpcSession) error {
 
 }
 
-func (s *syncDownCommand[K, T]) ExecuteServer(session *RpcSession) error {
+func (s *SyncDownCommand[K, T]) ExecuteServer(session *RpcSession) error {
 	err := session.WriteResponseHeader(SessionResponseHeader{
 		Code: 200,
 		Msg:  "OK",
@@ -97,4 +97,8 @@ func (s *syncDownCommand[K, T]) ExecuteServer(session *RpcSession) error {
 	err = <-updateErrChan
 
 	return err
+}
+
+func (s *SyncDownCommand[K, T]) SetMap(m util.ObservableMap[K, T]) {
+	s.targetMap = m
 }

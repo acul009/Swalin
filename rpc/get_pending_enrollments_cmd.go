@@ -5,18 +5,18 @@ import (
 )
 
 type getPendingEnrollmentsCommand struct {
-	*syncDownCommand[string, Enrollment]
+	*SyncDownCommand[string, Enrollment]
 }
 
 func GetPendingEnrollmentsHandler() RpcCommand {
 	return &getPendingEnrollmentsCommand{
-		syncDownCommand: NewSyncDownCommand[string, Enrollment](nil),
+		SyncDownCommand: NewSyncDownCommand[string, Enrollment](nil),
 	}
 }
 
 func NewGetPendingEnrollmentsCommand(targetMap util.ObservableMap[string, Enrollment]) *getPendingEnrollmentsCommand {
 	return &getPendingEnrollmentsCommand{
-		syncDownCommand: NewSyncDownCommand[string, Enrollment](targetMap),
+		SyncDownCommand: NewSyncDownCommand[string, Enrollment](targetMap),
 	}
 }
 
@@ -41,6 +41,6 @@ func (c *getPendingEnrollmentsCommand) ExecuteServer(session *RpcSession) error 
 	)
 	defer unsubscribe()
 
-	c.syncDownCommand.targetMap = devicemap
-	return c.syncDownCommand.ExecuteServer(session)
+	c.SyncDownCommand.targetMap = devicemap
+	return c.SyncDownCommand.ExecuteServer(session)
 }

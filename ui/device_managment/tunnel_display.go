@@ -25,7 +25,7 @@ type tunnelDisplay struct {
 	tcpAdd  *fyne.Container
 }
 
-func newTunnelDisplay(ep *rpc.RpcEndpoint, device rpc.DeviceInfo) *tunnelDisplay {
+func newTunnelDisplay(ep *rpc.RpcEndpoint, device *rpc.DeviceInfo) *tunnelDisplay {
 	d := &tunnelDisplay{
 		ep:     ep,
 		config: &rmm.TunnelConfig{},
