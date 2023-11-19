@@ -34,6 +34,14 @@ func (du *DeviceUpdate) SetCertificate(s string) *DeviceUpdate {
 	return du
 }
 
+// SetNillableCertificate sets the "certificate" field if the given value is not nil.
+func (du *DeviceUpdate) SetNillableCertificate(s *string) *DeviceUpdate {
+	if s != nil {
+		du.SetCertificate(*s)
+	}
+	return du
+}
+
 // AddConfigIDs adds the "configs" edge to the HostConfig entity by IDs.
 func (du *DeviceUpdate) AddConfigIDs(ids ...int) *DeviceUpdate {
 	du.mutation.AddConfigIDs(ids...)
@@ -195,6 +203,14 @@ type DeviceUpdateOne struct {
 // SetCertificate sets the "certificate" field.
 func (duo *DeviceUpdateOne) SetCertificate(s string) *DeviceUpdateOne {
 	duo.mutation.SetCertificate(s)
+	return duo
+}
+
+// SetNillableCertificate sets the "certificate" field if the given value is not nil.
+func (duo *DeviceUpdateOne) SetNillableCertificate(s *string) *DeviceUpdateOne {
+	if s != nil {
+		duo.SetCertificate(*s)
+	}
 	return duo
 }
 

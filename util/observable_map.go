@@ -13,7 +13,7 @@ type ObservableMap[K comparable, T any] interface {
 	Delete(key K)
 	Size() int
 	GetAll() map[K]T
-	Update(key K, updateFunc func(value T) T)
+	Update(key K, updateFunc func(value T, found bool) (T, bool))
 }
 
 type genericObservableMap[K comparable, T any] struct {
@@ -83,15 +83,16 @@ func (m *genericObservableMap[K, T]) Set(key K, value T) {
 	}
 }
 
-func (m *genericObservableMap[K, T]) Update(key K, updateFunc func(value T) T) {
+func (m *genericObservableMap[K, T]) Update(key K, updateFunc func(value T, found bool) (T, bool)) {
 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	old, ok := m.m[key]
-	if !ok {
+	new, changed := updateFunc(old, ok)
+	if !changed {
 		return
 	}
-	m.m[key] = updateFunc(old)
+	m.m[key] = new
 	for _, observer := range m.observers {
 		observer.set(key, m.m[key])
 	}
@@ -110,4 +111,10 @@ func (m *genericObservableMap[K, T]) Size() int {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 	return len(m.m)
+}
+
+func (m *genericObservableMap[K, T]) ObserverCount() int {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return len(m.observers)
 }

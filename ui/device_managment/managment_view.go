@@ -128,7 +128,7 @@ func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
 			},
 			func(device *rpc.DeviceInfo, button *widget.Button) {
 				button.OnTapped = func() {
-					m.main.PushView(newOldDeviceView(m.ep, device))
+					m.main.PushView(newDeviceView(m.ep, m.main, device))
 				}
 			},
 		),

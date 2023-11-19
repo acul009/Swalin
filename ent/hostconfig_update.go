@@ -40,6 +40,14 @@ func (hcu *HostConfigUpdate) SetType(s string) *HostConfigUpdate {
 	return hcu
 }
 
+// SetNillableType sets the "type" field if the given value is not nil.
+func (hcu *HostConfigUpdate) SetNillableType(s *string) *HostConfigUpdate {
+	if s != nil {
+		hcu.SetType(*s)
+	}
+	return hcu
+}
+
 // SetDeviceID sets the "device" edge to the Device entity by ID.
 func (hcu *HostConfigUpdate) SetDeviceID(id int) *HostConfigUpdate {
 	hcu.mutation.SetDeviceID(id)
@@ -183,6 +191,14 @@ func (hcuo *HostConfigUpdateOne) SetConfig(b []byte) *HostConfigUpdateOne {
 // SetType sets the "type" field.
 func (hcuo *HostConfigUpdateOne) SetType(s string) *HostConfigUpdateOne {
 	hcuo.mutation.SetType(s)
+	return hcuo
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (hcuo *HostConfigUpdateOne) SetNillableType(s *string) *HostConfigUpdateOne {
+	if s != nil {
+		hcuo.SetType(*s)
+	}
 	return hcuo
 }
 

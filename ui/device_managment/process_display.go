@@ -1,7 +1,9 @@
 package managment
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"rahnit-rmm/rmm"
 	"rahnit-rmm/rpc"
 	"rahnit-rmm/ui/components"
@@ -13,19 +15,23 @@ import (
 
 type processList struct {
 	widget.BaseWidget
-	onDestroy func()
+	ep        *rpc.RpcEndpoint
+	device    *rpc.DeviceInfo
 	processes util.ObservableMap[int32, *rmm.ProcessInfo]
+	list      *components.Table[int32, *rmm.ProcessInfo]
 	running   util.AsyncAction
 }
 
 func newProcessList(ep *rpc.RpcEndpoint, device *rpc.DeviceInfo) *processList {
 
 	p := &processList{
+		ep:        ep,
+		device:    device,
 		processes: util.NewObservableMap[int32, *rmm.ProcessInfo](),
 	}
 	p.ExtendBaseWidget(p)
 
-	components.NewTable[int32, *rmm.ProcessInfo](p.processes,
+	p.list = components.NewTable[int32, *rmm.ProcessInfo](p.processes,
 		components.TableColumn(
 			func() *widget.Label {
 				return widget.NewLabel("PID")
@@ -50,14 +56,27 @@ func newProcessList(ep *rpc.RpcEndpoint, device *rpc.DeviceInfo) *processList {
 }
 
 func (p *processList) Show() {
-	if p.running != nil {
-		return
+	if p.running == nil {
+
+		cmd := rmm.NewMonitorProcessesCommand(p.processes)
+
+		running, err := p.ep.SendCommandTo(context.Background(), p.device.Certificate, cmd)
+		if err != nil {
+			log.Printf("error running command: %v", err)
+		}
+
+		p.running = running
 	}
 
+	p.BaseWidget.Show()
 }
 
 func (p *processList) Hide() {
+	if p.running != nil {
+		p.running.Close()
+	}
 
+	p.BaseWidget.Hide()
 }
 
 func (p *processList) CreateRenderer() fyne.WidgetRenderer {
@@ -83,8 +102,6 @@ func (pr *processListRenderer) Refresh() {
 }
 
 func (pr *processListRenderer) Destroy() {
-	pr.widget.onDestroy()
-	pr.widget.list.CreateRenderer().Destroy()
 }
 
 func (pr *processListRenderer) Objects() []fyne.CanvasObject {

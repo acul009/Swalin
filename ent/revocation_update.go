@@ -39,10 +39,26 @@ func (ru *RevocationUpdate) SetHash(s string) *RevocationUpdate {
 	return ru
 }
 
+// SetNillableHash sets the "hash" field if the given value is not nil.
+func (ru *RevocationUpdate) SetNillableHash(s *string) *RevocationUpdate {
+	if s != nil {
+		ru.SetHash(*s)
+	}
+	return ru
+}
+
 // SetHasher sets the "hasher" field.
 func (ru *RevocationUpdate) SetHasher(u uint64) *RevocationUpdate {
 	ru.mutation.ResetHasher()
 	ru.mutation.SetHasher(u)
+	return ru
+}
+
+// SetNillableHasher sets the "hasher" field if the given value is not nil.
+func (ru *RevocationUpdate) SetNillableHasher(u *uint64) *RevocationUpdate {
+	if u != nil {
+		ru.SetHasher(*u)
+	}
 	return ru
 }
 
@@ -150,10 +166,26 @@ func (ruo *RevocationUpdateOne) SetHash(s string) *RevocationUpdateOne {
 	return ruo
 }
 
+// SetNillableHash sets the "hash" field if the given value is not nil.
+func (ruo *RevocationUpdateOne) SetNillableHash(s *string) *RevocationUpdateOne {
+	if s != nil {
+		ruo.SetHash(*s)
+	}
+	return ruo
+}
+
 // SetHasher sets the "hasher" field.
 func (ruo *RevocationUpdateOne) SetHasher(u uint64) *RevocationUpdateOne {
 	ruo.mutation.ResetHasher()
 	ruo.mutation.SetHasher(u)
+	return ruo
+}
+
+// SetNillableHasher sets the "hasher" field if the given value is not nil.
+func (ruo *RevocationUpdateOne) SetNillableHasher(u *uint64) *RevocationUpdateOne {
+	if u != nil {
+		ruo.SetHasher(*u)
+	}
 	return ruo
 }
 

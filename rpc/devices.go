@@ -73,7 +73,17 @@ func (d *DeviceList) Subscribe(onSet func(string, *DeviceInfo), onRemove func(st
 
 func (d *DeviceList) UpdateDeviceStatus(pubKey string, update func(device *DeviceInfo) *DeviceInfo) {
 	log.Printf("Updating device status for %s", pubKey)
-	d.devices.Update(pubKey, update)
+	d.devices.Update(pubKey,
+		func(device *DeviceInfo, found bool) (*DeviceInfo, bool) {
+			if !found {
+				log.Printf("Unknown device login: %s", pubKey)
+				return nil, false
+			}
+
+			device = update(device)
+			return device, true
+		},
+	)
 }
 
 func (d *DeviceList) GetAll() map[string]*DeviceInfo {

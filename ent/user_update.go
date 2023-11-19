@@ -34,6 +34,14 @@ func (uu *UserUpdate) SetUsername(s string) *UserUpdate {
 	return uu
 }
 
+// SetNillableUsername sets the "username" field if the given value is not nil.
+func (uu *UserUpdate) SetNillableUsername(s *string) *UserUpdate {
+	if s != nil {
+		uu.SetUsername(*s)
+	}
+	return uu
+}
+
 // SetPasswordClientHashingOptions sets the "password_client_hashing_options" field.
 func (uu *UserUpdate) SetPasswordClientHashingOptions(up *util.ArgonParameters) *UserUpdate {
 	uu.mutation.SetPasswordClientHashingOptions(up)
@@ -58,6 +66,14 @@ func (uu *UserUpdate) SetCertificate(s string) *UserUpdate {
 	return uu
 }
 
+// SetNillableCertificate sets the "certificate" field if the given value is not nil.
+func (uu *UserUpdate) SetNillableCertificate(s *string) *UserUpdate {
+	if s != nil {
+		uu.SetCertificate(*s)
+	}
+	return uu
+}
+
 // SetEncryptedPrivateKey sets the "encrypted_private_key" field.
 func (uu *UserUpdate) SetEncryptedPrivateKey(b []byte) *UserUpdate {
 	uu.mutation.SetEncryptedPrivateKey(b)
@@ -67,6 +83,14 @@ func (uu *UserUpdate) SetEncryptedPrivateKey(b []byte) *UserUpdate {
 // SetTotpSecret sets the "totp_secret" field.
 func (uu *UserUpdate) SetTotpSecret(s string) *UserUpdate {
 	uu.mutation.SetTotpSecret(s)
+	return uu
+}
+
+// SetNillableTotpSecret sets the "totp_secret" field if the given value is not nil.
+func (uu *UserUpdate) SetNillableTotpSecret(s *string) *UserUpdate {
+	if s != nil {
+		uu.SetTotpSecret(*s)
+	}
 	return uu
 }
 
@@ -186,6 +210,14 @@ func (uuo *UserUpdateOne) SetUsername(s string) *UserUpdateOne {
 	return uuo
 }
 
+// SetNillableUsername sets the "username" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillableUsername(s *string) *UserUpdateOne {
+	if s != nil {
+		uuo.SetUsername(*s)
+	}
+	return uuo
+}
+
 // SetPasswordClientHashingOptions sets the "password_client_hashing_options" field.
 func (uuo *UserUpdateOne) SetPasswordClientHashingOptions(up *util.ArgonParameters) *UserUpdateOne {
 	uuo.mutation.SetPasswordClientHashingOptions(up)
@@ -210,6 +242,14 @@ func (uuo *UserUpdateOne) SetCertificate(s string) *UserUpdateOne {
 	return uuo
 }
 
+// SetNillableCertificate sets the "certificate" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillableCertificate(s *string) *UserUpdateOne {
+	if s != nil {
+		uuo.SetCertificate(*s)
+	}
+	return uuo
+}
+
 // SetEncryptedPrivateKey sets the "encrypted_private_key" field.
 func (uuo *UserUpdateOne) SetEncryptedPrivateKey(b []byte) *UserUpdateOne {
 	uuo.mutation.SetEncryptedPrivateKey(b)
@@ -219,6 +259,14 @@ func (uuo *UserUpdateOne) SetEncryptedPrivateKey(b []byte) *UserUpdateOne {
 // SetTotpSecret sets the "totp_secret" field.
 func (uuo *UserUpdateOne) SetTotpSecret(s string) *UserUpdateOne {
 	uuo.mutation.SetTotpSecret(s)
+	return uuo
+}
+
+// SetNillableTotpSecret sets the "totp_secret" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillableTotpSecret(s *string) *UserUpdateOne {
+	if s != nil {
+		uuo.SetTotpSecret(*s)
+	}
 	return uuo
 }
 

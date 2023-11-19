@@ -122,6 +122,59 @@ func GetProcessInfo() (*ProcessStats, error) {
 	return &ProcessStats{Processes: processesInfo}, nil
 }
 
-func MonitorProcesses() util.ObservableMap[int32, *ProcessInfo] {
-	return util.NewObservableMap[int32, *ProcessInfo]()
+func MonitorProcesses(errChan chan<- error) (util.ObservableMap[int32, *ProcessInfo], error) {
+
+	processes, err := process.Processes()
+	if err != nil {
+		return nil, fmt.Errorf("error getting processes: %w", err)
+	}
+
+	list := util.NewObservableMap[int32, *ProcessInfo]()
+
+	for _, p := range processes {
+		name, _ := p.Name()
+		list.Set(p.Pid, &ProcessInfo{
+			Name: name,
+			Pid:  p.Pid,
+		})
+	}
+
+	go func() {
+		for {
+			pids, err := process.Pids()
+			if err != nil {
+				errChan <- fmt.Errorf("error getting processes: %w", err)
+				return
+			}
+
+			known := list.GetAll()
+
+			for _, pid := range pids {
+				_, ok := known[pid]
+				if !ok {
+
+					process, err := process.NewProcess(pid)
+					if err != nil {
+						errChan <- fmt.Errorf("error getting process: %w", err)
+						return
+					}
+
+					name, _ := process.Name()
+
+					list.Set(pid, &ProcessInfo{
+						Name: name,
+						Pid:  pid,
+					})
+				} else {
+					delete(known, pid)
+				}
+			}
+
+			for pid := range known {
+				list.Delete(pid)
+			}
+		}
+	}()
+
+	return list, nil
 }

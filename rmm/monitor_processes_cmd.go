@@ -1,6 +1,7 @@
 package rmm
 
 import (
+	"fmt"
 	"rahnit-rmm/rpc"
 	"rahnit-rmm/util"
 )
@@ -20,5 +21,17 @@ func (c *monitorProcessesCommand) GetKey() string {
 }
 
 func (c *monitorProcessesCommand) ExecuteServer(session *rpc.RpcSession) error {
+	errChan := make(chan error)
+	processes, err := MonitorProcesses(errChan)
+	if err != nil {
+		return fmt.Errorf("error monitoring processes: %w", err)
+	}
 
+	c.SyncDownCommand.SetMap(processes)
+
+	go func() {
+		errChan <- c.SyncDownCommand.ExecuteServer(session)
+	}()
+
+	return <-errChan
 }
