@@ -6,6 +6,10 @@ import (
 	"rahnit-rmm/util"
 )
 
+func MonitorProcessesCommandHandler() rpc.RpcCommand {
+	return NewMonitorProcessesCommand(nil)
+}
+
 type monitorProcessesCommand struct {
 	*rpc.SyncDownCommand[int32, *ProcessInfo]
 }

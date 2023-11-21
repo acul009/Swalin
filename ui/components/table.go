@@ -1,7 +1,9 @@
 package components
 
 import (
+	"log"
 	"rahnit-rmm/util"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/layout"
@@ -48,50 +50,68 @@ func NewTable[T comparable, U any](m util.ObservableMap[T, U], cols ...col[U]) *
 }
 
 func (t *Table[T, U]) CreateRenderer() fyne.WidgetRenderer {
-	rows := make(map[T][]cell[U])
 
 	tr := &tableRenderer[T, U]{
-		widget: t,
-		rows:   rows,
-		layout: layout.NewGridLayoutWithColumns(len(t.cols)),
+		widget:      t,
+		layout:      layout.NewGridLayoutWithColumns(len(t.cols)),
+		mutex:       sync.Mutex{},
+		deletedRows: map[int]struct{}{},
 	}
 
 	tr.unsubscribe = t.m.Subscribe(
 		func(key T, value U) {
-			row, ok := rows[key]
+			tr.mutex.Lock()
+			rowIndex, ok := tr.rowMap[key]
 			if !ok {
-				row = make([]cell[U], 0, len(t.cols))
+				row := make([]cell[U], 0, len(t.cols))
 				for _, col := range t.cols {
 					row = append(row, col.newCell())
 				}
 
-				rows[key] = row
+				rowIndex = len(tr.cells)
+
+				tr.rowMap[key] = rowIndex
+				tr.cells = append(tr.cells, row...)
+
+				log.Printf("adding row for %v", key)
 			}
 
-			for _, cell := range row {
+			for _, cell := range tr.cells[rowIndex : rowIndex+len(t.cols)] {
 				cell.update(value)
 			}
+
+			tr.mutex.Unlock()
 
 			if !ok {
 				tr.Refresh()
 			}
 		},
 		func(t T) {
-			delete(rows, t)
+			log.Printf("deleting row for %v", t)
+			tr.mutex.Lock()
+			defer tr.mutex.Unlock()
+			rowIndex, ok := tr.rowMap[t]
+			if ok {
+				delete(tr.rowMap, t)
+				tr.deletedRows[rowIndex] = struct{}{}
+			}
 		},
 	)
 
-	for key, val := range t.m.GetAll() {
-		row := make([]cell[U], 0, len(t.cols))
-		for _, col := range t.cols {
-			row = append(rows[key], col.newCell())
-		}
+	all := t.m.GetAll()
 
-		for _, cell := range row {
+	tr.rowMap = make(map[T]int, len(all))
+	tr.cells = make([]cell[U], 0, len(all)*len(t.cols))
+
+	for key, val := range t.m.GetAll() {
+
+		tr.rowMap[key] = len(tr.cells)
+
+		for _, col := range t.cols {
+			cell := col.newCell()
+			tr.cells = append(tr.cells, cell)
 			cell.update(val)
 		}
-
-		rows[key] = row
 	}
 
 	return tr
@@ -118,9 +138,13 @@ func (tc *tableCell[U, V]) object() fyne.CanvasObject {
 
 type tableRenderer[T comparable, U any] struct {
 	widget      *Table[T, U]
-	rows        map[T][]cell[U]
+	rowMap      map[T]int
+	cells       []cell[U]
 	unsubscribe func()
 	layout      fyne.Layout
+	mutex       sync.Mutex
+	deletedRows map[int]struct{}
+	copy        []fyne.CanvasObject
 }
 
 func (tr *tableRenderer[T, U]) Layout(size fyne.Size) {
@@ -141,13 +165,21 @@ func (tr *tableRenderer[T, U]) Destroy() {
 }
 
 func (tr *tableRenderer[T, U]) Objects() []fyne.CanvasObject {
-	cells := make([]fyne.CanvasObject, 0, len(tr.rows)*len(tr.widget.cols))
+	tr.mutex.Lock()
+	defer tr.mutex.Unlock()
 
-	for _, row := range tr.rows {
-		for _, cell := range row {
-			cells = append(cells, cell.object())
+	tr.copy = tr.copy[:0]
+
+	for index := 0; index < len(tr.cells); index += len(tr.widget.cols) {
+		_, deleted := tr.deletedRows[index]
+		if deleted {
+			continue
+		}
+
+		for offset := 0; offset < len(tr.widget.cols); offset++ {
+			tr.copy = append(tr.copy, tr.cells[index+offset].object())
 		}
 	}
 
-	return cells
+	return tr.copy
 }

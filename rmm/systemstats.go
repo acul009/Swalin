@@ -3,6 +3,7 @@ package rmm
 import (
 	"fmt"
 	"rahnit-rmm/util"
+	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/host"
@@ -173,6 +174,8 @@ func MonitorProcesses(errChan chan<- error) (util.ObservableMap[int32, *ProcessI
 			for pid := range known {
 				list.Delete(pid)
 			}
+
+			time.Sleep(5 * time.Second)
 		}
 	}()
 

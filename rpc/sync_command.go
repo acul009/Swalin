@@ -16,7 +16,7 @@ type SyncDownCommand[K comparable, T any] struct {
 }
 
 type updateInfo[K comparable, T any] struct {
-	delete bool
+	Delete bool
 	Key    K
 	Value  T
 }
@@ -44,7 +44,7 @@ func (s *SyncDownCommand[K, T]) ExecuteClient(session *RpcSession) error {
 
 		fmt.Printf("received update: %+v\n", update)
 
-		if update.delete {
+		if update.Delete {
 			s.targetMap.Delete(update.Key)
 		} else {
 			s.targetMap.Set(update.Key, update.Value)
@@ -74,7 +74,7 @@ func (s *SyncDownCommand[K, T]) ExecuteServer(session *RpcSession) error {
 	unsubscribe := s.targetMap.Subscribe(
 		func(key K, value T) {
 			err = WriteMessage[updateInfo[K, T]](session, updateInfo[K, T]{
-				delete: false,
+				Delete: false,
 				Key:    key,
 				Value:  value,
 			})
@@ -84,7 +84,7 @@ func (s *SyncDownCommand[K, T]) ExecuteServer(session *RpcSession) error {
 		},
 		func(key K) {
 			err = WriteMessage[updateInfo[K, T]](session, updateInfo[K, T]{
-				delete: true,
+				Delete: true,
 				Key:    key,
 			})
 			if err != nil {

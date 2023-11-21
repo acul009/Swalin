@@ -10,6 +10,7 @@ import (
 	"rahnit-rmm/util"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -82,15 +83,17 @@ func (p *processList) Hide() {
 func (p *processList) CreateRenderer() fyne.WidgetRenderer {
 	return &processListRenderer{
 		widget: p,
+		scroll: container.NewScroll(p.list),
 	}
 }
 
 type processListRenderer struct {
 	widget *processList
+	scroll *container.Scroll
 }
 
 func (pr *processListRenderer) Layout(size fyne.Size) {
-	pr.widget.list.Resize(size)
+	pr.scroll.Resize(size)
 }
 
 func (pr *processListRenderer) MinSize() fyne.Size {
@@ -98,7 +101,7 @@ func (pr *processListRenderer) MinSize() fyne.Size {
 }
 
 func (pr *processListRenderer) Refresh() {
-	pr.widget.list.Refresh()
+	pr.scroll.Refresh()
 }
 
 func (pr *processListRenderer) Destroy() {
@@ -106,6 +109,6 @@ func (pr *processListRenderer) Destroy() {
 
 func (pr *processListRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{
-		pr.widget.list,
+		pr.scroll,
 	}
 }
