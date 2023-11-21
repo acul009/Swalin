@@ -51,6 +51,27 @@ func newProcessList(ep *rpc.RpcEndpoint, device *rpc.DeviceInfo) *processList {
 				label.Refresh()
 			},
 		),
+		components.TableColumn(
+			func() *widget.Button {
+				return &widget.Button{
+					Text: "Kill",
+				}
+			},
+			func(process *rmm.ProcessInfo, button *widget.Button) {
+				button.OnTapped = func() {
+					running, err := p.ep.SendCommandTo(context.Background(), p.device.Certificate, rmm.NewKillProcessCommand(process.Pid))
+					if err != nil {
+						log.Printf("error running command: %v", err)
+					}
+					go func() {
+						err := running.Wait()
+						if err != nil {
+							log.Printf("error running command: %v", err)
+						}
+					}()
+				}
+			},
+		),
 	)
 
 	return p

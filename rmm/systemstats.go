@@ -181,3 +181,12 @@ func MonitorProcesses(errChan chan<- error) (util.ObservableMap[int32, *ProcessI
 
 	return list, nil
 }
+
+func KillProcess(pid int32) error {
+	process, err := process.NewProcess(pid)
+	if err != nil {
+		return fmt.Errorf("error getting process: %w", err)
+	}
+
+	return process.Kill()
+}

@@ -31,17 +31,21 @@ func (v *ViewStack) Push(obj fyne.CanvasObject) {
 }
 
 func (v *ViewStack) Set(obj fyne.CanvasObject) {
+	if len(v.stack) > 0 {
+		v.stack[len(v.stack)-1].Hide()
+	}
 	v.stack = v.stack[:0]
 	v.stack = append(v.stack, obj)
 	v.showTop()
 }
 
 func (v *ViewStack) Pop() {
+	log.Printf("Popping view stack")
 	if len(v.stack) <= 1 {
 		return
 	}
 	v.stack[len(v.stack)-1].Hide()
-	v.stack = v.stack[:len(v.stack)-1]
+	v.stack = v.stack[:len(v.stack)-2]
 	v.showTop()
 }
 

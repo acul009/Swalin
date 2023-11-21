@@ -65,6 +65,7 @@ to quickly create a Cobra application.`,
 				rmm.MonitorProcessesCommandHandler,
 				rmm.MonitorServicesCommandHandler,
 				rmm.RemoteShellCommandHandler,
+				rmm.KillProcessCommandHandler,
 			)),
 		)
 

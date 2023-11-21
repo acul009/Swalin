@@ -68,14 +68,21 @@ func NewMainView() *MainView {
 func (m *MainView) SetView(v fyne.CanvasObject) {
 	log.Printf("Setting new view")
 	m.viewStack.Set(v)
+	m.refreshBackButton()
 }
 
 func (m *MainView) PushView(v fyne.CanvasObject) {
 	m.viewStack.Push(v)
+	m.refreshBackButton()
 }
 
 func (m *MainView) popView() {
 	m.viewStack.Pop()
+	m.refreshBackButton()
+}
+
+func (m *MainView) refreshBackButton() {
+
 	if m.viewStack.StackSize() < 2 {
 		m.backButton.Disable()
 	} else {
