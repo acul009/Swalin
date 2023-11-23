@@ -16,24 +16,24 @@ import (
 
 type processList struct {
 	widget.BaseWidget
-	ep        *rpc.RpcEndpoint
+	cli       *rmm.Client
 	device    *rpc.DeviceInfo
 	processes util.ObservableMap[int32, *rmm.ProcessInfo]
 	list      *components.Table[int32, *rmm.ProcessInfo]
 	running   util.AsyncAction
 }
 
-func newProcessList(ep *rpc.RpcEndpoint, device *rpc.DeviceInfo) *processList {
+func newProcessList(cli *rmm.Client, device *rpc.DeviceInfo) *processList {
 
 	p := &processList{
-		ep:        ep,
+		cli:       cli,
 		device:    device,
 		processes: util.NewObservableMap[int32, *rmm.ProcessInfo](),
 	}
 	p.ExtendBaseWidget(p)
 
 	p.list = components.NewTable[int32, *rmm.ProcessInfo](p.processes,
-		components.TableColumn(
+		components.Column(
 			func() *widget.Label {
 				return widget.NewLabel("PID")
 			},
@@ -42,7 +42,7 @@ func newProcessList(ep *rpc.RpcEndpoint, device *rpc.DeviceInfo) *processList {
 				label.Refresh()
 			},
 		),
-		components.TableColumn(
+		components.Column(
 			func() *widget.Label {
 				return widget.NewLabel("Name")
 			},
@@ -51,7 +51,7 @@ func newProcessList(ep *rpc.RpcEndpoint, device *rpc.DeviceInfo) *processList {
 				label.Refresh()
 			},
 		),
-		components.TableColumn(
+		components.Column(
 			func() *widget.Button {
 				return &widget.Button{
 					Text: "Kill",
@@ -59,7 +59,7 @@ func newProcessList(ep *rpc.RpcEndpoint, device *rpc.DeviceInfo) *processList {
 			},
 			func(process *rmm.ProcessInfo, button *widget.Button) {
 				button.OnTapped = func() {
-					running, err := p.ep.SendCommandTo(context.Background(), p.device.Certificate, rmm.NewKillProcessCommand(process.Pid))
+					running, err := p.cli.SendCommandTo(context.Background(), p.device.Certificate, rmm.NewKillProcessCommand(process.Pid))
 					if err != nil {
 						log.Printf("error running command: %v", err)
 					}
@@ -82,7 +82,7 @@ func (p *processList) Show() {
 
 		cmd := rmm.NewMonitorProcessesCommand(p.processes)
 
-		running, err := p.ep.SendCommandTo(context.Background(), p.device.Certificate, cmd)
+		running, err := p.cli.SendCommandTo(context.Background(), p.device.Certificate, cmd)
 		if err != nil {
 			log.Printf("error running command: %v", err)
 		}

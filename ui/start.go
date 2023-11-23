@@ -246,12 +246,12 @@ func setupServerForm(w fyne.Window, conn *rpc.RpcConnection) {
 				panic(err)
 			}
 
-			ep, err := rpc.ConnectToUpstream(context.Background(), credentials)
+			cli, err := rpc.ConnectToUpstream(context.Background(), credentials)
 			if err != nil {
 				panic(err)
 			}
 
-			err = ep.SendSyncCommand(context.Background(), reg)
+			err = cli.SendSyncCommand(context.Background(), reg)
 			if err != nil {
 				panic(err)
 			}

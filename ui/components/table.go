@@ -12,24 +12,35 @@ import (
 
 type Table[T comparable, U any] struct {
 	widget.BaseWidget
-	m    util.ObservableMap[T, U]
-	cols []col[U]
+	m             util.ObservableMap[T, U]
+	cols          []col[U]
+	displayHeader bool
 }
 
-func TableColumn[U any, V fyne.CanvasObject](create func() V, update func(U, V)) col[U] {
+func Column[U any, V fyne.CanvasObject](create func() V, update func(U, V)) col[U] {
 	return &tableColumn[U, V]{
 		createFunc: create,
 		updateFunc: update,
 	}
 }
 
+func NamedColumn[U any, V fyne.CanvasObject](name string, create func() V, update func(U, V)) col[U] {
+	return &tableColumn[U, V]{
+		createFunc: create,
+		updateFunc: update,
+		name:       name,
+	}
+}
+
 type tableColumn[U any, V fyne.CanvasObject] struct {
 	createFunc func() V
 	updateFunc func(U, V)
+	name       string
 }
 
 type col[U any] interface {
 	newCell() cell[U]
+	getName() string
 }
 
 func (c *tableColumn[U, V]) newCell() cell[U] {
@@ -39,12 +50,24 @@ func (c *tableColumn[U, V]) newCell() cell[U] {
 	}
 }
 
+func (c *tableColumn[U, V]) getName() string {
+	return c.name
+}
+
 func NewTable[T comparable, U any](m util.ObservableMap[T, U], cols ...col[U]) *Table[T, U] {
 	t := &Table[T, U]{
 		m:    m,
 		cols: cols,
 	}
 	t.ExtendBaseWidget(t)
+
+	for _, col := range cols {
+		name := col.getName()
+		if name != "" {
+			t.displayHeader = true
+			break
+		}
+	}
 
 	return t
 }
@@ -101,7 +124,24 @@ func (t *Table[T, U]) CreateRenderer() fyne.WidgetRenderer {
 	all := t.m.GetAll()
 
 	tr.rowMap = make(map[T]int, len(all))
-	tr.cells = make([]cell[U], 0, len(all)*len(t.cols))
+
+	cellAmount := len(all) * len(t.cols)
+
+	if t.displayHeader {
+		cellAmount += len(t.cols)
+	}
+
+	tr.cells = make([]cell[U], 0, cellAmount)
+
+	if t.displayHeader {
+		for _, col := range t.cols {
+			tr.cells = append(tr.cells,
+				&headerCell[U]{
+					label: widget.NewLabel(col.getName()),
+				},
+			)
+		}
+	}
 
 	for key, val := range t.m.GetAll() {
 
@@ -116,6 +156,17 @@ func (t *Table[T, U]) CreateRenderer() fyne.WidgetRenderer {
 
 	return tr
 
+}
+
+type headerCell[U any] struct {
+	label *widget.Label
+}
+
+func (hc *headerCell[U]) update(value U) {
+}
+
+func (hc *headerCell[U]) object() fyne.CanvasObject {
+	return hc.label
 }
 
 type cell[U any] interface {

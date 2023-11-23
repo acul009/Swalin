@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/rmm"
 	"rahnit-rmm/rpc"
 	"rahnit-rmm/ui/mainview.go"
 	"rahnit-rmm/util"
@@ -19,7 +20,7 @@ import (
 type enrollmentView struct {
 	widget.BaseWidget
 	main        *mainview.MainView
-	ep          *rpc.RpcEndpoint
+	cli         *rmm.Client
 	credentials *pki.PermanentCredentials
 	enrollments util.ObservableMap[string, rpc.Enrollment]
 	needsUpdate bool
@@ -27,11 +28,11 @@ type enrollmentView struct {
 	visible     bool
 }
 
-func NewEnrollmentView(main *mainview.MainView, ep *rpc.RpcEndpoint, credentials *pki.PermanentCredentials) *enrollmentView {
+func NewEnrollmentView(main *mainview.MainView, cli *rmm.Client, credentials *pki.PermanentCredentials) *enrollmentView {
 
 	e := &enrollmentView{
 		main:        main,
-		ep:          ep,
+		cli:         cli,
 		credentials: credentials,
 		enrollments: util.NewObservableMap[string, rpc.Enrollment](),
 		needsUpdate: false,
@@ -43,7 +44,7 @@ func NewEnrollmentView(main *mainview.MainView, ep *rpc.RpcEndpoint, credentials
 
 	updateCommand := rpc.NewGetPendingEnrollmentsCommand(e.enrollments)
 
-	running, err := ep.SendCommand(context.Background(), updateCommand)
+	running, err := cli.SendCommand(context.Background(), updateCommand)
 	if err != nil {
 		panic(err)
 	}
@@ -136,7 +137,7 @@ func (e *enrollmentView) Prepare() fyne.CanvasObject {
 					panic(err)
 				}
 
-				err = e.ep.SendSyncCommand(context.Background(), rpc.NewEnrollAgentCommand(cert))
+				err = e.cli.SendSyncCommand(context.Background(), rpc.NewEnrollAgentCommand(cert))
 				if err != nil {
 					panic(err)
 				}

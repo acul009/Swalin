@@ -18,16 +18,16 @@ var _ fyne.Widget = (*tunnelDisplay)(nil)
 
 type tunnelDisplay struct {
 	widget.BaseWidget
-	ep      *rpc.RpcEndpoint
+	cli     *rmm.Client
 	layout  fyne.Layout
 	config  *rmm.TunnelConfig
 	tcpList *fyne.Container
 	tcpAdd  *fyne.Container
 }
 
-func newTunnelDisplay(ep *rpc.RpcEndpoint, device *rpc.DeviceInfo) *tunnelDisplay {
+func newTunnelDisplay(cli *rmm.Client, device *rpc.DeviceInfo) *tunnelDisplay {
 	d := &tunnelDisplay{
-		ep:     ep,
+		cli:    cli,
 		config: &rmm.TunnelConfig{},
 		layout: layout.NewBorderLayout(nil, nil, nil, nil),
 	}
@@ -92,7 +92,7 @@ func newTunnelDisplay(ep *rpc.RpcEndpoint, device *rpc.DeviceInfo) *tunnelDispla
 
 	cmd := rmm.NewGetConfigCommand[*rmm.TunnelConfig](device.Certificate.GetPublicKey())
 
-	running, err := d.ep.SendCommand(context.Background(), cmd)
+	running, err := d.cli.SendCommand(context.Background(), cmd)
 	if err != nil {
 		sErr := &rpc.SessionError{}
 		if !errors.As(err, &sErr) {

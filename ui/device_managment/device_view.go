@@ -1,6 +1,7 @@
 package managment
 
 import (
+	"rahnit-rmm/rmm"
 	"rahnit-rmm/rpc"
 	"rahnit-rmm/ui/mainview.go"
 
@@ -12,14 +13,14 @@ import (
 type deviceView struct {
 	widget.BaseWidget
 	main   *mainview.MainView
-	ep     *rpc.RpcEndpoint
+	cli    *rmm.Client
 	device *rpc.DeviceInfo
 	tabs   *container.AppTabs
 }
 
-func newDeviceView(ep *rpc.RpcEndpoint, main *mainview.MainView, device *rpc.DeviceInfo) *deviceView {
+func newDeviceView(cli *rmm.Client, main *mainview.MainView, device *rpc.DeviceInfo) *deviceView {
 	d := &deviceView{
-		ep:     ep,
+		cli:    cli,
 		main:   main,
 		device: device,
 	}
@@ -27,7 +28,7 @@ func newDeviceView(ep *rpc.RpcEndpoint, main *mainview.MainView, device *rpc.Dev
 	d.ExtendBaseWidget(d)
 
 	d.tabs = container.NewAppTabs(
-		container.NewTabItem("Processes", newProcessList(d.ep, d.device)),
+		container.NewTabItem("Processes", newProcessList(cli, d.device)),
 	)
 
 	return d

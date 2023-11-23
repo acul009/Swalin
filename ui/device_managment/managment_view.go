@@ -3,6 +3,7 @@ package managment
 import (
 	"context"
 	"log"
+	"rahnit-rmm/rmm"
 	"rahnit-rmm/rpc"
 	"rahnit-rmm/ui/components"
 	"rahnit-rmm/ui/mainview.go"
@@ -20,16 +21,16 @@ type deviceManagementView struct {
 	widget.BaseWidget
 	running util.AsyncAction
 	main    *mainview.MainView
-	ep      *rpc.RpcEndpoint
+	cli     *rmm.Client
 	devices util.ObservableMap[string, *rpc.DeviceInfo]
 }
 
-func NewDeviceManagementView(main *mainview.MainView, ep *rpc.RpcEndpoint) *deviceManagementView {
+func NewDeviceManagementView(main *mainview.MainView, cli *rmm.Client) *deviceManagementView {
 	devices := util.NewObservableMap[string, *rpc.DeviceInfo]()
 
 	m := &deviceManagementView{
 		main:    main,
-		ep:      ep,
+		cli:     cli,
 		devices: devices,
 	}
 
@@ -47,7 +48,7 @@ func (m *deviceManagementView) Show() {
 
 	cmd := rpc.NewGetDevicesCommand(m.devices)
 
-	running, err := m.ep.SendCommand(context.Background(), cmd)
+	running, err := m.cli.SendCommand(context.Background(), cmd)
 	if err != nil {
 		panic(err)
 	}
@@ -65,6 +66,9 @@ func (m *deviceManagementView) Show() {
 }
 
 func (m *deviceManagementView) Hide() {
+
+	log.Printf("Hiding device management view")
+
 	if m.running == nil {
 		return
 	}
@@ -93,7 +97,7 @@ func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
 	offlineIcon := theme.NewErrorThemedResource(icon)
 
 	table := components.NewTable[string, *rpc.DeviceInfo](m.devices,
-		components.TableColumn(
+		components.Column(
 			func() *widget.Icon {
 				return widget.NewIcon(offlineIcon)
 			},
@@ -106,7 +110,8 @@ func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
 				icon.Refresh()
 			},
 		),
-		components.TableColumn(
+		components.NamedColumn(
+			"Name",
 			func() *widget.Label {
 				return widget.NewLabel("Name")
 			},
@@ -115,20 +120,20 @@ func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
 				label.Refresh()
 			},
 		),
-		components.TableColumn(
+		components.Column(
 			func() *layout.Spacer {
 				return layout.NewSpacer().(*layout.Spacer)
 			},
 			func(device *rpc.DeviceInfo, spacer *layout.Spacer) {
 			},
 		),
-		components.TableColumn(
+		components.Column(
 			func() *widget.Button {
 				return widget.NewButton("Connect", func() {})
 			},
 			func(device *rpc.DeviceInfo, button *widget.Button) {
 				button.OnTapped = func() {
-					m.main.PushView(newDeviceView(m.ep, m.main, device))
+					m.main.PushView(newDeviceView(m.cli, m.main, device))
 				}
 			},
 		),
