@@ -27,7 +27,7 @@ func (c *GetConfigCommand[T]) GetKey() string {
 	return "get-host-config-" + conf.GetConfigKey()
 }
 
-func (c *GetConfigCommand[T]) ExecuteServer(session *rpc.RpcSession) error {
+func (c *GetConfigCommand[T]) ExecuteServer(session *rpc.RpcSession[T]) error {
 
 	artifact, err := LoadHostConfigFromDB[T](c.Host, session.Verifier())
 	if err != nil {
@@ -66,7 +66,7 @@ func (c *GetConfigCommand[T]) ExecuteServer(session *rpc.RpcSession) error {
 	return nil
 }
 
-func (c *GetConfigCommand[T]) ExecuteClient(session *rpc.RpcSession) error {
+func (c *GetConfigCommand[T]) ExecuteClient(session *rpc.RpcSession[T]) error {
 	raw := make([]byte, 0)
 	err := rpc.ReadMessage[[]byte](session, raw)
 	if err != nil {

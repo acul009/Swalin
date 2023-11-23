@@ -1,20 +1,20 @@
 package rpc
 
-type RpcCommandHandler func() RpcCommand
+type RpcCommandHandler[T any] func() RpcCommand[T]
 
-type RpcCommand interface {
+type RpcCommand[T any] interface {
 	GetKey() string
-	ExecuteServer(session *RpcSession) error
-	ExecuteClient(session *RpcSession) error
+	ExecuteServer(session *RpcSession[T]) error
+	ExecuteClient(session *RpcSession[T]) error
 }
 
-type CommandCollection struct {
-	Commands map[string]RpcCommandHandler
+type CommandCollection[T any] struct {
+	Commands map[string]RpcCommandHandler[T]
 }
 
-func NewCommandCollection(commands ...RpcCommandHandler) *CommandCollection {
-	collection := &CommandCollection{
-		Commands: make(map[string]RpcCommandHandler),
+func NewCommandCollection[T any](commands ...RpcCommandHandler[T]) *CommandCollection[T] {
+	collection := &CommandCollection[T]{
+		Commands: make(map[string]RpcCommandHandler[T]),
 	}
 	for _, cmd := range commands {
 		collection.Add(cmd)
@@ -23,11 +23,11 @@ func NewCommandCollection(commands ...RpcCommandHandler) *CommandCollection {
 	return collection
 }
 
-func (c *CommandCollection) Add(cmdHandler RpcCommandHandler) {
+func (c *CommandCollection[T]) Add(cmdHandler RpcCommandHandler[T]) {
 	c.Commands[cmdHandler().GetKey()] = cmdHandler
 }
 
-func (c *CommandCollection) Get(cmd string) (RpcCommandHandler, bool) {
+func (c *CommandCollection[T]) Get(cmd string) (RpcCommandHandler[T], bool) {
 	commandHandler, ok := c.Commands[cmd]
 	return commandHandler, ok
 }

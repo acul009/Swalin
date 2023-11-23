@@ -28,15 +28,16 @@ func (e rpcNotRunningError) Is(target error) bool {
 	return ok
 }
 
-type RpcServer struct {
+type RpcServer[T any] struct {
+	deps              T
 	listener          *quic.Listener
 	rpcCommands       *CommandCollection
 	state             RpcServerState
-	activeConnections map[uuid.UUID]*RpcConnection
+	activeConnections map[uuid.UUID]*RpcConnection[T]
 	mutex             sync.Mutex
 	nonceStorage      *util.NonceStorage
 	credentials       *pki.PermanentCredentials
-	enrollment        *enrollmentManager
+	enrollment        *enrollmentManager[T]
 	devices           *DeviceList
 	verifier          pki.Verifier
 }
@@ -49,7 +50,7 @@ const (
 	RpcServerStopped
 )
 
-func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials *pki.PermanentCredentials) (*RpcServer, error) {
+func NewRpcServer[T any](listenAddr string, rpcCommands *CommandCollection, credentials *pki.PermanentCredentials, dependencies T) (*RpcServer[T], error) {
 	tlsConf, err := getTlsServerConfig([]TlsConnectionProto{ProtoRpc, ProtoClientLogin, ProtoAgentEnroll})
 	if err != nil {
 		return nil, fmt.Errorf("error getting server tls config: %w", err)
@@ -78,21 +79,22 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 		return nil, fmt.Errorf("error creating local verify: %w", err)
 	}
 
-	return &RpcServer{
+	return &RpcServer[T]{
+		deps:              dependencies,
 		listener:          listener,
 		rpcCommands:       rpcCommands,
 		state:             RpcServerCreated,
-		activeConnections: make(map[uuid.UUID]*RpcConnection),
+		activeConnections: make(map[uuid.UUID]*RpcConnection[T]),
 		mutex:             sync.Mutex{},
 		nonceStorage:      util.NewNonceStorage(),
 		credentials:       credentials,
-		enrollment:        newEnrollmentManager(cert),
+		enrollment:        newEnrollmentManager[T](cert),
 		devices:           devices,
 		verifier:          verifier,
 	}, nil
 }
 
-func (s *RpcServer) accept() (*RpcConnection, error) {
+func (s *RpcServer[T]) accept() (*RpcConnection[T], error) {
 	conn, err := s.listener.Accept(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("error accepting QUIC connection: %w", err)
@@ -157,7 +159,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 
 	}
 
-	var connection *RpcConnection
+	var connection *RpcConnection[T]
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -180,7 +182,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 	return connection, nil
 }
 
-func (s *RpcServer) removeConnection(uuid uuid.UUID) {
+func (s *RpcServer[T]) removeConnection(uuid uuid.UUID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	if conn, ok := s.activeConnections[uuid]; ok {
@@ -194,7 +196,7 @@ func (s *RpcServer) removeConnection(uuid uuid.UUID) {
 	delete(s.activeConnections, uuid)
 }
 
-func (s *RpcServer) Run() error {
+func (s *RpcServer[T]) Run() error {
 	fmt.Println("Starting RPC server")
 	s.mutex.Lock()
 	if s.state != RpcServerCreated {
@@ -256,7 +258,7 @@ func (s *RpcServer) Run() error {
 	}
 }
 
-func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
+func (s *RpcServer[T]) Close(code quic.ApplicationErrorCode, msg string) error {
 
 	// lock server before closing
 	s.mutex.Lock()
@@ -276,7 +278,7 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 
 	for _, connection := range connectionsToClose {
 		wg.Add(1)
-		go func(connection *RpcConnection) {
+		go func(connection *RpcConnection[T]) {
 			err := connection.Close(code, msg)
 			if err != nil {
 				errChan <- err
@@ -304,12 +306,12 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 	return err
 }
 
-func (s *RpcServer) cleanup() {
+func (s *RpcServer[T]) cleanup() {
 	s.enrollment.cleanup()
 	s.nonceStorage.Cleanup(messageExpiration * 2)
 }
 
-func (s *RpcServer) getConnectionWith(partner *pki.Certificate) (*RpcConnection, error) {
+func (s *RpcServer[T]) getConnectionWith(partner *pki.Certificate) (*RpcConnection[T], error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	for _, connection := range s.activeConnections {

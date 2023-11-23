@@ -5,7 +5,7 @@ import (
 	"rahnit-rmm/rpc"
 )
 
-func KillProcessCommandHandler() rpc.RpcCommand {
+func KillProcessCommandHandler() rpc.RpcCommand[*Dependencies] {
 	return &killProcessCommand{}
 }
 
@@ -23,7 +23,7 @@ func (c *killProcessCommand) GetKey() string {
 	return "kill-process"
 }
 
-func (c *killProcessCommand) ExecuteServer(session *rpc.RpcSession) error {
+func (c *killProcessCommand) ExecuteServer(session *rpc.RpcSession[*Dependencies]) error {
 
 	err := KillProcess(c.Pid)
 	if err != nil {
@@ -33,6 +33,6 @@ func (c *killProcessCommand) ExecuteServer(session *rpc.RpcSession) error {
 	return nil
 }
 
-func (c *killProcessCommand) ExecuteClient(session *rpc.RpcSession) error {
+func (c *killProcessCommand) ExecuteClient(session *rpc.RpcSession[*Dependencies]) error {
 	return nil
 }

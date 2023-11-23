@@ -13,14 +13,14 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
-type enrollmentManager struct {
-	waitingEnrollments util.ObservableMap[string, *enrollmentConnection]
+type enrollmentManager[T any] struct {
+	waitingEnrollments util.ObservableMap[string, *enrollmentConnection[T]]
 	upstream           *pki.Certificate
 	mutex              sync.Mutex
 }
 
-type enrollmentConnection struct {
-	connection *RpcConnection
+type enrollmentConnection[T any] struct {
+	connection *RpcConnection[T]
 	session    *RpcSession
 	enrollment Enrollment
 	mutex      sync.Mutex
@@ -34,15 +34,15 @@ type Enrollment struct {
 
 const maxEnrollmentTime = 5 * time.Minute
 
-func newEnrollmentManager(upstream *pki.Certificate) *enrollmentManager {
-	return &enrollmentManager{
-		waitingEnrollments: util.NewObservableMap[string, *enrollmentConnection](),
+func newEnrollmentManager[T any](upstream *pki.Certificate) *enrollmentManager[T] {
+	return &enrollmentManager[T]{
+		waitingEnrollments: util.NewObservableMap[string, *enrollmentConnection[T]](),
 		upstream:           upstream,
 		mutex:              sync.Mutex{},
 	}
 }
 
-func (m *enrollmentManager) cleanup() {
+func (m *enrollmentManager[T]) cleanup() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	for key, econn := range m.waitingEnrollments.GetAll() {
@@ -55,7 +55,7 @@ func (m *enrollmentManager) cleanup() {
 	}
 }
 
-func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
+func (m *enrollmentManager[T]) startEnrollment(conn *RpcConnection[T]) error {
 	session, err := conn.AcceptSession(context.Background())
 	if err != nil {
 		conn.Close(500, "error accepting session")
@@ -82,7 +82,7 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 	}
 
 	m.waitingEnrollments.Set(encodedKey,
-		&enrollmentConnection{
+		&enrollmentConnection[T]{
 			connection: conn,
 			session:    session,
 			mutex:      sync.Mutex{},
@@ -100,7 +100,7 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 	return nil
 }
 
-func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
+func (m *enrollmentManager[T]) acceptEnrollment(cert *pki.Certificate) error {
 	m.cleanup()
 	encodedKey := cert.GetPublicKey().Base64Encode()
 
@@ -140,16 +140,16 @@ func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
 	return nil
 }
 
-func (m *enrollmentManager) subscribe(onSet func(string, Enrollment), onRemove func(string)) func() {
+func (m *enrollmentManager[T]) subscribe(onSet func(string, Enrollment), onRemove func(string)) func() {
 	return m.waitingEnrollments.Subscribe(
-		func(key string, conn *enrollmentConnection) {
+		func(key string, conn *enrollmentConnection[T]) {
 			onSet(key, conn.enrollment)
 		},
 		onRemove,
 	)
 }
 
-func (m *enrollmentManager) getAll() map[string]Enrollment {
+func (m *enrollmentManager[T]) getAll() map[string]Enrollment {
 	allConns := m.waitingEnrollments.GetAll()
 	copy := make(map[string]Enrollment)
 	for key, conn := range allConns {
@@ -193,7 +193,7 @@ func EnrollWithUpstream() (*pki.PermanentCredentials, error) {
 		return nil, fmt.Errorf("error generating temp credentials: %w", err)
 	}
 
-	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoAgentEnroll, tempCredentials, pki.NewNilVerifier())
+	conn := newRpcConnection[struct{}](quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoAgentEnroll, tempCredentials, pki.NewNilVerifier())
 
 	session, err := conn.OpenSession(context.Background())
 	if err != nil {

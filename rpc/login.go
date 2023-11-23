@@ -11,7 +11,7 @@ import (
 	"rahnit-rmm/util"
 )
 
-func Login(conn *RpcConnection, username string, password []byte, totpCode string) (*pki.PermanentCredentials, error) {
+func Login(conn *RpcConnection[struct{}], username string, password []byte, totpCode string) (*pki.PermanentCredentials, error) {
 	defer conn.Close(500, "")
 
 	credentials, err := pki.GenerateCredentials()
@@ -137,7 +137,7 @@ type loginSuccessResponse struct {
 	EncryptedPrivateKey []byte
 }
 
-func acceptLoginRequest(conn *RpcConnection) error {
+func acceptLoginRequest[T any](conn *RpcConnection[T]) error {
 	// prepare session
 	ctx := conn.connection.Context()
 

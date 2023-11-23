@@ -7,12 +7,14 @@ import (
 )
 
 type Client struct {
-	*rpc.RpcEndpoint
+	*rpc.RpcEndpoint[*Dependencies]
 	tunnelHandler *tunnelHandler
 }
 
 func ClientConnect(ctx context.Context, credentials *pki.PermanentCredentials) (*Client, error) {
-	ep, err := rpc.ConnectToUpstream(ctx, credentials)
+	deps := &Dependencies{}
+
+	ep, err := rpc.ConnectToUpstream(ctx, credentials, deps)
 	if err != nil {
 		return nil, err
 	}

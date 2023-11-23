@@ -7,7 +7,7 @@ import (
 	"rahnit-rmm/rpc"
 )
 
-func TcpForwardCommandHandler() rpc.RpcCommand {
+func TcpForwardCommandHandler() rpc.RpcCommand[*Dependencies] {
 	return &tcpForwardCommand{}
 }
 
@@ -27,7 +27,7 @@ func (c *tcpForwardCommand) GetKey() string {
 	return "tcp-forward"
 }
 
-func (c *tcpForwardCommand) ExecuteServer(session *rpc.RpcSession) error {
+func (c *tcpForwardCommand) ExecuteServer(session *rpc.RpcSession[*Dependencies]) error {
 	conn, err := net.Dial("tcp", c.Target)
 	if err != nil {
 		session.WriteResponseHeader(rpc.SessionResponseHeader{
@@ -61,7 +61,7 @@ func (c *tcpForwardCommand) ExecuteServer(session *rpc.RpcSession) error {
 	return nil
 }
 
-func (c *tcpForwardCommand) ExecuteClient(session *rpc.RpcSession) error {
+func (c *tcpForwardCommand) ExecuteClient(session *rpc.RpcSession[*Dependencies]) error {
 	errChan := make(chan error)
 
 	go func() {

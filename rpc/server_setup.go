@@ -68,7 +68,7 @@ type serverInitResponse struct {
 }
 
 func acceptServerInitialization(quicConn quic.Connection, credentials *pki.TempCredentials) (*pki.PermanentCredentials, error) {
-	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoServerInit, credentials, pki.NewNilVerifier())
+	conn := newRpcConnection[struct{}](quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoServerInit, credentials, pki.NewNilVerifier())
 
 	log.Printf("Opening init QUIC stream...")
 
@@ -141,7 +141,7 @@ func acceptServerInitialization(quicConn quic.Connection, credentials *pki.TempC
 	return rpcCredentials, nil
 }
 
-func SetupServer(conn *RpcConnection, rootCredentials *pki.PermanentCredentials, nameForServer string) error {
+func SetupServer(conn *RpcConnection[struct{}], rootCredentials *pki.PermanentCredentials, nameForServer string) error {
 	conn.credentials = rootCredentials
 
 	session, err := conn.OpenSession(context.Background())

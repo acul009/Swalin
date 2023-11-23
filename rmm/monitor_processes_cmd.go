@@ -6,7 +6,7 @@ import (
 	"rahnit-rmm/util"
 )
 
-func MonitorProcessesCommandHandler() rpc.RpcCommand {
+func MonitorProcessesCommandHandler() rpc.RpcCommand[*Dependencies] {
 	return NewMonitorProcessesCommand(nil)
 }
 
@@ -24,7 +24,7 @@ func (c *monitorProcessesCommand) GetKey() string {
 	return "monitor-processes"
 }
 
-func (c *monitorProcessesCommand) ExecuteServer(session *rpc.RpcSession) error {
+func (c *monitorProcessesCommand) ExecuteServer(session *rpc.RpcSession[*Dependencies]) error {
 	errChan := make(chan error)
 	processes, err := MonitorProcesses(errChan)
 	if err != nil {

@@ -19,13 +19,14 @@ const (
 	RpcEndpointClosed
 )
 
-type RpcEndpoint struct {
-	conn  *RpcConnection
+type RpcEndpoint[T any] struct {
+	deps  T
+	conn  *RpcConnection[T]
 	state RpcEndpointState
 	mutex sync.Mutex
 }
 
-func ConnectToUpstream(ctx context.Context, credentials pki.Credentials) (*RpcEndpoint, error) {
+func ConnectToUpstream[T any](ctx context.Context, credentials pki.Credentials, deps T) (*RpcEndpoint[T], error) {
 	upstreamAddr := config.V().GetString("upstream.address")
 	if upstreamAddr == "" {
 		return nil, fmt.Errorf("upstream address is missing")
@@ -36,10 +37,10 @@ func ConnectToUpstream(ctx context.Context, credentials pki.Credentials) (*RpcEn
 		return nil, fmt.Errorf("error parsing upstream certificate: %w", err)
 	}
 
-	return newRpcEndpoint(ctx, upstreamAddr, credentials, upstreamCert)
+	return newRpcEndpoint[T](ctx, upstreamAddr, credentials, upstreamCert, deps)
 }
 
-func newRpcEndpoint(ctx context.Context, addr string, credentials pki.Credentials, partner *pki.Certificate) (*RpcEndpoint, error) {
+func newRpcEndpoint[T any](ctx context.Context, addr string, credentials pki.Credentials, partner *pki.Certificate, deps T) (*RpcEndpoint[T], error) {
 	if addr == "" {
 		return nil, fmt.Errorf("address cannot be empty")
 	}
@@ -63,9 +64,10 @@ func newRpcEndpoint(ctx context.Context, addr string, credentials pki.Credential
 		return nil, fmt.Errorf("error creating QUIC connection: %w", err)
 	}
 
-	rpcConn := newRpcConnection(quicConn, nil, RpcRoleClient, util.NewNonceStorage(), partner, ProtoRpc, credentials, nil)
+	rpcConn := newRpcConnection[T](quicConn, nil, RpcRoleClient, util.NewNonceStorage(), partner, ProtoRpc, credentials, nil)
 
-	ep := &RpcEndpoint{
+	ep := &RpcEndpoint[T]{
+		deps:  deps,
 		conn:  rpcConn,
 		state: RpcEndpointRunning,
 		mutex: sync.Mutex{},
@@ -81,7 +83,7 @@ func newRpcEndpoint(ctx context.Context, addr string, credentials pki.Credential
 	return ep, nil
 }
 
-func (r *RpcEndpoint) SendCommand(ctx context.Context, cmd RpcCommand) (util.AsyncAction, error) {
+func (r *RpcEndpoint[T]) SendCommand(ctx context.Context, cmd RpcCommand) (util.AsyncAction, error) {
 	if r == nil {
 		return nil, fmt.Errorf("endpoint is nil")
 	}
@@ -104,7 +106,7 @@ func (r *RpcEndpoint) SendCommand(ctx context.Context, cmd RpcCommand) (util.Asy
 	return running, nil
 }
 
-func (r *RpcEndpoint) SendSyncCommand(ctx context.Context, cmd RpcCommand) error {
+func (r *RpcEndpoint[T]) SendSyncCommand(ctx context.Context, cmd RpcCommand) error {
 	running, err := r.SendCommand(ctx, cmd)
 	if err != nil {
 		return err
@@ -118,7 +120,7 @@ func (r *RpcEndpoint) SendSyncCommand(ctx context.Context, cmd RpcCommand) error
 	return nil
 }
 
-func (r *RpcEndpoint) SendCommandTo(ctx context.Context, to *pki.Certificate, cmd RpcCommand) (util.AsyncAction, error) {
+func (r *RpcEndpoint[T]) SendCommandTo(ctx context.Context, to *pki.Certificate, cmd RpcCommand) (util.AsyncAction, error) {
 	if r == nil {
 		return nil, fmt.Errorf("endpoint is nil")
 	}
@@ -141,7 +143,7 @@ func (r *RpcEndpoint) SendCommandTo(ctx context.Context, to *pki.Certificate, cm
 	return r.SendCommand(ctx, forward)
 }
 
-func (r *RpcEndpoint) SendSyncCommandTo(ctx context.Context, to *pki.Certificate, cmd RpcCommand) error {
+func (r *RpcEndpoint[T]) SendSyncCommandTo(ctx context.Context, to *pki.Certificate, cmd RpcCommand) error {
 	running, err := r.SendCommandTo(ctx, to, cmd)
 	if err != nil {
 		return err
@@ -155,7 +157,7 @@ func (r *RpcEndpoint) SendSyncCommandTo(ctx context.Context, to *pki.Certificate
 	return nil
 }
 
-func (r *RpcEndpoint) Close(code quic.ApplicationErrorCode, msg string) error {
+func (r *RpcEndpoint[T]) Close(code quic.ApplicationErrorCode, msg string) error {
 	err := r.mutateState(RpcEndpointRunning, RpcEndpointClosed)
 	if err != nil {
 		return fmt.Errorf("error mutating endpoint state: %w", err)
@@ -172,7 +174,7 @@ func (r *RpcEndpoint) Close(code quic.ApplicationErrorCode, msg string) error {
 	return nil
 }
 
-func (r *RpcEndpoint) ServeRpc(commands *CommandCollection) error {
+func (r *RpcEndpoint[T]) ServeRpc(commands *CommandCollection[T]) error {
 	if r == nil {
 		return fmt.Errorf("endpoint is nil")
 	}
@@ -180,7 +182,7 @@ func (r *RpcEndpoint) ServeRpc(commands *CommandCollection) error {
 	return r.conn.serveRpc(commands)
 }
 
-func (r *RpcEndpoint) Credentials() *pki.PermanentCredentials {
+func (r *RpcEndpoint[T]) Credentials() *pki.PermanentCredentials {
 	credentials := r.conn.credentials
 
 	if credentials == nil {
@@ -195,7 +197,7 @@ func (r *RpcEndpoint) Credentials() *pki.PermanentCredentials {
 	return perm
 }
 
-func (r *RpcEndpoint) ensureState(state RpcEndpointState) error {
+func (r *RpcEndpoint[T]) ensureState(state RpcEndpointState) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if r.state != state {
@@ -204,7 +206,7 @@ func (r *RpcEndpoint) ensureState(state RpcEndpointState) error {
 	return nil
 }
 
-func (r *RpcEndpoint) mutateState(from RpcEndpointState, to RpcEndpointState) error {
+func (r *RpcEndpoint[T]) mutateState(from RpcEndpointState, to RpcEndpointState) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if r.state != from {

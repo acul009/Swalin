@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-func PingHandler() RpcCommand {
-	return &PingCmd{}
+func PingHandler[T any]() RpcCommand[T] {
+	return &PingCmd[T]{}
 }
 
-type PingCmd struct {
+type PingCmd[T any] struct {
 }
 
-func (p *PingCmd) ExecuteClient(session *RpcSession) error {
+func (p *PingCmd[T]) ExecuteClient(session *RpcSession[T]) error {
 	var errorOccured error = nil
 
 	fmt.Println("Pinging...")
@@ -45,7 +45,7 @@ func (p *PingCmd) ExecuteClient(session *RpcSession) error {
 	return errorOccured
 }
 
-func (p *PingCmd) ExecuteServer(session *RpcSession) error {
+func (p *PingCmd[T]) ExecuteServer(session *RpcSession[T]) error {
 	log.Printf("Starting echo server")
 	err := session.WriteResponseHeader(SessionResponseHeader{
 		Code: 200,
@@ -65,6 +65,6 @@ func (p *PingCmd) ExecuteServer(session *RpcSession) error {
 	}
 }
 
-func (p *PingCmd) GetKey() string {
+func (p *PingCmd[T]) GetKey() string {
 	return "ping"
 }

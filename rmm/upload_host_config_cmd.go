@@ -6,7 +6,7 @@ import (
 	"rahnit-rmm/rpc"
 )
 
-func UploadHostConfigCommandHandler[T HostConfig]() rpc.RpcCommand {
+func UploadHostConfigCommandHandler[T HostConfig]() rpc.RpcCommand[*Dependencies] {
 	return &uploadHostConfigCommand[T]{}
 }
 
@@ -25,11 +25,11 @@ func (c *uploadHostConfigCommand[T]) GetKey() string {
 	return "upload-host-config-" + conf.GetConfigKey()
 }
 
-func (c *uploadHostConfigCommand[T]) ExecuteClient(session *rpc.RpcSession) error {
+func (c *uploadHostConfigCommand[T]) ExecuteClient(session *rpc.RpcSession[*Dependencies]) error {
 	return nil
 }
 
-func (c *uploadHostConfigCommand[T]) ExecuteServer(session *rpc.RpcSession) error {
+func (c *uploadHostConfigCommand[T]) ExecuteServer(session *rpc.RpcSession[*Dependencies]) error {
 	conf, err := pki.LoadSignedArtifact[T](c.Config, session.Verifier())
 	if err != nil {
 		session.WriteResponseHeader(rpc.SessionResponseHeader{

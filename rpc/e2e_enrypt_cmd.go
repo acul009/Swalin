@@ -8,19 +8,19 @@ import (
 	"rahnit-rmm/util"
 )
 
-func CreateE2eDecryptCommandHandler(commands *CommandCollection) func() RpcCommand {
-	return func() RpcCommand {
-		return &e2eEncryptCommand{
+func CreateE2eDecryptCommandHandler[T any](commands *CommandCollection[T]) func() RpcCommand[T] {
+	return func() RpcCommand[T] {
+		return &e2eEncryptCommand[T]{
 			commands: commands,
 		}
 	}
 }
 
-type e2eEncryptCommand struct {
+type e2eEncryptCommand[T any] struct {
 	ClientPublicKey  []byte
 	clientPrivateKey *ecdh.PrivateKey
-	cmd              RpcCommand
-	commands         *CommandCollection
+	cmd              RpcCommand[T]
+	commands         *CommandCollection[T]
 }
 
 type e2eResponse struct {
@@ -28,7 +28,7 @@ type e2eResponse struct {
 	HashingParams   util.ArgonParameters
 }
 
-func newE2eEncryptCommand(cmd RpcCommand) (*e2eEncryptCommand, error) {
+func newE2eEncryptCommand[T any](cmd RpcCommand[T]) (*e2eEncryptCommand[T], error) {
 	curve := ecdh.P521()
 
 	key, err := curve.GenerateKey(rand.Reader)
@@ -36,14 +36,14 @@ func newE2eEncryptCommand(cmd RpcCommand) (*e2eEncryptCommand, error) {
 		return nil, fmt.Errorf("error generating key: %w", err)
 	}
 
-	return &e2eEncryptCommand{
+	return &e2eEncryptCommand[T]{
 		ClientPublicKey:  key.PublicKey().Bytes(),
 		clientPrivateKey: key,
 		cmd:              cmd,
 	}, nil
 }
 
-func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
+func (e *e2eEncryptCommand[T]) ExecuteServer(session *RpcSession[T]) error {
 	curve := ecdh.P521()
 
 	log.Printf("Encryption requested...")
@@ -145,7 +145,7 @@ func (e *e2eEncryptCommand) ExecuteServer(session *RpcSession) error {
 	return nil
 }
 
-func (e *e2eEncryptCommand) ExecuteClient(session *RpcSession) error {
+func (e *e2eEncryptCommand[T]) ExecuteClient(session *RpcSession[T]) error {
 
 	fmt.Printf("Trying to encrypt session...\n")
 
@@ -202,6 +202,6 @@ func (e *e2eEncryptCommand) ExecuteClient(session *RpcSession) error {
 	return nil
 }
 
-func (e *e2eEncryptCommand) GetKey() string {
+func (e *e2eEncryptCommand[T]) GetKey() string {
 	return "e2e-encrypt"
 }
