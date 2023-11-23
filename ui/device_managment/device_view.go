@@ -29,6 +29,7 @@ func newDeviceView(cli *rmm.Client, main *mainview.MainView, device *rpc.DeviceI
 
 	d.tabs = container.NewAppTabs(
 		container.NewTabItem("Processes", newProcessList(cli, d.device)),
+		container.NewTabItem("Tunnels", newTunnelDisplay(cli, d.device)),
 	)
 
 	return d
