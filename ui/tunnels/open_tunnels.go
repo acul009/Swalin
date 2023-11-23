@@ -1,6 +1,7 @@
 package tunnels
 
 import (
+	"fmt"
 	"rahnit-rmm/rmm"
 	"rahnit-rmm/ui/components"
 
@@ -38,12 +39,23 @@ func (o *openTunnelsView) CreateRenderer() fyne.WidgetRenderer {
 	tcpMap := o.cli.Tunnels().TcpTunnels
 
 	tcpTable := components.NewTable(tcpMap,
-		components.Column(
+		components.NamedColumn(
+			"Name",
 			func() *widget.Label {
 				return widget.NewLabel("Name")
 			},
 			func(tunnel *rmm.ActiveTcpTunnel, label *widget.Label) {
 				label.SetText(tunnel.Name)
+				label.Refresh()
+			},
+		),
+		components.NamedColumn(
+			"Port",
+			func() *widget.Label {
+				return widget.NewLabel("Port")
+			},
+			func(tunnel *rmm.ActiveTcpTunnel, label *widget.Label) {
+				label.SetText(fmt.Sprintf("%d", tunnel.ListenPort))
 				label.Refresh()
 			},
 		),

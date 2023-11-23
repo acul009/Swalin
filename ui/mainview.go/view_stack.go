@@ -45,7 +45,7 @@ func (v *ViewStack) Pop() {
 		return
 	}
 	v.stack[len(v.stack)-1].Hide()
-	v.stack = v.stack[:len(v.stack)-2]
+	v.stack = v.stack[:len(v.stack)-1]
 	v.showTop()
 }
 

@@ -40,6 +40,7 @@ func NewDeviceManagementView(main *mainview.MainView, cli *rmm.Client) *deviceMa
 }
 
 func (m *deviceManagementView) Show() {
+	defer m.BaseWidget.Show()
 	log.Printf("Showing device management view")
 
 	if m.running != nil {
@@ -62,10 +63,10 @@ func (m *deviceManagementView) Show() {
 		}
 	}()
 
-	m.BaseWidget.Show()
 }
 
 func (m *deviceManagementView) Hide() {
+	defer m.BaseWidget.Hide()
 
 	log.Printf("Hiding device management view")
 
@@ -80,7 +81,6 @@ func (m *deviceManagementView) Hide() {
 		}
 	}()
 
-	m.BaseWidget.Hide()
 }
 
 func (m *deviceManagementView) Icon() fyne.Resource {
@@ -142,14 +142,16 @@ func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
 	log.Printf("Creating device management view renderer")
 
 	return &deviceManagmentViewRenderer{
-		widget: m,
-		table:  table,
+		widget:    m,
+		table:     table,
+		testLabel: widget.NewLabel("test"),
 	}
 }
 
 type deviceManagmentViewRenderer struct {
-	widget *deviceManagementView
-	table  *components.Table[string, *rpc.DeviceInfo]
+	widget    *deviceManagementView
+	table     *components.Table[string, *rpc.DeviceInfo]
+	testLabel *widget.Label
 }
 
 func (v *deviceManagmentViewRenderer) Layout(size fyne.Size) {
@@ -171,5 +173,5 @@ func (v *deviceManagmentViewRenderer) Destroy() {
 }
 
 func (v *deviceManagmentViewRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{v.table}
+	return []fyne.CanvasObject{v.testLabel, v.table}
 }
