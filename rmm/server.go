@@ -11,7 +11,8 @@ import (
 
 type Server struct {
 	*rpc.RpcServer
-	devices util.ObservableMap[string, *DeviceInfo]
+	devices       util.ObservableMap[string, *DeviceInfo]
+	configManager *ConfigManager
 }
 
 func NewDefaultServer(listenAddr string, credentials *pki.PermanentCredentials) (*Server, error) {

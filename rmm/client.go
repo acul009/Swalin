@@ -21,9 +21,10 @@ func ClientConnect(ctx context.Context, credentials *pki.PermanentCredentials) (
 	}
 
 	c := &Client{
-		ep:      ep,
-		devices: createSyncedDeviceList(ep),
+		ep: ep,
 	}
+
+	c.initSyncedDeviceList()
 
 	th := newTunnelHandler(ep)
 	c.tunnelHandler = th
@@ -39,14 +40,22 @@ func (c *Client) Devices() util.ObservableMap[string, *Device] {
 	return c.devices
 }
 
-func createSyncedDeviceList(dispatch rpc.Dispatcher) util.ObservableMap[string, *Device] {
+func (c *Client) dispatch() rpc.Dispatcher {
+	return c.ep
+}
+
+func (c *Client) Close() error {
+	return c.ep.Close(200, "Shutdown")
+}
+
+func (c *Client) initSyncedDeviceList() {
 
 	var dRunning util.AsyncAction
 
 	devicesInfo := util.NewSyncedMap[string, *DeviceInfo](
 		func(m util.ObservableMap[string, *DeviceInfo]) {
 			cmd := NewGetDevicesCommand(m)
-			running, err := dispatch.SendCommand(context.Background(), cmd)
+			running, err := c.dispatch().SendCommand(context.Background(), cmd)
 			if err != nil {
 				log.Printf("Error subscribing to devices: %v", err)
 				return
@@ -70,7 +79,7 @@ func createSyncedDeviceList(dispatch rpc.Dispatcher) util.ObservableMap[string, 
 					m.Update(s, func(d *Device, found bool) (*Device, bool) {
 						if !found {
 							d = &Device{
-								dispatch: dispatch,
+								c: c,
 							}
 						}
 
@@ -88,5 +97,5 @@ func createSyncedDeviceList(dispatch rpc.Dispatcher) util.ObservableMap[string, 
 		},
 	)
 
-	return devices
+	c.devices = devices
 }
