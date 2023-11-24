@@ -2,7 +2,6 @@ package managment
 
 import (
 	"rahnit-rmm/rmm"
-	"rahnit-rmm/rpc"
 	"rahnit-rmm/ui/mainview.go"
 
 	"fyne.io/fyne/v2"
@@ -14,11 +13,11 @@ type deviceView struct {
 	widget.BaseWidget
 	main   *mainview.MainView
 	cli    *rmm.Client
-	device *rpc.DeviceInfo
+	device *rmm.Device
 	tabs   *container.AppTabs
 }
 
-func newDeviceView(cli *rmm.Client, main *mainview.MainView, device *rpc.DeviceInfo) *deviceView {
+func newDeviceView(cli *rmm.Client, main *mainview.MainView, device *rmm.Device) *deviceView {
 	d := &deviceView{
 		cli:    cli,
 		main:   main,
@@ -28,7 +27,7 @@ func newDeviceView(cli *rmm.Client, main *mainview.MainView, device *rpc.DeviceI
 	d.ExtendBaseWidget(d)
 
 	d.tabs = container.NewAppTabs(
-		container.NewTabItem("Processes", newProcessList(cli, d.device)),
+		container.NewTabItem("Processes", newProcessList(d.device)),
 		container.NewTabItem("Tunnels", newTunnelDisplay(cli, d.device)),
 	)
 

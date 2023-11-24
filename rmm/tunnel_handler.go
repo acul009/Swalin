@@ -6,19 +6,20 @@ import (
 	"log"
 	"net"
 	"rahnit-rmm/pki"
+	"rahnit-rmm/rpc"
 	"rahnit-rmm/util"
 	"sync"
 )
 
 type tunnelHandler struct {
-	cli *Client
+	dispatch rpc.Dispatcher
 
 	TcpTunnels util.ObservableMap[*tcpTunnelConnectionDetails, *ActiveTcpTunnel]
 }
 
-func newTunnelHandler(cli *Client) *tunnelHandler {
+func newTunnelHandler(dispatcher rpc.Dispatcher) *tunnelHandler {
 	return &tunnelHandler{
-		cli:        cli,
+		dispatch:   dispatcher,
 		TcpTunnels: util.NewObservableMap[*tcpTunnelConnectionDetails, *ActiveTcpTunnel](),
 	}
 }
@@ -31,7 +32,7 @@ func (th *tunnelHandler) OpenTcpTunnel(device *pki.Certificate, tunnel *TcpTunne
 
 	t := &ActiveTcpTunnel{
 		tcpTunnelConnectionDetails: tcpTunnelConnectionDetails{*tunnel, device},
-		cli:                        th.cli,
+		dispatch:                   th.dispatch,
 		listener:                   listener,
 	}
 
@@ -56,7 +57,7 @@ type tcpTunnelConnectionDetails struct {
 
 type ActiveTcpTunnel struct {
 	tcpTunnelConnectionDetails
-	cli             *Client
+	dispatch        rpc.Dispatcher
 	device          *pki.Certificate
 	listener        net.Listener
 	openConnections map[net.Addr]util.AsyncAction
@@ -108,7 +109,7 @@ func (a *ActiveTcpTunnel) acceptAndForward() error {
 
 	cmd := NewTcpForwardCommand(a.Target, conn)
 
-	running, err := a.cli.SendCommandTo(context.Background(), a.device, cmd)
+	running, err := a.dispatch.SendCommandTo(context.Background(), a.device, cmd)
 	if err != nil {
 		return fmt.Errorf("error running command: %w", err)
 	}

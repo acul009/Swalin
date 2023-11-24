@@ -1,10 +1,8 @@
 package managment
 
 import (
-	"context"
 	"log"
 	"rahnit-rmm/rmm"
-	"rahnit-rmm/rpc"
 	"rahnit-rmm/ui/components"
 	"rahnit-rmm/ui/mainview.go"
 	"rahnit-rmm/util"
@@ -22,47 +20,18 @@ type deviceManagementView struct {
 	running util.AsyncAction
 	main    *mainview.MainView
 	cli     *rmm.Client
-	devices util.ObservableMap[string, *rpc.DeviceInfo]
 }
 
 func NewDeviceManagementView(main *mainview.MainView, cli *rmm.Client) *deviceManagementView {
-	devices := util.NewObservableMap[string, *rpc.DeviceInfo]()
 
 	m := &deviceManagementView{
-		main:    main,
-		cli:     cli,
-		devices: devices,
+		main: main,
+		cli:  cli,
 	}
 
 	m.ExtendBaseWidget(m)
 
 	return m
-}
-
-func (m *deviceManagementView) Show() {
-	defer m.BaseWidget.Show()
-	log.Printf("Showing device management view")
-
-	if m.running != nil {
-		return
-	}
-
-	cmd := rpc.NewGetDevicesCommand(m.devices)
-
-	running, err := m.cli.SendCommand(context.Background(), cmd)
-	if err != nil {
-		panic(err)
-	}
-
-	m.running = running
-
-	go func() {
-		err := running.Wait()
-		if err != nil {
-			panic(err)
-		}
-	}()
-
 }
 
 func (m *deviceManagementView) Hide() {
@@ -96,12 +65,12 @@ func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
 	onlineIcon := theme.NewSuccessThemedResource(icon)
 	offlineIcon := theme.NewErrorThemedResource(icon)
 
-	table := components.NewTable[string, *rpc.DeviceInfo](m.devices,
+	table := components.NewTable(m.cli.Devices(),
 		components.Column(
 			func() *widget.Icon {
 				return widget.NewIcon(offlineIcon)
 			},
-			func(device *rpc.DeviceInfo, icon *widget.Icon) {
+			func(device *rmm.Device, icon *widget.Icon) {
 				if device.Online {
 					icon.SetResource(onlineIcon)
 				} else {
@@ -115,7 +84,7 @@ func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
 			func() *widget.Label {
 				return widget.NewLabel("Name")
 			},
-			func(device *rpc.DeviceInfo, label *widget.Label) {
+			func(device *rmm.Device, label *widget.Label) {
 				label.SetText(device.Name())
 				label.Refresh()
 			},
@@ -124,14 +93,14 @@ func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
 			func() *layout.Spacer {
 				return layout.NewSpacer().(*layout.Spacer)
 			},
-			func(device *rpc.DeviceInfo, spacer *layout.Spacer) {
+			func(device *rmm.Device, spacer *layout.Spacer) {
 			},
 		),
 		components.Column(
 			func() *widget.Button {
 				return widget.NewButton("Connect", func() {})
 			},
-			func(device *rpc.DeviceInfo, button *widget.Button) {
+			func(device *rmm.Device, button *widget.Button) {
 				button.OnTapped = func() {
 					m.main.PushView(newDeviceView(m.cli, m.main, device))
 				}
@@ -150,7 +119,7 @@ func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
 
 type deviceManagmentViewRenderer struct {
 	widget    *deviceManagementView
-	table     *components.Table[string, *rpc.DeviceInfo]
+	table     *components.Table[string, *rmm.Device]
 	testLabel *widget.Label
 }
 

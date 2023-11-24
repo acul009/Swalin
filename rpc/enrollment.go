@@ -145,7 +145,9 @@ func (m *enrollmentManager) subscribe(onSet func(string, Enrollment), onRemove f
 		func(key string, conn *enrollmentConnection) {
 			onSet(key, conn.enrollment)
 		},
-		onRemove,
+		func(key string, _ *enrollmentConnection) {
+			onRemove(key)
+		},
 	)
 }
 

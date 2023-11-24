@@ -33,15 +33,6 @@ func (c *enrollAgentCommand) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("error accepting enrollment: %w", err)
 	}
 
-	err = session.connection.server.devices.AddDeviceToDB(c.AgentCert)
-	if err != nil {
-		session.WriteResponseHeader(SessionResponseHeader{
-			Code: 500,
-			Msg:  "Internal Server Error",
-		})
-		return fmt.Errorf("error adding device: %w", err)
-	}
-
 	err = session.WriteResponseHeader(SessionResponseHeader{
 		Code: 200,
 		Msg:  "OK",

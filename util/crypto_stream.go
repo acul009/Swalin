@@ -165,9 +165,3 @@ func (c *CryptoStream) writeChunk(chunk []byte) (int, error) {
 func (c *CryptoStream) Close() error {
 	return c.wrapped.Close()
 }
-
-type UnsecureCryptoStream struct {
-	stream io.ReadWriteCloser
-	io.Reader
-	io.Writer
-}

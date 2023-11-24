@@ -109,7 +109,7 @@ func (t *Table[T, U]) CreateRenderer() fyne.WidgetRenderer {
 				tr.Refresh()
 			}
 		},
-		func(t T) {
+		func(t T, _ U) {
 			log.Printf("deleting row for %v", t)
 			tr.mutex.Lock()
 			defer tr.mutex.Unlock()

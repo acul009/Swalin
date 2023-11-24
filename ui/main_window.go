@@ -5,7 +5,6 @@ import (
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rmm"
 	managment "rahnit-rmm/ui/device_managment"
-	"rahnit-rmm/ui/enrollment"
 	"rahnit-rmm/ui/mainview.go"
 	"rahnit-rmm/ui/tunnels"
 
@@ -24,11 +23,11 @@ func startMainMenu(window fyne.Window, credentials *pki.PermanentCredentials) {
 
 	tunnelView := tunnels.NewOpenTunnelsView(cli)
 
-	enrollView := enrollment.NewEnrollmentView(m, cli, credentials)
+	// enrollView := enrollment.NewEnrollmentView(m, cli, credentials)
 
 	m.Display(window, []mainview.MenuView{
 		manageView,
 		tunnelView,
-		enrollView,
+		// enrollView,
 	})
 }

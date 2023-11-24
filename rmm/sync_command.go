@@ -1,7 +1,8 @@
-package rpc
+package rmm
 
 import (
 	"fmt"
+	"rahnit-rmm/rpc"
 	"rahnit-rmm/util"
 )
 
@@ -21,10 +22,10 @@ type updateInfo[K comparable, T any] struct {
 	Value  T
 }
 
-func (s *SyncDownCommand[K, T]) ExecuteClient(session *RpcSession) error {
+func (s *SyncDownCommand[K, T]) ExecuteClient(session *rpc.RpcSession) error {
 
 	initial := make(map[K]T)
-	err := ReadMessage[map[K]T](session, initial)
+	err := rpc.ReadMessage[map[K]T](session, initial)
 	if err != nil {
 		return fmt.Errorf("error reading message: %w", err)
 	}
@@ -37,7 +38,7 @@ func (s *SyncDownCommand[K, T]) ExecuteClient(session *RpcSession) error {
 
 	for {
 
-		err := ReadMessage[*updateInfo[K, T]](session, update)
+		err := rpc.ReadMessage[*updateInfo[K, T]](session, update)
 		if err != nil {
 			return fmt.Errorf("error reading message: %w", err)
 		}
@@ -53,8 +54,8 @@ func (s *SyncDownCommand[K, T]) ExecuteClient(session *RpcSession) error {
 
 }
 
-func (s *SyncDownCommand[K, T]) ExecuteServer(session *RpcSession) error {
-	err := session.WriteResponseHeader(SessionResponseHeader{
+func (s *SyncDownCommand[K, T]) ExecuteServer(session *rpc.RpcSession) error {
+	err := session.WriteResponseHeader(rpc.SessionResponseHeader{
 		Code: 200,
 		Msg:  "OK",
 	})
@@ -64,7 +65,7 @@ func (s *SyncDownCommand[K, T]) ExecuteServer(session *RpcSession) error {
 	}
 
 	full := s.targetMap.GetAll()
-	err = WriteMessage[map[K]T](session, full)
+	err = rpc.WriteMessage[map[K]T](session, full)
 	if err != nil {
 		return fmt.Errorf("error writing message: %w", err)
 	}
@@ -73,7 +74,7 @@ func (s *SyncDownCommand[K, T]) ExecuteServer(session *RpcSession) error {
 
 	unsubscribe := s.targetMap.Subscribe(
 		func(key K, value T) {
-			err = WriteMessage[updateInfo[K, T]](session, updateInfo[K, T]{
+			err = rpc.WriteMessage[updateInfo[K, T]](session, updateInfo[K, T]{
 				Delete: false,
 				Key:    key,
 				Value:  value,
@@ -82,8 +83,8 @@ func (s *SyncDownCommand[K, T]) ExecuteServer(session *RpcSession) error {
 				updateErrChan <- fmt.Errorf("error writing update message: %w", err)
 			}
 		},
-		func(key K) {
-			err = WriteMessage[updateInfo[K, T]](session, updateInfo[K, T]{
+		func(key K, _ T) {
+			err = rpc.WriteMessage[updateInfo[K, T]](session, updateInfo[K, T]{
 				Delete: true,
 				Key:    key,
 			})

@@ -76,14 +76,7 @@ func (conn *RpcConnection) serveRpc(commands *CommandCollection) error {
 		return fmt.Errorf("no partner provided")
 	}
 
-	if conn.server != nil {
-		conn.server.devices.UpdateDeviceStatus(conn.partner.GetPublicKey().Base64Encode(), func(device *DeviceInfo) *DeviceInfo {
-			device.Online = true
-			return device
-		})
-	}
-
-	err := conn.EnsureState(RpcConnectionOpen)
+	err := conn.ensureState(RpcConnectionOpen)
 	if err != nil {
 		return fmt.Errorf("error ensuring RPC connection is open: %w", err)
 	}
@@ -103,7 +96,7 @@ func (conn *RpcConnection) serveRpc(commands *CommandCollection) error {
 			log.Printf("error accepting QUIC stream: %v\n", err)
 		}
 
-		stateErr := conn.EnsureState(RpcConnectionOpen)
+		stateErr := conn.ensureState(RpcConnectionOpen)
 		if stateErr != nil {
 			log.Printf("error ensuring RPC connection is open: %v", stateErr)
 			return fmt.Errorf("RPC connection not open anymore")
@@ -144,7 +137,7 @@ func (conn *RpcConnection) AcceptSession(context.Context) (*RpcSession, error) {
 }
 
 func (conn *RpcConnection) OpenSession(ctx context.Context) (*RpcSession, error) {
-	err := conn.EnsureState(RpcConnectionOpen)
+	err := conn.ensureState(RpcConnectionOpen)
 	if err != nil {
 		return nil, fmt.Errorf("error ensuring RPC connection is open: %w", err)
 	}
@@ -157,7 +150,7 @@ func (conn *RpcConnection) OpenSession(ctx context.Context) (*RpcSession, error)
 	return newRpcSession(stream, conn), nil
 }
 
-func (conn *RpcConnection) MutateState(from RpcConnectionState, to RpcConnectionState) error {
+func (conn *RpcConnection) mutateState(from RpcConnectionState, to RpcConnectionState) error {
 	conn.mutex.Lock()
 	if conn.state != from {
 		conn.mutex.Unlock()
@@ -168,7 +161,7 @@ func (conn *RpcConnection) MutateState(from RpcConnectionState, to RpcConnection
 	return nil
 }
 
-func (conn *RpcConnection) EnsureState(state RpcConnectionState) error {
+func (conn *RpcConnection) ensureState(state RpcConnectionState) error {
 	conn.mutex.Lock()
 	if conn.state != state {
 		conn.mutex.Unlock()
@@ -186,7 +179,7 @@ func (conn *RpcConnection) removeSession(id quic.StreamID) {
 
 func (conn *RpcConnection) Close(code quic.ApplicationErrorCode, msg string) error {
 
-	if err := conn.MutateState(RpcConnectionOpen, RpcConnectionStopped); err != nil {
+	if err := conn.mutateState(RpcConnectionOpen, RpcConnectionStopped); err != nil {
 		return fmt.Errorf("error closing connection: %w", err)
 	}
 
@@ -238,4 +231,8 @@ func (conn *RpcConnection) Close(code quic.ApplicationErrorCode, msg string) err
 
 func (conn *RpcConnection) GetProtocol() TlsConnectionProto {
 	return conn.protocol
+}
+
+func (conn *RpcConnection) Partner() *pki.Certificate {
+	return conn.partner
 }

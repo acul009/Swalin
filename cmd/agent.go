@@ -51,33 +51,16 @@ to quickly create a Cobra application.`,
 			}
 		}
 
-		log.Printf("agent credentials: %+v", credentials)
-
-		ep, err := rpc.ConnectToUpstream(context.Background(), credentials)
-		if err != nil {
-			panic(err)
-		}
-
-		cmdCollection := rpc.NewCommandCollection(
-			rpc.CreateE2eDecryptCommandHandler(rpc.NewCommandCollection(
-				rpc.PingHandler,
-				rmm.MonitorSystemCommandHandler,
-				rmm.MonitorProcessesCommandHandler,
-				rmm.MonitorServicesCommandHandler,
-				rmm.RemoteShellCommandHandler,
-				rmm.KillProcessCommandHandler,
-			)),
-		)
+		agent, err := rmm.AgentConnect(context.Background(), credentials)
 
 		wg := sync.WaitGroup{}
 
 		wg.Add(1)
 		go func() {
-			err = ep.ServeRpc(cmdCollection)
+			err = agent.Run()
 			if err != nil {
 				panic(err)
 			}
-			ep.Close(400, "Client error")
 			wg.Done()
 		}()
 
@@ -86,7 +69,7 @@ to quickly create a Cobra application.`,
 
 		go func() {
 			<-interrupt
-			err := ep.Close(200, "OK")
+			err := agent.Close()
 			if err != nil {
 				err := fmt.Errorf("error shutting down program: error closing agent: %w", err)
 				log.Println(err)

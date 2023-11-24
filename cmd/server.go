@@ -55,21 +55,7 @@ to quickly create a Cobra application.`,
 			}
 		}
 
-		log.Println("Server initialized, starting up...")
-
-		fmt.Printf("\nListening on localhost:%s\n", addr)
-		rpcCommands := rpc.NewCommandCollection(
-			rpc.PingHandler,
-			rpc.RegisterUserHandler,
-			rpc.GetPendingEnrollmentsHandler,
-			rpc.EnrollAgentHandler,
-			rpc.GetDevicesCommandHandler,
-			rpc.ForwardCommandHandler,
-			rpc.VerifyCertificateChainHandler,
-			rmm.GetHostConfigCommandHandler[*rmm.TunnelConfig],
-		)
-
-		server, err := rpc.NewRpcServer(addr, rpcCommands, credentials)
+		server, err := rmm.NewDefaultServer(addr, credentials)
 		if err != nil {
 			panic(err)
 		}

@@ -1,6 +1,7 @@
-package rpc
+package rmm
 
 import (
+	"rahnit-rmm/rpc"
 	"rahnit-rmm/util"
 )
 
@@ -8,9 +9,11 @@ type getDevicesCommand struct {
 	*SyncDownCommand[string, *DeviceInfo]
 }
 
-func GetDevicesCommandHandler() RpcCommand {
-	return &getDevicesCommand{
-		SyncDownCommand: NewSyncDownCommand[string, *DeviceInfo](nil),
+func CreateGetDevicesCommandHandler(m util.ObservableMap[string, *DeviceInfo]) rpc.RpcCommandHandler {
+	return func() rpc.RpcCommand {
+		return &getDevicesCommand{
+			SyncDownCommand: NewSyncDownCommand[string, *DeviceInfo](m),
+		}
 	}
 }
 
@@ -22,10 +25,4 @@ func NewGetDevicesCommand(targetMap util.ObservableMap[string, *DeviceInfo]) *ge
 
 func (c *getDevicesCommand) GetKey() string {
 	return "get-devices"
-}
-
-func (c *getDevicesCommand) ExecuteServer(session *RpcSession) error {
-	devicemap := session.connection.server.devices.devices
-	c.SyncDownCommand.targetMap = devicemap
-	return c.SyncDownCommand.ExecuteServer(session)
 }

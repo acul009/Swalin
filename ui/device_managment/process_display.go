@@ -1,11 +1,9 @@
 package managment
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"rahnit-rmm/rmm"
-	"rahnit-rmm/rpc"
 	"rahnit-rmm/ui/components"
 	"rahnit-rmm/util"
 
@@ -16,23 +14,21 @@ import (
 
 type processList struct {
 	widget.BaseWidget
-	cli       *rmm.Client
-	device    *rpc.DeviceInfo
-	processes util.ObservableMap[int32, *rmm.ProcessInfo]
-	list      *components.Table[int32, *rmm.ProcessInfo]
-	running   util.AsyncAction
+	cli    *rmm.Client
+	device *rmm.Device
+
+	list    *components.Table[int32, *rmm.ProcessInfo]
+	running util.AsyncAction
 }
 
-func newProcessList(cli *rmm.Client, device *rpc.DeviceInfo) *processList {
+func newProcessList(device *rmm.Device) *processList {
 
 	p := &processList{
-		cli:       cli,
-		device:    device,
-		processes: util.NewObservableMap[int32, *rmm.ProcessInfo](),
+		device: device,
 	}
 	p.ExtendBaseWidget(p)
 
-	p.list = components.NewTable[int32, *rmm.ProcessInfo](p.processes,
+	p.list = components.NewTable[int32, *rmm.ProcessInfo](device.Processes(),
 		components.Column(
 			func() *widget.Label {
 				return widget.NewLabel("PID")
@@ -59,14 +55,10 @@ func newProcessList(cli *rmm.Client, device *rpc.DeviceInfo) *processList {
 			},
 			func(process *rmm.ProcessInfo, button *widget.Button) {
 				button.OnTapped = func() {
-					running, err := p.cli.SendCommandTo(context.Background(), p.device.Certificate, rmm.NewKillProcessCommand(process.Pid))
-					if err != nil {
-						log.Printf("error running command: %v", err)
-					}
 					go func() {
-						err := running.Wait()
+						err := p.device.KillProcess(process.Pid)
 						if err != nil {
-							log.Printf("error running command: %v", err)
+							log.Printf("error killing process: %v", err)
 						}
 					}()
 				}
@@ -75,30 +67,6 @@ func newProcessList(cli *rmm.Client, device *rpc.DeviceInfo) *processList {
 	)
 
 	return p
-}
-
-func (p *processList) Show() {
-	if p.running == nil {
-
-		cmd := rmm.NewMonitorProcessesCommand(p.processes)
-
-		running, err := p.cli.SendCommandTo(context.Background(), p.device.Certificate, cmd)
-		if err != nil {
-			log.Printf("error running command: %v", err)
-		}
-
-		p.running = running
-	}
-
-	p.BaseWidget.Show()
-}
-
-func (p *processList) Hide() {
-	if p.running != nil {
-		p.running.Close()
-	}
-
-	p.BaseWidget.Hide()
 }
 
 func (p *processList) CreateRenderer() fyne.WidgetRenderer {

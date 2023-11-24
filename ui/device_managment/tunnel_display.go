@@ -1,11 +1,8 @@
 package managment
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"rahnit-rmm/rmm"
-	"rahnit-rmm/rpc"
 	"strconv"
 
 	"fyne.io/fyne/v2"
@@ -25,7 +22,7 @@ type tunnelDisplay struct {
 	tcpAdd  *fyne.Container
 }
 
-func newTunnelDisplay(cli *rmm.Client, device *rpc.DeviceInfo) *tunnelDisplay {
+func newTunnelDisplay(cli *rmm.Client, device *rmm.Device) *tunnelDisplay {
 	d := &tunnelDisplay{
 		cli:    cli,
 		config: &rmm.TunnelConfig{},
@@ -90,48 +87,48 @@ func newTunnelDisplay(cli *rmm.Client, device *rpc.DeviceInfo) *tunnelDisplay {
 
 	d.tcpList = container.NewBorder(nil, d.tcpAdd, nil, nil)
 
-	cmd := rmm.NewGetConfigCommand[*rmm.TunnelConfig](device.Certificate.GetPublicKey())
+	// cmd := rmm.NewGetConfigCommand[*rmm.TunnelConfig](device.Certificate.GetPublicKey())
 
-	running, err := d.cli.SendCommand(context.Background(), cmd)
-	if err != nil {
-		sErr := &rpc.SessionError{}
-		if !errors.As(err, &sErr) {
-			panic(err)
-		}
-		if sErr.Code() != 404 {
-			panic(err)
-		}
+	// running, err := d.cli.SendCommand(context.Background(), cmd)
+	// if err != nil {
+	// 	sErr := &rpc.SessionError{}
+	// 	if !errors.As(err, &sErr) {
+	// 		panic(err)
+	// 	}
+	// 	if sErr.Code() != 404 {
+	// 		panic(err)
+	// 	}
 
-		d.config = &rmm.TunnelConfig{
-			Tcp: []rmm.TcpTunnel{},
-		}
-	}
+	// 	d.config = &rmm.TunnelConfig{
+	// 		Tcp: []rmm.TcpTunnel{},
+	// 	}
+	// }
 
-	go func() {
-		if running != nil {
-			err := running.Wait()
-			if err != nil {
-				panic(err)
-			}
+	// go func() {
+	// 	if running != nil {
+	// 		err := running.Wait()
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
 
-			d.config = cmd.Config()
-		}
+	// 		d.config = cmd.Config()
+	// 	}
 
-		list := widget.NewList(
-			func() int {
-				return len(d.config.Tcp)
-			},
-			func() fyne.CanvasObject {
-				return widget.NewLabel("tunnel")
-			},
-			func(i int, o fyne.CanvasObject) {
-				tunnel := d.config.Tcp[i]
-				o.(*widget.Label).SetText(tunnel.Name)
-			},
-		)
+	// 	list := widget.NewList(
+	// 		func() int {
+	// 			return len(d.config.Tcp)
+	// 		},
+	// 		func() fyne.CanvasObject {
+	// 			return widget.NewLabel("tunnel")
+	// 		},
+	// 		func(i int, o fyne.CanvasObject) {
+	// 			tunnel := d.config.Tcp[i]
+	// 			o.(*widget.Label).SetText(tunnel.Name)
+	// 		},
+	// 	)
 
-		d.tcpList.Objects = append(d.tcpList.Objects[:1], list)
-	}()
+	// 	d.tcpList.Objects = append(d.tcpList.Objects[:1], list)
+	// }()
 
 	return d
 }

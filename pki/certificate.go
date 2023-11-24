@@ -4,32 +4,27 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/x509"
-	"encoding/json"
+	"encoding"
 	"encoding/pem"
 	"fmt"
 	"log"
 )
 
+var _ encoding.TextUnmarshaler = (*Certificate)(nil)
+
 type Certificate x509.Certificate
 
-func (cert *Certificate) MarshalJSON() ([]byte, error) {
-	return json.Marshal(cert.BinaryEncode())
+func (cert *Certificate) MarshalText() ([]byte, error) {
+	return cert.PemEncode(), nil
 }
 
-func (cert *Certificate) UnmarshalJSON(data []byte) error {
-	certBytes := make([]byte, 0, len(data))
-	err := json.Unmarshal(data, &certBytes)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal certificate: %w", err)
-	}
-
-	newCert, err := CertificateFromBinary(certBytes)
+func (cert *Certificate) UnmarshalText(data []byte) error {
+	newCert, err := CertificateFromPem(data)
 	if err != nil {
 		return fmt.Errorf("failed to decode certificate: %w", err)
 	}
 
 	*cert = *newCert
-
 	return nil
 }
 

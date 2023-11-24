@@ -32,12 +32,11 @@ type RpcServer struct {
 	listener          *quic.Listener
 	rpcCommands       *CommandCollection
 	state             RpcServerState
-	activeConnections map[uuid.UUID]*RpcConnection
+	activeConnections util.ObservableMap[uuid.UUID, *RpcConnection]
 	mutex             sync.Mutex
 	nonceStorage      *util.NonceStorage
 	credentials       *pki.PermanentCredentials
 	enrollment        *enrollmentManager
-	devices           *DeviceList
 	verifier          pki.Verifier
 }
 
@@ -68,11 +67,6 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 		return nil, fmt.Errorf("error getting certificate: %w", err)
 	}
 
-	devices, err := NewDeviceListFromDB()
-	if err != nil {
-		return nil, fmt.Errorf("error creating device list: %w", err)
-	}
-
 	verifier, err := pki.NewLocalVerify()
 	if err != nil {
 		return nil, fmt.Errorf("error creating local verify: %w", err)
@@ -82,12 +76,11 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 		listener:          listener,
 		rpcCommands:       rpcCommands,
 		state:             RpcServerCreated,
-		activeConnections: make(map[uuid.UUID]*RpcConnection),
+		activeConnections: util.NewObservableMap[uuid.UUID, *RpcConnection](),
 		mutex:             sync.Mutex{},
 		nonceStorage:      util.NewNonceStorage(),
 		credentials:       credentials,
 		enrollment:        newEnrollmentManager(cert),
-		devices:           devices,
 		verifier:          verifier,
 	}, nil
 }
@@ -164,7 +157,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 
 	for i := 0; i < 10; i++ {
 		newConnection := newRpcConnection(conn, s, RpcRoleServer, s.nonceStorage, peerCert, protocol, s.credentials, s.verifier)
-		if _, ok := s.activeConnections[newConnection.uuid]; !ok {
+		if _, ok := s.activeConnections.Get(newConnection.uuid); !ok {
 			connection = newConnection
 			break
 		}
@@ -175,23 +168,19 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 		return nil, fmt.Errorf("multiple uuid collisions, this should mathematically be impossible")
 	}
 
-	s.activeConnections[connection.uuid] = connection
+	s.activeConnections.Set(connection.uuid, connection)
 
 	return connection, nil
+}
+
+func (s *RpcServer) Connections() util.ObservableMap[uuid.UUID, *RpcConnection] {
+	return s.activeConnections
 }
 
 func (s *RpcServer) removeConnection(uuid uuid.UUID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	if conn, ok := s.activeConnections[uuid]; ok {
-		if conn.partner != nil {
-			s.devices.UpdateDeviceStatus(conn.partner.GetPublicKey().Base64Encode(), func(device *DeviceInfo) *DeviceInfo {
-				device.Online = false
-				return device
-			})
-		}
-	}
-	delete(s.activeConnections, uuid)
+	s.activeConnections.Delete(uuid)
 }
 
 func (s *RpcServer) Run() error {
@@ -265,7 +254,7 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 		return fmt.Errorf("RPC server not running")
 	}
 	s.state = RpcServerStopped
-	connectionsToClose := s.activeConnections
+	connectionsToClose := s.activeConnections.GetAll()
 	s.mutex.Unlock()
 
 	// tell all connections to close
@@ -312,7 +301,7 @@ func (s *RpcServer) cleanup() {
 func (s *RpcServer) getConnectionWith(partner *pki.Certificate) (*RpcConnection, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	for _, connection := range s.activeConnections {
+	for _, connection := range s.activeConnections.GetAll() {
 		if connection.partner == nil {
 			continue
 		}
