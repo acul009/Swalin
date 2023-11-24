@@ -28,16 +28,15 @@ func (e rpcNotRunningError) Is(target error) bool {
 	return ok
 }
 
-type RpcServer[T any] struct {
-	deps              T
+type RpcServer struct {
 	listener          *quic.Listener
 	rpcCommands       *CommandCollection
 	state             RpcServerState
-	activeConnections map[uuid.UUID]*RpcConnection[T]
+	activeConnections map[uuid.UUID]*RpcConnection
 	mutex             sync.Mutex
 	nonceStorage      *util.NonceStorage
 	credentials       *pki.PermanentCredentials
-	enrollment        *enrollmentManager[T]
+	enrollment        *enrollmentManager
 	devices           *DeviceList
 	verifier          pki.Verifier
 }
@@ -50,7 +49,7 @@ const (
 	RpcServerStopped
 )
 
-func NewRpcServer[T any](listenAddr string, rpcCommands *CommandCollection, credentials *pki.PermanentCredentials, dependencies T) (*RpcServer[T], error) {
+func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials *pki.PermanentCredentials) (*RpcServer, error) {
 	tlsConf, err := getTlsServerConfig([]TlsConnectionProto{ProtoRpc, ProtoClientLogin, ProtoAgentEnroll})
 	if err != nil {
 		return nil, fmt.Errorf("error getting server tls config: %w", err)
@@ -79,22 +78,21 @@ func NewRpcServer[T any](listenAddr string, rpcCommands *CommandCollection, cred
 		return nil, fmt.Errorf("error creating local verify: %w", err)
 	}
 
-	return &RpcServer[T]{
-		deps:              dependencies,
+	return &RpcServer{
 		listener:          listener,
 		rpcCommands:       rpcCommands,
 		state:             RpcServerCreated,
-		activeConnections: make(map[uuid.UUID]*RpcConnection[T]),
+		activeConnections: make(map[uuid.UUID]*RpcConnection),
 		mutex:             sync.Mutex{},
 		nonceStorage:      util.NewNonceStorage(),
 		credentials:       credentials,
-		enrollment:        newEnrollmentManager[T](cert),
+		enrollment:        newEnrollmentManager(cert),
 		devices:           devices,
 		verifier:          verifier,
 	}, nil
 }
 
-func (s *RpcServer[T]) accept() (*RpcConnection[T], error) {
+func (s *RpcServer) accept() (*RpcConnection, error) {
 	conn, err := s.listener.Accept(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("error accepting QUIC connection: %w", err)
@@ -159,7 +157,7 @@ func (s *RpcServer[T]) accept() (*RpcConnection[T], error) {
 
 	}
 
-	var connection *RpcConnection[T]
+	var connection *RpcConnection
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -182,7 +180,7 @@ func (s *RpcServer[T]) accept() (*RpcConnection[T], error) {
 	return connection, nil
 }
 
-func (s *RpcServer[T]) removeConnection(uuid uuid.UUID) {
+func (s *RpcServer) removeConnection(uuid uuid.UUID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	if conn, ok := s.activeConnections[uuid]; ok {
@@ -196,7 +194,7 @@ func (s *RpcServer[T]) removeConnection(uuid uuid.UUID) {
 	delete(s.activeConnections, uuid)
 }
 
-func (s *RpcServer[T]) Run() error {
+func (s *RpcServer) Run() error {
 	fmt.Println("Starting RPC server")
 	s.mutex.Lock()
 	if s.state != RpcServerCreated {
@@ -258,7 +256,7 @@ func (s *RpcServer[T]) Run() error {
 	}
 }
 
-func (s *RpcServer[T]) Close(code quic.ApplicationErrorCode, msg string) error {
+func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 
 	// lock server before closing
 	s.mutex.Lock()
@@ -278,7 +276,7 @@ func (s *RpcServer[T]) Close(code quic.ApplicationErrorCode, msg string) error {
 
 	for _, connection := range connectionsToClose {
 		wg.Add(1)
-		go func(connection *RpcConnection[T]) {
+		go func(connection *RpcConnection) {
 			err := connection.Close(code, msg)
 			if err != nil {
 				errChan <- err
@@ -306,12 +304,12 @@ func (s *RpcServer[T]) Close(code quic.ApplicationErrorCode, msg string) error {
 	return err
 }
 
-func (s *RpcServer[T]) cleanup() {
+func (s *RpcServer) cleanup() {
 	s.enrollment.cleanup()
 	s.nonceStorage.Cleanup(messageExpiration * 2)
 }
 
-func (s *RpcServer[T]) getConnectionWith(partner *pki.Certificate) (*RpcConnection[T], error) {
+func (s *RpcServer) getConnectionWith(partner *pki.Certificate) (*RpcConnection, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	for _, connection := range s.activeConnections {

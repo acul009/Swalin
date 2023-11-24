@@ -53,29 +53,31 @@ to quickly create a Cobra application.`,
 
 		log.Printf("agent credentials: %+v", credentials)
 
-		a, err := rmm.AgentConnect(context.Background(), credentials)
+		ep, err := rpc.ConnectToUpstream(context.Background(), credentials)
 		if err != nil {
 			panic(err)
 		}
+
+		cmdCollection := rpc.NewCommandCollection(
+			rpc.CreateE2eDecryptCommandHandler(rpc.NewCommandCollection(
+				rpc.PingHandler,
+				rmm.MonitorSystemCommandHandler,
+				rmm.MonitorProcessesCommandHandler,
+				rmm.MonitorServicesCommandHandler,
+				rmm.RemoteShellCommandHandler,
+				rmm.KillProcessCommandHandler,
+			)),
+		)
 
 		wg := sync.WaitGroup{}
 
 		wg.Add(1)
 		go func() {
-			err = a.ServeRpc(rpc.NewCommandCollection[*rmm.Dependencies](
-				rpc.CreateE2eDecryptCommandHandler[*rmm.Dependencies](rpc.NewCommandCollection[*rmm.Dependencies](
-					rpc.PingHandler[*rmm.Dependencies],
-					rmm.MonitorSystemCommandHandler,
-					rmm.MonitorProcessesCommandHandler,
-					rmm.MonitorServicesCommandHandler,
-					rmm.RemoteShellCommandHandler,
-					rmm.KillProcessCommandHandler,
-				)),
-			))
+			err = ep.ServeRpc(cmdCollection)
 			if err != nil {
 				panic(err)
 			}
-			a.Close(400, "Client error")
+			ep.Close(400, "Client error")
 			wg.Done()
 		}()
 
@@ -84,7 +86,7 @@ to quickly create a Cobra application.`,
 
 		go func() {
 			<-interrupt
-			err := a.Close(200, "OK")
+			err := ep.Close(200, "OK")
 			if err != nil {
 				err := fmt.Errorf("error shutting down program: error closing agent: %w", err)
 				log.Println(err)

@@ -10,7 +10,7 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
-func FirstClientConnect(addr string) (*RpcConnection[struct{}], error) {
+func FirstClientConnect(addr string) (*RpcConnection, error) {
 	tlsConf := getTlsTempClientConfig([]TlsConnectionProto{ProtoClientLogin, ProtoServerInit})
 
 	quicConf := &quic.Config{
@@ -30,7 +30,7 @@ func FirstClientConnect(addr string) (*RpcConnection[struct{}], error) {
 
 	protocol := quicConn.ConnectionState().TLS.NegotiatedProtocol
 
-	conn := newRpcConnection[struct{}](quicConn, nil, RpcRoleInit, initNonceStorage, nil, TlsConnectionProto(protocol), nil, pki.NewNilVerifier())
+	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, TlsConnectionProto(protocol), nil, pki.NewNilVerifier())
 
 	return conn, nil
 }

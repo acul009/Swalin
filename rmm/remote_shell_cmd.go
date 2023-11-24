@@ -6,7 +6,7 @@ import (
 	"rahnit-rmm/rpc"
 )
 
-func RemoteShellCommandHandler() rpc.RpcCommand[*Dependencies] {
+func RemoteShellCommandHandler() rpc.RpcCommand {
 	return &remoteShellCommand{}
 }
 
@@ -26,7 +26,7 @@ func (cmd *remoteShellCommand) GetKey() string {
 	return "remote-shell"
 }
 
-func (cmd *remoteShellCommand) ExecuteServer(session *rpc.RpcSession[*Dependencies]) error {
+func (cmd *remoteShellCommand) ExecuteServer(session *rpc.RpcSession) error {
 	shell, err := startShell()
 	if err != nil {
 		session.WriteResponseHeader(rpc.SessionResponseHeader{
@@ -61,7 +61,7 @@ func (cmd *remoteShellCommand) ExecuteServer(session *rpc.RpcSession[*Dependenci
 	return nil
 }
 
-func (cmd *remoteShellCommand) ExecuteClient(session *rpc.RpcSession[*Dependencies]) error {
+func (cmd *remoteShellCommand) ExecuteClient(session *rpc.RpcSession) error {
 	errChan := make(chan error)
 	go func() {
 		_, err := io.Copy(session, cmd.input)

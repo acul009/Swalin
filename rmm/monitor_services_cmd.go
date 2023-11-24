@@ -6,7 +6,7 @@ import (
 	"rahnit-rmm/util"
 )
 
-func MonitorServicesCommandHandler() rpc.RpcCommand[*Dependencies] {
+func MonitorServicesCommandHandler() rpc.RpcCommand {
 	return &monitorServicesCommand{}
 }
 
@@ -24,7 +24,7 @@ func (cmd *monitorServicesCommand) GetKey() string {
 	return "manage-services"
 }
 
-func (cmd *monitorServicesCommand) ExecuteServer(session *rpc.RpcSession[*Dependencies]) error {
+func (cmd *monitorServicesCommand) ExecuteServer(session *rpc.RpcSession) error {
 	system, err := GetServiceSystem()
 	if err != nil {
 		session.WriteResponseHeader(rpc.SessionResponseHeader{
@@ -53,7 +53,7 @@ func (cmd *monitorServicesCommand) ExecuteServer(session *rpc.RpcSession[*Depend
 	}
 }
 
-func (cmd *monitorServicesCommand) ExecuteClient(session *rpc.RpcSession[*Dependencies]) error {
+func (cmd *monitorServicesCommand) ExecuteClient(session *rpc.RpcSession) error {
 
 	services := &ServiceStats{}
 

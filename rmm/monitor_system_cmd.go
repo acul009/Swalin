@@ -10,7 +10,7 @@ import (
 
 const reportingInterval = 1 * time.Second
 
-func MonitorSystemCommandHandler() rpc.RpcCommand[*Dependencies] {
+func MonitorSystemCommandHandler() rpc.RpcCommand {
 	return &monitorSystemCommand{}
 }
 
@@ -30,7 +30,7 @@ func (cmd *monitorSystemCommand) GetKey() string {
 	return "monitor-system"
 }
 
-func (cmd *monitorSystemCommand) ExecuteServer(session *rpc.RpcSession[*Dependencies]) error {
+func (cmd *monitorSystemCommand) ExecuteServer(session *rpc.RpcSession) error {
 
 	static, err := GetStaticStats()
 	if err != nil {
@@ -69,7 +69,7 @@ func (cmd *monitorSystemCommand) ExecuteServer(session *rpc.RpcSession[*Dependen
 	}
 }
 
-func (cmd *monitorSystemCommand) ExecuteClient(session *rpc.RpcSession[*Dependencies]) error {
+func (cmd *monitorSystemCommand) ExecuteClient(session *rpc.RpcSession) error {
 	log.Printf("Monitoring remote system...")
 
 	static := &StaticStats{}
