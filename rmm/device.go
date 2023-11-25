@@ -63,7 +63,7 @@ func (d *Device) TunnelConfig() util.Observable[*TunnelConfig] {
 	defer d.mutex.Unlock()
 	if d.tunnelConfig == nil {
 		var cRunning util.AsyncAction
-		util.NewSyncedObservable[*TunnelConfig](
+		d.tunnelConfig = util.NewSyncedObservable[*TunnelConfig](
 			func(uo util.UpdateableObservable[*TunnelConfig]) {
 				cmd := NewGetConfigCommand[*TunnelConfig](d.Certificate, uo)
 				running, err := d.c.dispatch().SendCommand(context.Background(), cmd)

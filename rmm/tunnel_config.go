@@ -8,7 +8,7 @@ var _ HostConfig = (*TunnelConfig)(nil)
 
 type TunnelConfig struct {
 	Host *pki.PublicKey
-	Tcp  []TcpTunnel
+	Tcp  []*TcpTunnel
 }
 
 type TcpTunnel struct {

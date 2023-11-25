@@ -29,7 +29,16 @@ func NewObservable[T any](value T) *observable[T] {
 		value:         value,
 		observers:     make(map[uuid.UUID]func(T)),
 		mutex:         sync.RWMutex{},
-		observerCount: NewObservable[int](0),
+		observerCount: newObservableWithoutObserverCount[int](0),
+	}
+}
+
+func newObservableWithoutObserverCount[T any](value T) *observable[T] {
+	return &observable[T]{
+		value:         value,
+		observers:     make(map[uuid.UUID]func(T)),
+		mutex:         sync.RWMutex{},
+		observerCount: nil,
 	}
 }
 
@@ -69,12 +78,16 @@ func (o *observable[T]) Subscribe(observer func(T)) func() {
 }
 
 func (o *observable[T]) updateObserverCount() {
+	if o.observerCount == nil {
+		return
+	}
+
 	old := o.observerCount.Get()
 	new := len(o.observers)
 	if old == new {
 		return
 	}
-	o.observerCount.Update(func(i int) int {
+	o.observerCount.Update(func(_ int) int {
 		return new
 	})
 }

@@ -3,11 +3,12 @@ package managment
 import (
 	"fmt"
 	"rahnit-rmm/rmm"
+	"rahnit-rmm/ui/components"
+	"rahnit-rmm/util"
 	"strconv"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -15,21 +16,49 @@ var _ fyne.Widget = (*tunnelDisplay)(nil)
 
 type tunnelDisplay struct {
 	widget.BaseWidget
-	cli     *rmm.Client
-	layout  fyne.Layout
-	config  *rmm.TunnelConfig
-	tcpList *fyne.Container
-	tcpAdd  *fyne.Container
+	cli        *rmm.Client
+	device     *rmm.Device
+	config     util.Observable[*rmm.TunnelConfig]
+	tcpList    *fyne.Container
+	tcpAdd     *fyne.Container
+	tcpTunnels util.ObservableMap[string, *rmm.TcpTunnel]
 }
 
 func newTunnelDisplay(cli *rmm.Client, device *rmm.Device) *tunnelDisplay {
 	d := &tunnelDisplay{
 		cli:    cli,
-		config: &rmm.TunnelConfig{},
-		layout: layout.NewBorderLayout(nil, nil, nil, nil),
+		device: device,
+		config: device.TunnelConfig(),
 	}
 
 	d.ExtendBaseWidget(d)
+
+	d.tcpTunnels = util.NewSyncedMap[string, *rmm.TcpTunnel](
+		func(m util.ObservableMap[string, *rmm.TcpTunnel]) {
+			d.config.Subscribe(func(tc *rmm.TunnelConfig) {
+				if tc == nil {
+					return
+				}
+
+				all := m.GetAll()
+
+				for _, tunnel := range tc.Tcp {
+					m.Update(tunnel.Name, func(value *rmm.TcpTunnel, found bool) (*rmm.TcpTunnel, bool) {
+						if found {
+							delete(all, tunnel.Name)
+						}
+
+						return tunnel, true
+					})
+				}
+
+				for _, tunnel := range all {
+					m.Delete(tunnel.Name)
+				}
+			})
+		},
+		func(m util.ObservableMap[string, *rmm.TcpTunnel]) {},
+	)
 
 	tunnelName := widget.NewEntry()
 
@@ -67,7 +96,8 @@ func newTunnelDisplay(cli *rmm.Client, device *rmm.Device) *tunnelDisplay {
 			Target:     targetAddress.Text,
 		}
 
-		d.config.Tcp = append(d.config.Tcp, tunnel)
+		fmt.Printf("%+v\n", tunnel)
+
 		d.tcpList.Refresh()
 	})
 
@@ -87,49 +117,6 @@ func newTunnelDisplay(cli *rmm.Client, device *rmm.Device) *tunnelDisplay {
 
 	d.tcpList = container.NewBorder(nil, d.tcpAdd, nil, nil)
 
-	// cmd := rmm.NewGetConfigCommand[*rmm.TunnelConfig](device.Certificate.GetPublicKey())
-
-	// running, err := d.cli.SendCommand(context.Background(), cmd)
-	// if err != nil {
-	// 	sErr := &rpc.SessionError{}
-	// 	if !errors.As(err, &sErr) {
-	// 		panic(err)
-	// 	}
-	// 	if sErr.Code() != 404 {
-	// 		panic(err)
-	// 	}
-
-	// 	d.config = &rmm.TunnelConfig{
-	// 		Tcp: []rmm.TcpTunnel{},
-	// 	}
-	// }
-
-	// go func() {
-	// 	if running != nil {
-	// 		err := running.Wait()
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-
-	// 		d.config = cmd.Config()
-	// 	}
-
-	// 	list := widget.NewList(
-	// 		func() int {
-	// 			return len(d.config.Tcp)
-	// 		},
-	// 		func() fyne.CanvasObject {
-	// 			return widget.NewLabel("tunnel")
-	// 		},
-	// 		func(i int, o fyne.CanvasObject) {
-	// 			tunnel := d.config.Tcp[i]
-	// 			o.(*widget.Label).SetText(tunnel.Name)
-	// 		},
-	// 	)
-
-	// 	d.tcpList.Objects = append(d.tcpList.Objects[:1], list)
-	// }()
-
 	return d
 }
 
@@ -146,20 +133,59 @@ func (t *tunnelDisplay) Close() error {
 }
 
 func (t *tunnelDisplay) CreateRenderer() fyne.WidgetRenderer {
+
 	return &tunnelDisplayRenderer{
 		widget: t,
+		scrollContainer: container.NewVScroll(
+			container.NewVBox(
+				components.NewTable(t.tcpTunnels,
+					components.NamedColumn(
+						"Name",
+						func() *widget.Label {
+							return widget.NewLabel("Name")
+						},
+						func(tunnel *rmm.TcpTunnel, label *widget.Label) {
+							label.SetText(tunnel.Name)
+							label.Refresh()
+						},
+					),
+					components.NamedColumn(
+						"Listen Port",
+						func() *widget.Label {
+							return widget.NewLabel("Listen Port")
+						},
+						func(tunnel *rmm.TcpTunnel, label *widget.Label) {
+							label.SetText(fmt.Sprintf("%d", tunnel.ListenPort))
+							label.Refresh()
+						},
+					),
+					components.NamedColumn(
+						"Target",
+						func() *widget.Label {
+							return widget.NewLabel("Target")
+						},
+						func(tunnel *rmm.TcpTunnel, label *widget.Label) {
+							label.SetText(tunnel.Target)
+							label.Refresh()
+						},
+					),
+				),
+			),
+		),
 	}
 }
 
 type tunnelDisplayRenderer struct {
-	widget *tunnelDisplay
+	widget          *tunnelDisplay
+	scrollContainer *container.Scroll
 }
 
 func (t *tunnelDisplayRenderer) Destroy() {
 }
 
 func (t *tunnelDisplayRenderer) Layout(size fyne.Size) {
-	t.widget.layout.Layout(t.Objects(), size)
+
+	t.scrollContainer.Resize(size)
 }
 
 func (t *tunnelDisplayRenderer) MinSize() fyne.Size {
@@ -176,7 +202,6 @@ func (t *tunnelDisplayRenderer) Objects() []fyne.CanvasObject {
 	}
 
 	return []fyne.CanvasObject{
-		t.widget.tcpList,
-		t.widget.tcpAdd,
+		t.scrollContainer,
 	}
 }
