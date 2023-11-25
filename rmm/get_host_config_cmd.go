@@ -5,6 +5,7 @@ import (
 	"rahnit-rmm/ent"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
+	"rahnit-rmm/util"
 )
 
 func GetHostConfigCommandHandler[T HostConfig]() rpc.RpcCommand {
@@ -12,13 +13,14 @@ func GetHostConfigCommandHandler[T HostConfig]() rpc.RpcCommand {
 }
 
 type GetConfigCommand[T HostConfig] struct {
-	Host   *pki.PublicKey
-	config *pki.SignedArtifact[T]
+	Host   *pki.Certificate
+	config util.UpdateableObservable[T]
 }
 
-func NewGetConfigCommand[T HostConfig](host *pki.PublicKey) *GetConfigCommand[T] {
+func NewGetConfigCommand[T HostConfig](host *pki.Certificate, config util.UpdateableObservable[T]) *GetConfigCommand[T] {
 	return &GetConfigCommand[T]{
-		Host: host,
+		Host:   host,
+		config: config,
 	}
 }
 
@@ -29,7 +31,7 @@ func (c *GetConfigCommand[T]) GetKey() string {
 
 func (c *GetConfigCommand[T]) ExecuteServer(session *rpc.RpcSession) error {
 
-	artifact, err := LoadHostConfigFromDB[T](c.Host, session.Verifier())
+	artifact, err := LoadHostConfigFromDB[T](c.Host.GetPublicKey(), session.Verifier())
 	if err != nil {
 		if ent.IsNotFound(err) {
 			session.WriteResponseHeader(rpc.SessionResponseHeader{
@@ -68,21 +70,22 @@ func (c *GetConfigCommand[T]) ExecuteServer(session *rpc.RpcSession) error {
 
 func (c *GetConfigCommand[T]) ExecuteClient(session *rpc.RpcSession) error {
 	raw := make([]byte, 0)
-	err := rpc.ReadMessage[[]byte](session, raw)
-	if err != nil {
-		return fmt.Errorf("error receiving tunnel config: %w", err)
+
+	for {
+
+		err := rpc.ReadMessage[[]byte](session, raw)
+		if err != nil {
+			return fmt.Errorf("error receiving tunnel config: %w", err)
+		}
+
+		conf, err := pki.LoadSignedArtifact[T](raw, session.Verifier())
+		if err != nil {
+			return fmt.Errorf("error unmarshaling config: %w", err)
+		}
+
+		c.config.Update(func(t T) T {
+			return conf.Artifact()
+		})
+
 	}
-
-	conf, err := pki.LoadSignedArtifact[T](raw, session.Verifier())
-	if err != nil {
-		return fmt.Errorf("error unmarshaling config: %w", err)
-	}
-
-	*c.config = *conf
-
-	return nil
-}
-
-func (c *GetConfigCommand[T]) Config() T {
-	return c.config.Artifact()
 }

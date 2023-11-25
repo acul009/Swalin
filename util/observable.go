@@ -18,16 +18,18 @@ type Observable[T any] interface {
 }
 
 type observable[T any] struct {
-	value     T
-	observers map[uuid.UUID]func(T)
-	mutex     sync.RWMutex
+	value         T
+	observers     map[uuid.UUID]func(T)
+	mutex         sync.RWMutex
+	observerCount UpdateableObservable[int]
 }
 
 func NewObservable[T any](value T) *observable[T] {
 	return &observable[T]{
-		value:     value,
-		observers: make(map[uuid.UUID]func(T)),
-		mutex:     sync.RWMutex{},
+		value:         value,
+		observers:     make(map[uuid.UUID]func(T)),
+		mutex:         sync.RWMutex{},
+		observerCount: NewObservable[int](0),
 	}
 }
 
@@ -57,11 +59,28 @@ func (o *observable[T]) Subscribe(observer func(T)) func() {
 	defer o.mutex.Unlock()
 	uuid := uuid.New()
 	o.observers[uuid] = observer
+	o.updateObserverCount()
 	return func() {
 		o.mutex.Lock()
 		defer o.mutex.Unlock()
 		delete(o.observers, uuid)
+		o.updateObserverCount()
 	}
+}
+
+func (o *observable[T]) updateObserverCount() {
+	old := o.observerCount.Get()
+	new := len(o.observers)
+	if old == new {
+		return
+	}
+	o.observerCount.Update(func(i int) int {
+		return new
+	})
+}
+
+func (o *observable[T]) ObserverCount() Observable[int] {
+	return o.observerCount
 }
 
 type derivedObservable[T any, U any] struct {

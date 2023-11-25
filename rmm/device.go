@@ -10,9 +10,10 @@ import (
 
 type Device struct {
 	*DeviceInfo
-	c         *Client
-	mutex     sync.Mutex
-	processes util.ObservableMap[int32, *ProcessInfo]
+	c            *Client
+	mutex        sync.Mutex
+	processes    util.ObservableMap[int32, *ProcessInfo]
+	tunnelConfig util.Observable[*TunnelConfig]
 }
 
 func (d *Device) Name() string {
@@ -57,6 +58,30 @@ func (d *Device) KillProcess(pid int32) error {
 	return nil
 }
 
-func (d *Device) TunnelConfig() *TunnelConfig {
+func (d *Device) TunnelConfig() util.Observable[*TunnelConfig] {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	if d.tunnelConfig == nil {
+		var cRunning util.AsyncAction
+		util.NewSyncedObservable[*TunnelConfig](
+			func(uo util.UpdateableObservable[*TunnelConfig]) {
+				cmd := NewGetConfigCommand[*TunnelConfig](d.Certificate, uo)
+				running, err := d.c.dispatch().SendCommand(context.Background(), cmd)
+				if err != nil {
+					log.Printf("error subscribing to tunnel config: %v", err)
+					return
+				}
 
+				cRunning = running
+			},
+			func(uo util.UpdateableObservable[*TunnelConfig]) {
+				err := cRunning.Close()
+				if err != nil {
+					log.Printf("error unsubscribing from tunnel config: %v", err)
+				}
+			},
+		)
+	}
+
+	return d.tunnelConfig
 }
