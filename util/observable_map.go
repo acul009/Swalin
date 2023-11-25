@@ -6,6 +6,39 @@ import (
 	"github.com/google/uuid"
 )
 
+type Mappable[K comparable, T any] interface {
+	Get(key K) (T, bool)
+	Set(key K, value T)
+	Delete(key K)
+	Size() int
+	GetAll() map[K]T
+}
+
+type mappableMap[K comparable, T any] struct {
+	m map[K]T
+}
+
+func (m *mappableMap[K, T]) Get(key K) (T, bool) {
+	value, ok := m.m[key]
+	return value, ok
+}
+
+func (m *mappableMap[K, T]) Set(key K, value T) {
+	m.m[key] = value
+}
+
+func (m *mappableMap[K, T]) Delete(key K) {
+	delete(m.m, key)
+}
+
+func (m *mappableMap[K, T]) Size() int {
+	return len(m.m)
+}
+
+func (m *mappableMap[K, T]) GetAll() map[K]T {
+	return m.m
+}
+
 type ObservableMap[K comparable, T any] interface {
 	Subscribe(onSet func(K, T), onRemove func(K, T)) func()
 	Set(key K, value T)
@@ -17,7 +50,7 @@ type ObservableMap[K comparable, T any] interface {
 }
 
 type genericObservableMap[K comparable, T any] struct {
-	m             map[K]T
+	m             Mappable[K, T]
 	observers     map[uuid.UUID]mapObserver[K, T]
 	mutex         sync.RWMutex
 	observerCount UpdateableObservable[int]
@@ -30,7 +63,7 @@ type mapObserver[K comparable, T any] struct {
 
 func NewObservableMap[K comparable, T any]() *genericObservableMap[K, T] {
 	return &genericObservableMap[K, T]{
-		m:             make(map[K]T),
+		m:             &mappableMap[K, T]{m: make(map[K]T)},
 		observers:     make(map[uuid.UUID]mapObserver[K, T]),
 		mutex:         sync.RWMutex{},
 		observerCount: NewObservable[int](0),
@@ -60,8 +93,7 @@ func (m *genericObservableMap[K, T]) Subscribe(onSet func(K, T), onRemove func(K
 func (m *genericObservableMap[K, T]) Get(key K) (T, bool) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	value, ok := m.m[key]
-	return value, ok
+	return m.m.Get(key)
 }
 
 func (m *genericObservableMap[K, T]) Has(key K) bool {
@@ -73,7 +105,7 @@ func (m *genericObservableMap[K, T]) GetAll() map[K]T {
 	copy := make(map[K]T)
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	for k, v := range m.m {
+	for k, v := range m.m.GetAll() {
 		copy[k] = v
 	}
 	return copy
@@ -82,7 +114,7 @@ func (m *genericObservableMap[K, T]) GetAll() map[K]T {
 func (m *genericObservableMap[K, T]) Set(key K, value T) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	m.m[key] = value
+	m.m.Set(key, value)
 	for _, observer := range m.observers {
 		observer.update(key, value)
 	}
@@ -92,25 +124,25 @@ func (m *genericObservableMap[K, T]) Update(key K, updateFunc func(value T, foun
 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	old, ok := m.m[key]
+	old, ok := m.m.Get(key)
 	new, changed := updateFunc(old, ok)
 	if !changed {
 		return
 	}
-	m.m[key] = new
+	m.m.Set(key, new)
 	for _, observer := range m.observers {
-		observer.update(key, m.m[key])
+		observer.update(key, new)
 	}
 }
 
 func (m *genericObservableMap[K, T]) Delete(key K) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	value, ok := m.m[key]
+	value, ok := m.m.Get(key)
 	if !ok {
 		return
 	}
-	delete(m.m, key)
+	m.m.Delete(key)
 	for _, observer := range m.observers {
 		observer.delete(key, value)
 	}
@@ -119,7 +151,7 @@ func (m *genericObservableMap[K, T]) Delete(key K) {
 func (m *genericObservableMap[K, T]) Size() int {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	return len(m.m)
+	return m.m.Size()
 }
 
 func (m *genericObservableMap[K, T]) ObserverCount() Observable[int] {
