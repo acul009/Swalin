@@ -14,7 +14,7 @@ import (
 )
 
 type enrollmentManager struct {
-	waitingEnrollments util.ObservableMap[string, *enrollmentConnection]
+	waitingEnrollments util.UpdateableMap[string, *enrollmentConnection]
 	upstream           *pki.Certificate
 	mutex              sync.Mutex
 }

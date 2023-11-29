@@ -9,7 +9,7 @@ type getDevicesCommand struct {
 	*SyncDownCommand[string, *DeviceInfo]
 }
 
-func CreateGetDevicesCommandHandler(m util.ObservableMap[string, *DeviceInfo]) rpc.RpcCommandHandler {
+func CreateGetDevicesCommandHandler(m util.UpdateableMap[string, *DeviceInfo]) rpc.RpcCommandHandler {
 	return func() rpc.RpcCommand {
 		return &getDevicesCommand{
 			SyncDownCommand: NewSyncDownCommand[string, *DeviceInfo](m),
@@ -17,7 +17,7 @@ func CreateGetDevicesCommandHandler(m util.ObservableMap[string, *DeviceInfo]) r
 	}
 }
 
-func NewGetDevicesCommand(targetMap util.ObservableMap[string, *DeviceInfo]) *getDevicesCommand {
+func NewGetDevicesCommand(targetMap util.UpdateableMap[string, *DeviceInfo]) *getDevicesCommand {
 	return &getDevicesCommand{
 		SyncDownCommand: NewSyncDownCommand[string, *DeviceInfo](targetMap),
 	}

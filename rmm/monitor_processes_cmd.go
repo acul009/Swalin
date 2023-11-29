@@ -14,7 +14,7 @@ type monitorProcessesCommand struct {
 	*SyncDownCommand[int32, *ProcessInfo]
 }
 
-func NewMonitorProcessesCommand(targetMap util.ObservableMap[int32, *ProcessInfo]) *monitorProcessesCommand {
+func NewMonitorProcessesCommand(targetMap util.UpdateableMap[int32, *ProcessInfo]) *monitorProcessesCommand {
 	return &monitorProcessesCommand{
 		SyncDownCommand: NewSyncDownCommand[int32, *ProcessInfo](targetMap),
 	}
@@ -31,7 +31,7 @@ func (c *monitorProcessesCommand) ExecuteServer(session *rpc.RpcSession) error {
 		return fmt.Errorf("error monitoring processes: %w", err)
 	}
 
-	c.SyncDownCommand.SetMap(processes)
+	c.SyncDownCommand.SetSourceMap(processes)
 
 	go func() {
 		errChan <- c.SyncDownCommand.ExecuteServer(session)

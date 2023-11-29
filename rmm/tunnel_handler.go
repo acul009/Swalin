@@ -14,7 +14,7 @@ import (
 type tunnelHandler struct {
 	dispatch rpc.Dispatcher
 
-	TcpTunnels util.ObservableMap[*tcpTunnelConnectionDetails, *ActiveTcpTunnel]
+	TcpTunnels util.UpdateableMap[*tcpTunnelConnectionDetails, *ActiveTcpTunnel]
 }
 
 func newTunnelHandler(dispatcher rpc.Dispatcher) *tunnelHandler {

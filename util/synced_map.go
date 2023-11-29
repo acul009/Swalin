@@ -6,19 +6,19 @@ import (
 )
 
 type SyncedMap[K comparable, V any] struct {
-	ObservableMap[K, V]
-	register   func(m ObservableMap[K, V])
-	unregister func(m ObservableMap[K, V])
+	UpdateableMap[K, V]
+	register   func(m UpdateableMap[K, V])
+	unregister func(m UpdateableMap[K, V])
 	registered bool
 	mutex      sync.Mutex
 }
 
-func NewSyncedMap[K comparable, V any](register func(m ObservableMap[K, V]), unregister func(m ObservableMap[K, V])) *SyncedMap[K, V] {
+func NewSyncedMap[K comparable, V any](register func(m UpdateableMap[K, V]), unregister func(m UpdateableMap[K, V])) *SyncedMap[K, V] {
 	log.Printf("new synced map")
 
 	m := NewObservableMap[K, V]()
 	sm := &SyncedMap[K, V]{
-		ObservableMap: m,
+		UpdateableMap: m,
 		register:      register,
 		unregister:    unregister,
 		mutex:         sync.Mutex{},

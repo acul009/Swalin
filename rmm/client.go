@@ -11,7 +11,7 @@ import (
 type Client struct {
 	ep            *rpc.RpcEndpoint
 	tunnelHandler *tunnelHandler
-	devices       util.ObservableMap[string, *Device]
+	devices       util.UpdateableMap[string, *Device]
 }
 
 func ClientConnect(ctx context.Context, credentials *pki.PermanentCredentials) (*Client, error) {
@@ -36,7 +36,7 @@ func (c *Client) Tunnels() *tunnelHandler {
 	return c.tunnelHandler
 }
 
-func (c *Client) Devices() util.ObservableMap[string, *Device] {
+func (c *Client) Devices() util.UpdateableMap[string, *Device] {
 	return c.devices
 }
 
@@ -53,7 +53,7 @@ func (c *Client) initSyncedDeviceList() {
 	var dRunning util.AsyncAction
 
 	devicesInfo := util.NewSyncedMap[string, *DeviceInfo](
-		func(m util.ObservableMap[string, *DeviceInfo]) {
+		func(m util.UpdateableMap[string, *DeviceInfo]) {
 			cmd := NewGetDevicesCommand(m)
 			running, err := c.dispatch().SendCommand(context.Background(), cmd)
 			if err != nil {
@@ -62,7 +62,7 @@ func (c *Client) initSyncedDeviceList() {
 			}
 			dRunning = running
 		},
-		func(_ util.ObservableMap[string, *DeviceInfo]) {
+		func(_ util.UpdateableMap[string, *DeviceInfo]) {
 			err := dRunning.Close()
 			if err != nil {
 				log.Printf("Error unsubscribing from devices: %v", err)
@@ -73,7 +73,7 @@ func (c *Client) initSyncedDeviceList() {
 	var unsub func()
 
 	devices := util.NewSyncedMap[string, *Device](
-		func(m util.ObservableMap[string, *Device]) {
+		func(m util.UpdateableMap[string, *Device]) {
 			unsub = devicesInfo.Subscribe(
 				func(s string, di *DeviceInfo) {
 					m.Update(s, func(d *Device, found bool) (*Device, bool) {
@@ -92,7 +92,7 @@ func (c *Client) initSyncedDeviceList() {
 				},
 			)
 		},
-		func(m util.ObservableMap[string, *Device]) {
+		func(m util.UpdateableMap[string, *Device]) {
 			unsub()
 		},
 	)

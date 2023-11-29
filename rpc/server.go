@@ -32,7 +32,7 @@ type RpcServer struct {
 	listener          *quic.Listener
 	rpcCommands       *CommandCollection
 	state             RpcServerState
-	activeConnections util.ObservableMap[uuid.UUID, *RpcConnection]
+	activeConnections util.UpdateableMap[uuid.UUID, *RpcConnection]
 	mutex             sync.Mutex
 	nonceStorage      *util.NonceStorage
 	credentials       *pki.PermanentCredentials
@@ -48,7 +48,7 @@ const (
 	RpcServerStopped
 )
 
-func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials *pki.PermanentCredentials) (*RpcServer, error) {
+func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, verifier pki.Verifier, credentials *pki.PermanentCredentials) (*RpcServer, error) {
 	tlsConf, err := getTlsServerConfig([]TlsConnectionProto{ProtoRpc, ProtoClientLogin, ProtoAgentEnroll})
 	if err != nil {
 		return nil, fmt.Errorf("error getting server tls config: %w", err)
@@ -65,11 +65,6 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, credentials
 	cert, err := credentials.GetCertificate()
 	if err != nil {
 		return nil, fmt.Errorf("error getting certificate: %w", err)
-	}
-
-	verifier, err := pki.NewLocalVerify()
-	if err != nil {
-		return nil, fmt.Errorf("error creating local verify: %w", err)
 	}
 
 	return &RpcServer{
@@ -173,7 +168,7 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 	return connection, nil
 }
 
-func (s *RpcServer) Connections() util.ObservableMap[uuid.UUID, *RpcConnection] {
+func (s *RpcServer) Connections() util.UpdateableMap[uuid.UUID, *RpcConnection] {
 	return s.activeConnections
 }
 

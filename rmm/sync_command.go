@@ -6,14 +6,15 @@ import (
 	"rahnit-rmm/util"
 )
 
-func NewSyncDownCommand[K comparable, T any](targetMap util.ObservableMap[K, T]) *SyncDownCommand[K, T] {
+func NewSyncDownCommand[K comparable, T any](targetMap util.UpdateableMap[K, T]) *SyncDownCommand[K, T] {
 	return &SyncDownCommand[K, T]{
 		targetMap: targetMap,
 	}
 }
 
 type SyncDownCommand[K comparable, T any] struct {
-	targetMap util.ObservableMap[K, T]
+	targetMap util.UpdateableMap[K, T]
+	sourceMap util.ObservableMap[K, T]
 }
 
 type updateInfo[K comparable, T any] struct {
@@ -64,7 +65,7 @@ func (s *SyncDownCommand[K, T]) ExecuteServer(session *rpc.RpcSession) error {
 		return fmt.Errorf("error writing response header: %w", err)
 	}
 
-	full := s.targetMap.GetAll()
+	full := s.sourceMap.GetAll()
 	err = rpc.WriteMessage[map[K]T](session, full)
 	if err != nil {
 		return fmt.Errorf("error writing message: %w", err)
@@ -72,7 +73,7 @@ func (s *SyncDownCommand[K, T]) ExecuteServer(session *rpc.RpcSession) error {
 
 	var updateErrChan = make(chan error)
 
-	unsubscribe := s.targetMap.Subscribe(
+	unsubscribe := s.sourceMap.Subscribe(
 		func(key K, value T) {
 			err = rpc.WriteMessage[updateInfo[K, T]](session, updateInfo[K, T]{
 				Delete: false,
@@ -100,6 +101,6 @@ func (s *SyncDownCommand[K, T]) ExecuteServer(session *rpc.RpcSession) error {
 	return err
 }
 
-func (s *SyncDownCommand[K, T]) SetMap(m util.ObservableMap[K, T]) {
-	s.targetMap = m
+func (s *SyncDownCommand[K, T]) SetSourceMap(m util.ObservableMap[K, T]) {
+	s.sourceMap = m
 }

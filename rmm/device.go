@@ -12,7 +12,7 @@ type Device struct {
 	*DeviceInfo
 	c            *Client
 	mutex        sync.Mutex
-	processes    util.ObservableMap[int32, *ProcessInfo]
+	processes    util.UpdateableMap[int32, *ProcessInfo]
 	tunnelConfig util.Observable[*TunnelConfig]
 }
 
@@ -20,14 +20,14 @@ func (d *Device) Name() string {
 	return d.Certificate.GetName()
 }
 
-func (d *Device) Processes() util.ObservableMap[int32, *ProcessInfo] {
+func (d *Device) Processes() util.UpdateableMap[int32, *ProcessInfo] {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if d.processes == nil {
 		var pRunning util.AsyncAction
 
 		d.processes = util.NewSyncedMap[int32, *ProcessInfo](
-			func(m util.ObservableMap[int32, *ProcessInfo]) {
+			func(m util.UpdateableMap[int32, *ProcessInfo]) {
 				cmd := NewMonitorProcessesCommand(m)
 				running, err := d.c.dispatch().SendCommandTo(context.Background(), d.Certificate, cmd)
 				if err != nil {
@@ -36,7 +36,7 @@ func (d *Device) Processes() util.ObservableMap[int32, *ProcessInfo] {
 				}
 				pRunning = running
 			},
-			func(_ util.ObservableMap[int32, *ProcessInfo]) {
+			func(_ util.UpdateableMap[int32, *ProcessInfo]) {
 				err := pRunning.Close()
 				if err != nil {
 					log.Printf("error unsubscribing from processes: %v", err)

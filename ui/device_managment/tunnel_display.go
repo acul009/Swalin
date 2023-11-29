@@ -21,7 +21,7 @@ type tunnelDisplay struct {
 	config     util.Observable[*rmm.TunnelConfig]
 	tcpList    *fyne.Container
 	tcpAdd     *fyne.Container
-	tcpTunnels util.ObservableMap[string, *rmm.TcpTunnel]
+	tcpTunnels util.UpdateableMap[string, *rmm.TcpTunnel]
 }
 
 func newTunnelDisplay(cli *rmm.Client, device *rmm.Device) *tunnelDisplay {
@@ -34,7 +34,7 @@ func newTunnelDisplay(cli *rmm.Client, device *rmm.Device) *tunnelDisplay {
 	d.ExtendBaseWidget(d)
 
 	d.tcpTunnels = util.NewSyncedMap[string, *rmm.TcpTunnel](
-		func(m util.ObservableMap[string, *rmm.TcpTunnel]) {
+		func(m util.UpdateableMap[string, *rmm.TcpTunnel]) {
 			d.config.Subscribe(func(tc *rmm.TunnelConfig) {
 				if tc == nil {
 					return
@@ -57,7 +57,7 @@ func newTunnelDisplay(cli *rmm.Client, device *rmm.Device) *tunnelDisplay {
 				}
 			})
 		},
-		func(m util.ObservableMap[string, *rmm.TcpTunnel]) {},
+		func(m util.UpdateableMap[string, *rmm.TcpTunnel]) {},
 	)
 
 	tunnelName := widget.NewEntry()

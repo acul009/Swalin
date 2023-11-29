@@ -2,6 +2,7 @@ package rmm
 
 import (
 	"fmt"
+	"rahnit-rmm/config"
 	"rahnit-rmm/pki"
 	"rahnit-rmm/rpc"
 	"rahnit-rmm/util"
@@ -11,11 +12,18 @@ import (
 
 type Server struct {
 	*rpc.RpcServer
-	devices       util.ObservableMap[string, *DeviceInfo]
+	devices       util.UpdateableMap[string, *DeviceInfo]
 	configManager *ConfigManager
 }
 
 func NewDefaultServer(listenAddr string, credentials *pki.PermanentCredentials) (*Server, error) {
+
+	verifier, err := pki.NewLocalVerify()
+	if err != nil {
+		return nil, fmt.Errorf("error creating local verify: %w", err)
+	}
+
+	ConfigManager := NewConfigManager(verifier, config.DB())
 
 	devices, err := NewDeviceListFromDB()
 	if err != nil {
@@ -33,7 +41,7 @@ func NewDefaultServer(listenAddr string, credentials *pki.PermanentCredentials) 
 		GetHostConfigCommandHandler[*TunnelConfig],
 	)
 
-	rpcS, err := rpc.NewRpcServer(listenAddr, cmds, credentials)
+	rpcS, err := rpc.NewRpcServer(listenAddr, cmds, verifier, credentials)
 	if err != nil {
 		return nil, fmt.Errorf("error creating rpc server: %w", err)
 	}
@@ -64,8 +72,9 @@ func NewDefaultServer(listenAddr string, credentials *pki.PermanentCredentials) 
 	)
 
 	s := &Server{
-		RpcServer: rpcS,
-		devices:   devices,
+		RpcServer:     rpcS,
+		devices:       devices,
+		configManager: ConfigManager,
 	}
 
 	return s, nil

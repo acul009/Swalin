@@ -14,12 +14,12 @@ type DeviceInfo struct {
 }
 
 type DeviceList struct {
-	util.ObservableMap[string, *DeviceInfo]
+	util.UpdateableMap[string, *DeviceInfo]
 }
 
 func NewDeviceListFromDB() (*DeviceList, error) {
 	d := &DeviceList{
-		ObservableMap: util.NewObservableMap[string, *DeviceInfo](),
+		UpdateableMap: util.NewObservableMap[string, *DeviceInfo](),
 	}
 
 	db := config.DB()
@@ -33,7 +33,7 @@ func NewDeviceListFromDB() (*DeviceList, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse device certificate: %w", err)
 		}
-		d.ObservableMap.Set(cert.GetPublicKey().Base64Encode(), &DeviceInfo{
+		d.UpdateableMap.Set(cert.GetPublicKey().Base64Encode(), &DeviceInfo{
 			Certificate: cert,
 			Online:      false,
 		})
@@ -43,7 +43,7 @@ func NewDeviceListFromDB() (*DeviceList, error) {
 }
 
 func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
-	_, ok := d.ObservableMap.Get(cert.GetPublicKey().Base64Encode())
+	_, ok := d.UpdateableMap.Get(cert.GetPublicKey().Base64Encode())
 	if ok {
 		return fmt.Errorf("device already exists")
 	}
@@ -54,7 +54,7 @@ func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
 		return fmt.Errorf("failed to create device: %w", err)
 	}
 
-	d.ObservableMap.Set(cert.GetPublicKey().Base64Encode(), &DeviceInfo{
+	d.UpdateableMap.Set(cert.GetPublicKey().Base64Encode(), &DeviceInfo{
 		Certificate: cert,
 		Online:      false,
 	})

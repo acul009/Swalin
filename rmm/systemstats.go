@@ -123,7 +123,7 @@ func GetProcessInfo() (*ProcessStats, error) {
 	return &ProcessStats{Processes: processesInfo}, nil
 }
 
-func MonitorProcesses(errChan chan<- error) (util.ObservableMap[int32, *ProcessInfo], error) {
+func MonitorProcesses(errChan chan<- error) (util.UpdateableMap[int32, *ProcessInfo], error) {
 
 	processes, err := process.Processes()
 	if err != nil {
