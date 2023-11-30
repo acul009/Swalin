@@ -1,4 +1,4 @@
-module rahnit-rmm
+module github.com/rahn-it/svalin
 
 go 1.20
 

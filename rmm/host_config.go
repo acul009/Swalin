@@ -3,11 +3,11 @@ package rmm
 import (
 	"context"
 	"fmt"
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/ent/device"
+	"github.com/rahn-it/svalin/ent/hostconfig"
+	"github.com/rahn-it/svalin/pki"
 	"log"
-	"rahnit-rmm/config"
-	"rahnit-rmm/ent/device"
-	"rahnit-rmm/ent/hostconfig"
-	"rahnit-rmm/pki"
 )
 
 type HostConfig interface {

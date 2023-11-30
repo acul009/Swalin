@@ -3,7 +3,7 @@
 package user
 
 import (
-	"rahnit-rmm/ent/predicate"
+	"github.com/rahn-it/svalin/ent/predicate"
 
 	"entgo.io/ent/dialect/sql"
 )

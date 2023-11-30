@@ -9,12 +9,12 @@ import (
 	"log"
 	"reflect"
 
-	"rahnit-rmm/ent/migrate"
+	"github.com/rahn-it/svalin/ent/migrate"
 
-	"rahnit-rmm/ent/device"
-	"rahnit-rmm/ent/hostconfig"
-	"rahnit-rmm/ent/revocation"
-	"rahnit-rmm/ent/user"
+	"github.com/rahn-it/svalin/ent/device"
+	"github.com/rahn-it/svalin/ent/hostconfig"
+	"github.com/rahn-it/svalin/ent/revocation"
+	"github.com/rahn-it/svalin/ent/user"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"

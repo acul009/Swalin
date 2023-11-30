@@ -25,9 +25,9 @@ func GetSubdir() string {
 
 func GetConfigDir() string {
 	if os.Getenv("OS") == "Windows_NT" {
-		return filepath.Join(os.Getenv("APPDATA"), "rahnit-rmm", GetSubdir())
+		return filepath.Join(os.Getenv("APPDATA"), "github.com/rahn-it/svalin", GetSubdir())
 	}
-	return filepath.Join("/etc/rahnit-rmm", GetSubdir())
+	return filepath.Join("/etc/github.com/rahn-it/svalin", GetSubdir())
 }
 
 func GetFilePath(filePath ...string) string {

@@ -3,10 +3,10 @@ package pki
 import (
 	"errors"
 	"fmt"
+	"github.com/rahn-it/svalin/config"
 	"io/fs"
 	"log"
 	"os"
-	"rahnit-rmm/config"
 )
 
 type storedPrivateKey struct {

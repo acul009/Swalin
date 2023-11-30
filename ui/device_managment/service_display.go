@@ -1,8 +1,8 @@
 package managment
 
 import (
-	"rahnit-rmm/rmm"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/rmm"
+	"github.com/rahn-it/svalin/util"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"

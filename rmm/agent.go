@@ -3,8 +3,8 @@ package rmm
 import (
 	"context"
 	"fmt"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/rpc"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/rpc"
 )
 
 type Agent struct {

@@ -3,11 +3,11 @@ package rmm
 import (
 	"context"
 	"fmt"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/util"
 	"log"
 	"net"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/rpc"
-	"rahnit-rmm/util"
 	"sync"
 )
 

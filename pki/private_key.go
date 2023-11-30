@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/util"
 )
 
 var ErrWrongPassword = &wrongPasswordError{}

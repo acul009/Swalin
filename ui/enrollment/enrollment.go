@@ -3,11 +3,11 @@ package enrollment
 // import (
 // 	"context"
 // 	"log"
-// 	"rahnit-rmm/pki"
-// 	"rahnit-rmm/rmm"
-// 	"rahnit-rmm/rpc"
-// 	"rahnit-rmm/ui/mainview.go"
-// 	"rahnit-rmm/util"
+// 	"github.com/rahn-it/svalin/pki"
+// 	"github.com/rahn-it/svalin/rmm"
+// 	"github.com/rahn-it/svalin/rpc"
+// 	"github.com/rahn-it/svalin/ui/mainview.go"
+// 	"github.com/rahn-it/svalin/util"
 // 	"sync"
 // 	"time"
 

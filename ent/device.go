@@ -4,7 +4,7 @@ package ent
 
 import (
 	"fmt"
-	"rahnit-rmm/ent/device"
+	"github.com/rahn-it/svalin/ent/device"
 	"strings"
 
 	"entgo.io/ent"

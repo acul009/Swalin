@@ -5,11 +5,11 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/util"
 	"log"
-	"rahnit-rmm/config"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/rpc"
-	"rahnit-rmm/util"
 	"sync"
 
 	"fyne.io/fyne/v2"
@@ -267,7 +267,7 @@ func setupServerForm(w fyne.Window, conn *rpc.RpcConnection) {
 
 func askForNewTotp(accountName string, targetCanvas fyne.Canvas) (code string, secret string, err error) {
 	key, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      "rahnit-rmm",
+		Issuer:      "github.com/rahn-it/svalin",
 		AccountName: accountName,
 		SecretSize:  32,
 		Rand:        rand.Reader,

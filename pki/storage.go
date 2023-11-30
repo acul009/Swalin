@@ -3,8 +3,8 @@ package pki
 import (
 	"encoding/pem"
 	"fmt"
+	"github.com/rahn-it/svalin/util"
 	"os"
-	"rahnit-rmm/util"
 )
 
 func (cert *Certificate) saveToFile(filepath string) error {

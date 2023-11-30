@@ -5,7 +5,7 @@ package hook
 import (
 	"context"
 	"fmt"
-	"rahnit-rmm/ent"
+	"github.com/rahn-it/svalin/ent"
 )
 
 // The DeviceFunc type is an adapter to allow the use of ordinary

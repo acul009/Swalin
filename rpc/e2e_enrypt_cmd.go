@@ -4,8 +4,8 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	"fmt"
+	"github.com/rahn-it/svalin/util"
 	"log"
-	"rahnit-rmm/util"
 )
 
 func CreateE2eDecryptCommandHandler(commands *CommandCollection) func() RpcCommand {

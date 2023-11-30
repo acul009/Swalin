@@ -3,11 +3,11 @@ package rmm
 import (
 	"context"
 	"fmt"
-	"rahnit-rmm/ent"
-	"rahnit-rmm/ent/device"
-	"rahnit-rmm/ent/hostconfig"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/ent"
+	"github.com/rahn-it/svalin/ent/device"
+	"github.com/rahn-it/svalin/ent/hostconfig"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/util"
 )
 
 type ConfigManager struct {

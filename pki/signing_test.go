@@ -2,8 +2,8 @@ package pki_test
 
 import (
 	"bytes"
+	"github.com/rahn-it/svalin/pki"
 	"io"
-	"rahnit-rmm/pki"
 	"reflect"
 	"testing"
 )

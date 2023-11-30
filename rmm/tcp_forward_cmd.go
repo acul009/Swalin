@@ -2,9 +2,9 @@ package rmm
 
 import (
 	"fmt"
+	"github.com/rahn-it/svalin/rpc"
 	"io"
 	"net"
-	"rahnit-rmm/rpc"
 )
 
 func TcpForwardCommandHandler() rpc.RpcCommand {

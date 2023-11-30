@@ -6,10 +6,10 @@ import (
 	"crypto"
 	"encoding/base64"
 	"fmt"
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/ent"
+	"github.com/rahn-it/svalin/ent/revocation"
 	"log"
-	"rahnit-rmm/config"
-	"rahnit-rmm/ent"
-	"rahnit-rmm/ent/revocation"
 )
 
 var ErrRevoked = &revokedError{}

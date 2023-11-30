@@ -3,8 +3,8 @@ package pki
 import (
 	"crypto/rand"
 	"errors"
+	"github.com/rahn-it/svalin/config"
 	"os"
-	"rahnit-rmm/config"
 )
 
 var seed []byte

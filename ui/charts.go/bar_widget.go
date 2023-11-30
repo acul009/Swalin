@@ -1,7 +1,7 @@
 package fynecharts
 
 import (
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/util"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"

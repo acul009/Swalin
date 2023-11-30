@@ -2,9 +2,9 @@ package rpc
 
 import (
 	"fmt"
+	"github.com/rahn-it/svalin/pki"
 	"io"
 	"log"
-	"rahnit-rmm/pki"
 )
 
 func ForwardCommandHandler() RpcCommand {

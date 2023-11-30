@@ -3,8 +3,8 @@ package pki
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/rahn-it/svalin/config"
 	"path/filepath"
-	"rahnit-rmm/config"
 )
 
 type Credentials interface {

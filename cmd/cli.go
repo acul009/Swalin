@@ -5,7 +5,7 @@ package cmd
 
 import (
 	"fmt"
-	"rahnit-rmm/config"
+	"github.com/rahn-it/svalin/config"
 
 	"github.com/spf13/cobra"
 )

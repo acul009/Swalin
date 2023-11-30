@@ -2,8 +2,8 @@ package tunnels
 
 import (
 	"fmt"
-	"rahnit-rmm/rmm"
-	"rahnit-rmm/ui/components"
+	"github.com/rahn-it/svalin/rmm"
+	"github.com/rahn-it/svalin/ui/components"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"

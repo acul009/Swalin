@@ -3,8 +3,8 @@ package pki
 import (
 	"errors"
 	"fmt"
+	"github.com/rahn-it/svalin/config"
 	"io/fs"
-	"rahnit-rmm/config"
 )
 
 const (

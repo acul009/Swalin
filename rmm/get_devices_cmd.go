@@ -1,8 +1,8 @@
 package rmm
 
 import (
-	"rahnit-rmm/rpc"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/util"
 )
 
 type getDevicesCommand struct {

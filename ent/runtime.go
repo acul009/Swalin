@@ -3,11 +3,11 @@
 package ent
 
 import (
-	"rahnit-rmm/ent/device"
-	"rahnit-rmm/ent/hostconfig"
-	"rahnit-rmm/ent/revocation"
-	"rahnit-rmm/ent/schema"
-	"rahnit-rmm/ent/user"
+	"github.com/rahn-it/svalin/ent/device"
+	"github.com/rahn-it/svalin/ent/hostconfig"
+	"github.com/rahn-it/svalin/ent/revocation"
+	"github.com/rahn-it/svalin/ent/schema"
+	"github.com/rahn-it/svalin/ent/user"
 )
 
 // The init function reads all schema descriptors with runtime code

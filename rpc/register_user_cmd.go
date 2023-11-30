@@ -2,9 +2,9 @@ package rpc
 
 import (
 	"fmt"
-	"rahnit-rmm/config"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/util"
 )
 
 func RegisterUserHandler() RpcCommand {

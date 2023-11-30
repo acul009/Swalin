@@ -2,7 +2,7 @@ package rpc
 
 import (
 	"fmt"
-	"rahnit-rmm/pki"
+	"github.com/rahn-it/svalin/pki"
 )
 
 func EnrollAgentHandler() RpcCommand {

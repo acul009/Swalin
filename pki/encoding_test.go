@@ -9,8 +9,8 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"fmt"
+	"github.com/rahn-it/svalin/pki"
 	"math/big"
-	"rahnit-rmm/pki"
 	"testing"
 	"time"
 )

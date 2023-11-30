@@ -7,8 +7,8 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"github.com/rahn-it/svalin/pki"
 	"math/big"
-	"rahnit-rmm/pki"
 	"time"
 )
 

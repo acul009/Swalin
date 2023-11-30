@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	"rahnit-rmm/config"
-	"rahnit-rmm/ent"
-	"rahnit-rmm/ent/device"
-	"rahnit-rmm/ent/user"
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/ent"
+	"github.com/rahn-it/svalin/ent/device"
+	"github.com/rahn-it/svalin/ent/user"
 )
 
 type Verifier interface {

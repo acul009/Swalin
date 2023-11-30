@@ -3,8 +3,8 @@ package config
 import (
 	"context"
 	"fmt"
-	"rahnit-rmm/ent"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/ent"
+	"github.com/rahn-it/svalin/util"
 
 	"entgo.io/ent/dialect"
 )

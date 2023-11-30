@@ -2,10 +2,10 @@ package managment
 
 import (
 	"fmt"
+	"github.com/rahn-it/svalin/rmm"
+	"github.com/rahn-it/svalin/ui/components"
+	"github.com/rahn-it/svalin/util"
 	"log"
-	"rahnit-rmm/rmm"
-	"rahnit-rmm/ui/components"
-	"rahnit-rmm/util"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"

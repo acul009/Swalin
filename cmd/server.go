@@ -6,13 +6,13 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/rmm"
+	"github.com/rahn-it/svalin/rpc"
 	"log"
 	"os"
 	"os/signal"
-	"rahnit-rmm/config"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/rmm"
-	"rahnit-rmm/rpc"
 	"sync"
 	"syscall"
 

@@ -1,8 +1,8 @@
 package components
 
 import (
+	"github.com/rahn-it/svalin/util"
 	"log"
-	"rahnit-rmm/util"
 	"sync"
 
 	"fyne.io/fyne/v2"

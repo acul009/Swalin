@@ -2,9 +2,9 @@ package managment
 
 import (
 	"fmt"
-	"rahnit-rmm/rmm"
-	fynecharts "rahnit-rmm/ui/charts.go"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/rmm"
+	fynecharts "github.com/rahn-it/svalin/ui/charts.go"
+	"github.com/rahn-it/svalin/util"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/layout"

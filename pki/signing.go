@@ -7,8 +7,8 @@ import (
 	"encoding/asn1"
 	"encoding/json"
 	"fmt"
+	"github.com/rahn-it/svalin/util"
 	"io"
-	"rahnit-rmm/util"
 )
 
 var ErrSignatureInvalid = SignatureVerificationError{

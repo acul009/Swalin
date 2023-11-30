@@ -3,17 +3,17 @@ package rpc
 import (
 	"crypto/tls"
 	"fmt"
-	"rahnit-rmm/pki"
+	"github.com/rahn-it/svalin/pki"
 )
 
 type TlsConnectionProto string
 
 const (
 	ProtoError       TlsConnectionProto = ""
-	ProtoServerInit  TlsConnectionProto = "rahnit-rmm-server-init"
-	ProtoRpc         TlsConnectionProto = "rahnit-rmm-rpc"
-	ProtoClientLogin TlsConnectionProto = "rahnit-rmm-client-login"
-	ProtoAgentEnroll TlsConnectionProto = "rahnit-rmm-agent-enroll"
+	ProtoServerInit  TlsConnectionProto = "github.com/rahn-it/svalin-server-init"
+	ProtoRpc         TlsConnectionProto = "github.com/rahn-it/svalin-rpc"
+	ProtoClientLogin TlsConnectionProto = "github.com/rahn-it/svalin-client-login"
+	ProtoAgentEnroll TlsConnectionProto = "github.com/rahn-it/svalin-agent-enroll"
 )
 
 func getTlsTempClientConfig(protos []TlsConnectionProto) *tls.Config {

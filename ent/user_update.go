@@ -6,9 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"rahnit-rmm/ent/predicate"
-	"rahnit-rmm/ent/user"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/ent/predicate"
+	"github.com/rahn-it/svalin/ent/user"
+	"github.com/rahn-it/svalin/util"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"

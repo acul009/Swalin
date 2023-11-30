@@ -2,8 +2,8 @@ package rmm
 
 import (
 	"fmt"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/rpc"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/rpc"
 )
 
 func UploadHostConfigCommandHandler[T HostConfig]() rpc.RpcCommand {

@@ -3,10 +3,10 @@ package permissions
 import (
 	"context"
 	"fmt"
-	"rahnit-rmm/config"
-	"rahnit-rmm/ent"
-	"rahnit-rmm/ent/user"
-	"rahnit-rmm/pki"
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/ent"
+	"github.com/rahn-it/svalin/ent/user"
+	"github.com/rahn-it/svalin/pki"
 )
 
 var ErrPermissionDenied = PermissionDeniedError{}

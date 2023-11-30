@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/util"
 	"log"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/util"
 	"sync"
 
 	"github.com/google/uuid"

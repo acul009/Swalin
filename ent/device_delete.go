@@ -4,8 +4,8 @@ package ent
 
 import (
 	"context"
-	"rahnit-rmm/ent/device"
-	"rahnit-rmm/ent/predicate"
+	"github.com/rahn-it/svalin/ent/device"
+	"github.com/rahn-it/svalin/ent/predicate"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"

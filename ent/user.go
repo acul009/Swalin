@@ -5,8 +5,8 @@ package ent
 import (
 	"encoding/json"
 	"fmt"
-	"rahnit-rmm/ent/user"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/ent/user"
+	"github.com/rahn-it/svalin/util"
 	"strings"
 
 	"entgo.io/ent"

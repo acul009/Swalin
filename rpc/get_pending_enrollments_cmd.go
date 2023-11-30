@@ -1,7 +1,7 @@
 package rpc
 
 // import (
-// 	"rahnit-rmm/util"
+// 	"github.com/rahn-it/svalin/util"
 // )
 
 // type getPendingEnrollmentsCommand struct {

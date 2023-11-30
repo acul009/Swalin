@@ -54,7 +54,7 @@ func AskForNewPassword(message string) ([]byte, error) {
 
 func AskForNewTotp(accountName string) (secret string, currentCode string, err error) {
 	key, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      "rahnit-rmm",
+		Issuer:      "github.com/rahn-it/svalin",
 		AccountName: accountName,
 		SecretSize:  32,
 		Rand:        rand.Reader,

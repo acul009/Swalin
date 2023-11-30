@@ -3,12 +3,12 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/ent"
+	"github.com/rahn-it/svalin/ent/user"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/util"
 	"log"
-	"rahnit-rmm/config"
-	"rahnit-rmm/ent"
-	"rahnit-rmm/ent/user"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/util"
 )
 
 func Login(conn *RpcConnection, username string, password []byte, totpCode string) (*pki.PermanentCredentials, error) {

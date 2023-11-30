@@ -2,8 +2,8 @@ package rmm
 
 import (
 	"fmt"
-	"rahnit-rmm/rpc"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/util"
 )
 
 func MonitorProcessesCommandHandler() rpc.RpcCommand {

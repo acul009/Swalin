@@ -4,7 +4,7 @@ import (
 	"crypto"
 	"encoding/asn1"
 	"fmt"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/util"
 )
 
 type Revocation struct {

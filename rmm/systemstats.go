@@ -2,7 +2,7 @@ package rmm
 
 import (
 	"fmt"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/util"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"

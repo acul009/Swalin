@@ -2,9 +2,9 @@ package rmm
 
 import (
 	"fmt"
+	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/util"
 	"log"
-	"rahnit-rmm/rpc"
-	"rahnit-rmm/util"
 	"time"
 )
 

@@ -2,9 +2,9 @@ package managment
 
 import (
 	"fmt"
-	"rahnit-rmm/rmm"
-	"rahnit-rmm/ui/components"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/rmm"
+	"github.com/rahn-it/svalin/ui/components"
+	"github.com/rahn-it/svalin/util"
 	"strconv"
 
 	"fyne.io/fyne/v2"

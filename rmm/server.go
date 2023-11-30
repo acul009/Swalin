@@ -2,10 +2,11 @@ package rmm
 
 import (
 	"fmt"
-	"rahnit-rmm/config"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/rpc"
-	"rahnit-rmm/util"
+
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/util"
 
 	"github.com/google/uuid"
 )
@@ -38,7 +39,7 @@ func NewDefaultServer(listenAddr string, credentials *pki.PermanentCredentials) 
 		CreateGetDevicesCommandHandler(devices),
 		rpc.ForwardCommandHandler,
 		rpc.VerifyCertificateChainHandler,
-		CreateHostConfigCommandHandler[*TunnelConfig],
+		// CreateHostConfigCommandHandler[*TunnelConfig],
 	)
 
 	rpcS, err := rpc.NewRpcServer(listenAddr, cmds, verifier, credentials)

@@ -3,8 +3,8 @@ package pki
 import (
 	"encoding/asn1"
 	"fmt"
+	"github.com/rahn-it/svalin/util"
 	"log"
-	"rahnit-rmm/util"
 	"time"
 )
 

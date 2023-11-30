@@ -3,10 +3,10 @@ package rpc
 import (
 	"encoding/asn1"
 	"fmt"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/util"
 	"io"
 	"log"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/util"
 )
 
 func exchangeKeys(session *RpcSession) error {

@@ -2,7 +2,7 @@ package rmm
 
 import (
 	"fmt"
-	"rahnit-rmm/rpc"
+	"github.com/rahn-it/svalin/rpc"
 )
 
 func KillProcessCommandHandler() rpc.RpcCommand {

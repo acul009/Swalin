@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"rahnit-rmm/ent/revocation"
+	"github.com/rahn-it/svalin/ent/revocation"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"

@@ -1,7 +1,7 @@
 package schema
 
 import (
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/util"
 
 	"entgo.io/ent"
 	"entgo.io/ent/schema/field"

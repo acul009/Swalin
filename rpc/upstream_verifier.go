@@ -3,7 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"rahnit-rmm/pki"
+	"github.com/rahn-it/svalin/pki"
 )
 
 func VerifyCertificateChainHandler() RpcCommand {

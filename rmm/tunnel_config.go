@@ -1,7 +1,7 @@
 package rmm
 
 import (
-	"rahnit-rmm/pki"
+	"github.com/rahn-it/svalin/pki"
 )
 
 var _ HostConfig = (*TunnelConfig)(nil)

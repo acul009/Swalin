@@ -2,7 +2,7 @@ package util_test
 
 import (
 	"bytes"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/util"
 	"testing"
 )
 

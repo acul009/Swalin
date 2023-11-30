@@ -3,10 +3,10 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/util"
 	"log"
-	"rahnit-rmm/config"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/util"
 
 	"github.com/quic-go/quic-go"
 )

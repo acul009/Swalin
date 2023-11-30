@@ -1,4 +1,4 @@
-# RahnIT-RMM
+# github.com/rahn-it/svalin
 
 An Open-Source RMM-Software focused on selfhosting and security.
 

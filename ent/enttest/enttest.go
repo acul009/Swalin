@@ -4,11 +4,11 @@ package enttest
 
 import (
 	"context"
-	"rahnit-rmm/ent"
+	"github.com/rahn-it/svalin/ent"
 	// required by schema hooks.
-	_ "rahnit-rmm/ent/runtime"
+	_ "github.com/rahn-it/svalin/ent/runtime"
 
-	"rahnit-rmm/ent/migrate"
+	"github.com/rahn-it/svalin/ent/migrate"
 
 	"entgo.io/ent/dialect/sql/schema"
 )

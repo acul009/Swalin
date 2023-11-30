@@ -2,8 +2,8 @@ package rmm
 
 import (
 	"fmt"
+	"github.com/rahn-it/svalin/rpc"
 	"io"
-	"rahnit-rmm/rpc"
 )
 
 func RemoteShellCommandHandler() rpc.RpcCommand {

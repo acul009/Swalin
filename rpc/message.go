@@ -2,8 +2,8 @@ package rpc
 
 import (
 	"fmt"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/util"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/util"
 	"time"
 )
 

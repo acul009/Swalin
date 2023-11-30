@@ -6,8 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"rahnit-rmm/ent/device"
-	"rahnit-rmm/ent/hostconfig"
+	"github.com/rahn-it/svalin/ent/device"
+	"github.com/rahn-it/svalin/ent/hostconfig"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"

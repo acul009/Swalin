@@ -2,10 +2,10 @@ package rmm
 
 import (
 	"fmt"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/util"
 	"log"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/rpc"
-	"rahnit-rmm/util"
 )
 
 func CreateHostConfigCommandHandler[T HostConfig](source util.ObservableMap[string, *pki.SignedArtifact[T]]) func() rpc.RpcCommand {

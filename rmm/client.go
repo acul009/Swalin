@@ -2,10 +2,10 @@ package rmm
 
 import (
 	"context"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/util"
 	"log"
-	"rahnit-rmm/pki"
-	"rahnit-rmm/rpc"
-	"rahnit-rmm/util"
 )
 
 type Client struct {

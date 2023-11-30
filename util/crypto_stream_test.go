@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	. "rahnit-rmm/util"
+	. "github.com/rahn-it/svalin/util"
 
 	"golang.org/x/crypto/chacha20poly1305"
 )

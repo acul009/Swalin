@@ -4,7 +4,7 @@ package ent
 
 import (
 	"fmt"
-	"rahnit-rmm/ent/revocation"
+	"github.com/rahn-it/svalin/ent/revocation"
 	"strings"
 
 	"entgo.io/ent"

@@ -2,7 +2,7 @@
 
 package runtime
 
-// The schema-stitching logic is generated in rahnit-rmm/ent/runtime.go
+// The schema-stitching logic is generated in github.com/rahn-it/svalin/ent/runtime.go
 
 const (
 	Version = "v0.12.5"                                         // Version of ent codegen.

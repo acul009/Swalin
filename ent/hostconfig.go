@@ -4,8 +4,8 @@ package ent
 
 import (
 	"fmt"
-	"rahnit-rmm/ent/device"
-	"rahnit-rmm/ent/hostconfig"
+	"github.com/rahn-it/svalin/ent/device"
+	"github.com/rahn-it/svalin/ent/hostconfig"
 	"strings"
 
 	"entgo.io/ent"
