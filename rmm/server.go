@@ -38,7 +38,7 @@ func NewDefaultServer(listenAddr string, credentials *pki.PermanentCredentials) 
 		CreateGetDevicesCommandHandler(devices),
 		rpc.ForwardCommandHandler,
 		rpc.VerifyCertificateChainHandler,
-		GetHostConfigCommandHandler[*TunnelConfig],
+		CreateHostConfigCommandHandler[*TunnelConfig],
 	)
 
 	rpcS, err := rpc.NewRpcServer(listenAddr, cmds, verifier, credentials)
