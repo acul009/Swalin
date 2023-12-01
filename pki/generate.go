@@ -23,8 +23,8 @@ func generateKeypair() (*PrivateKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
 	}
-	keyRef := PrivateKey(*rawKey)
-	return &keyRef, nil
+	keyRef := ImportPrivateKey(rawKey)
+	return keyRef, nil
 }
 
 const passwordLength = 64

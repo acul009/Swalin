@@ -2,6 +2,7 @@ package rmm
 
 import (
 	"fmt"
+
 	"github.com/rahn-it/svalin/rpc"
 	"github.com/rahn-it/svalin/util"
 )
@@ -24,17 +25,6 @@ type updateInfo[K comparable, T any] struct {
 }
 
 func (s *SyncDownCommand[K, T]) ExecuteClient(session *rpc.RpcSession) error {
-
-	initial := make(map[K]T)
-	err := rpc.ReadMessage[map[K]T](session, initial)
-	if err != nil {
-		return fmt.Errorf("error reading message: %w", err)
-	}
-
-	for key, value := range initial {
-		s.targetMap.Set(key, value)
-	}
-
 	update := &updateInfo[K, T]{}
 
 	for {
@@ -65,8 +55,14 @@ func (s *SyncDownCommand[K, T]) ExecuteServer(session *rpc.RpcSession) error {
 		return fmt.Errorf("error writing response header: %w", err)
 	}
 
-	full := s.sourceMap.GetAll()
-	err = rpc.WriteMessage[map[K]T](session, full)
+	err = s.sourceMap.ForEach(func(key K, value T) error {
+		return rpc.WriteMessage[updateInfo[K, T]](session, updateInfo[K, T]{
+			Delete: false,
+			Key:    key,
+			Value:  value,
+		})
+	})
+
 	if err != nil {
 		return fmt.Errorf("error writing message: %w", err)
 	}

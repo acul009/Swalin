@@ -21,11 +21,6 @@ func TestSignBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	myPublicKey, err := credentials.PublicKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	data := testData{
 		Text: "test",
 		Num:  1,
@@ -39,7 +34,7 @@ func TestSignBytes(t *testing.T) {
 
 	unmarshalled := &testData{}
 
-	err = pki.UnmarshalAndVerify(marshalled, unmarshalled, myPublicKey, false)
+	err = pki.UnmarshalAndVerify(marshalled, unmarshalled, credentials.PublicKey(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,10 +50,7 @@ func TestPackedReadWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pub, err := credentials.PublicKey()
-	if err != nil {
-		t.Fatal(err)
-	}
+	pub := credentials.PublicKey()
 
 	data1 := testData{
 		Text: "test",

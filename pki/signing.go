@@ -92,12 +92,8 @@ type PackedData struct {
 }
 
 func packAndSign(data []byte, c Credentials) ([]byte, error) {
-	key, err := c.PrivateKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get private key: %w", err)
-	}
 
-	signature, err := key.signBytes(data)
+	signature, err := c.PrivateKey().signBytes(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign data: %w", err)
 	}

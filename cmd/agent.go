@@ -7,15 +7,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rahn-it/svalin/config"
-	"github.com/rahn-it/svalin/pki"
-	"github.com/rahn-it/svalin/rmm"
-	"github.com/rahn-it/svalin/rpc"
 	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/rmm"
+	"github.com/rahn-it/svalin/rpc"
 
 	"github.com/spf13/cobra"
 )
@@ -32,6 +33,11 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Printf("agent called")
+
+		profile, err := config.OpenProfile("agent")
+		if err != nil {
+			panic(err)
+		}
 
 		err := config.SetSubdir("agent")
 		if err != nil {

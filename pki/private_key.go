@@ -28,7 +28,9 @@ func (e *wrongPasswordError) Unwrap() error {
 	return e.cause
 }
 
-type PrivateKey ecdsa.PrivateKey
+type PrivateKey struct {
+	key *ecdsa.PrivateKey
+}
 
 func (key *PrivateKey) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("cannot marshal private key")
@@ -47,9 +49,7 @@ func (key *PrivateKey) binaryEncode(password []byte) ([]byte, error) {
 		return nil, fmt.Errorf("password cannot be empty")
 	}
 
-	ecdsaKey := ecdsa.PrivateKey(*key)
-
-	keyBytes, err := x509.MarshalECPrivateKey(&ecdsaKey)
+	keyBytes, err := x509.MarshalECPrivateKey(key.key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal private key: %w", err)
 	}
@@ -77,7 +77,7 @@ func privateKeyFromBinary(keyPEM []byte, password []byte) (*PrivateKey, error) {
 		}
 	}
 
-	return ImportPrivateKey(*key), nil
+	return ImportPrivateKey(key), nil
 }
 
 func (key *PrivateKey) PemEncode(password []byte) ([]byte, error) {
@@ -105,16 +105,20 @@ func PrivateKeyFromPem(keyPEM []byte, password []byte) (*PrivateKey, error) {
 }
 
 func (key *PrivateKey) PublicKey() *PublicKey {
-	pub := PublicKey(key.PublicKey)
-	return &pub
+	pub, err := ImportPublicKey(key.key.PublicKey)
+	if err != nil {
+		panic(err)
+	}
+	return pub
 }
 
-func ImportPrivateKey(key ecdsa.PrivateKey) *PrivateKey {
-	keyTyped := PrivateKey(key)
-	return &keyTyped
+func ImportPrivateKey(key *ecdsa.PrivateKey) *PrivateKey {
+	keyTyped := &PrivateKey{
+		key: key,
+	}
+	return keyTyped
 }
 
 func (key *PrivateKey) ToEcdsa() *ecdsa.PrivateKey {
-	keyTyped := ecdsa.PrivateKey(*key)
-	return &keyTyped
+	return key.key
 }

@@ -12,7 +12,9 @@ import (
 
 var _ encoding.TextUnmarshaler = (*Certificate)(nil)
 
-type Certificate x509.Certificate
+type Certificate struct {
+	cert *x509.Certificate
+}
 
 func (cert *Certificate) MarshalText() ([]byte, error) {
 	return cert.PemEncode(), nil
@@ -28,8 +30,8 @@ func (cert *Certificate) UnmarshalText(data []byte) error {
 	return nil
 }
 
-func (cert *Certificate) BinaryEncode() []byte {
-	return cert.Raw
+func (c *Certificate) BinaryEncode() []byte {
+	return c.cert.Raw
 }
 
 func CertificateFromBinary(cert []byte) (*Certificate, error) {
@@ -53,9 +55,8 @@ func CertificateFromPem(certPEM []byte) (*Certificate, error) {
 	return CertificateFromBinary(block.Bytes)
 }
 
-func (cert *Certificate) ToX509() *x509.Certificate {
-	certTyped := x509.Certificate(*cert)
-	return &certTyped
+func (c *Certificate) ToX509() *x509.Certificate {
+	return c.cert
 }
 
 func ImportCertificate(cert *x509.Certificate) (*Certificate, error) {
@@ -63,36 +64,40 @@ func ImportCertificate(cert *x509.Certificate) (*Certificate, error) {
 	if !ok {
 		return nil, fmt.Errorf("public key is not of type *ecdsa.PublicKey")
 	}
-	certTyped := Certificate(*cert)
-	return &certTyped, nil
+
+	pkiCert := &Certificate{
+		cert: cert,
+	}
+
+	return pkiCert, nil
 }
 
-func (cert *Certificate) Equal(compare *Certificate) bool {
-	return bytes.Equal(cert.Raw, compare.Raw)
+func (c *Certificate) Equal(compare *Certificate) bool {
+	return bytes.Equal(c.cert.Raw, compare.cert.Raw)
 }
 
-func (cert *Certificate) PublicKey() *PublicKey {
-	certTyped, ok := cert.PublicKey.(*ecdsa.PublicKey)
+func (c *Certificate) PublicKey() *PublicKey {
+	keyTyped, ok := c.cert.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
 		panic("public key is not of type *ecdsa.PublicKey")
 	}
-	pub := PublicKey(*certTyped)
+	pub := PublicKey(*keyTyped)
 	return &pub
 }
 
-func (cert *Certificate) GetName() string {
-	return cert.Subject.CommonName
+func (c *Certificate) GetName() string {
+	return c.cert.Subject.CommonName
 }
 
-func (cert *Certificate) Type() CertType {
-	if len(cert.Subject.OrganizationalUnit) == 0 {
+func (c *Certificate) Type() CertType {
+	if len(c.cert.Subject.OrganizationalUnit) == 0 {
 		return CertTypeError
 	}
 
-	t := CertType(cert.Subject.OrganizationalUnit[0])
+	t := CertType(c.cert.Subject.OrganizationalUnit[0])
 
 	if t == CertTypeUser || t == CertTypeRoot {
-		if !cert.IsCA {
+		if !c.cert.IsCA {
 			log.Printf("WARNING: certificate of type %s is not a CA", t)
 			return CertTypeError
 		}
@@ -102,7 +107,7 @@ func (cert *Certificate) Type() CertType {
 
 	if t == CertTypeAgent || t == CertTypeServer {
 
-		if cert.IsCA {
+		if c.cert.IsCA {
 			log.Printf("WARNING: certificate of type %s is a CA", t)
 			return CertTypeError
 		}
