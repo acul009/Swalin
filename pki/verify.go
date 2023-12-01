@@ -5,6 +5,11 @@ import (
 	"fmt"
 )
 
+type Verifier interface {
+	Verify(cert *Certificate) ([]*Certificate, error)
+	VerifyPublicKey(pub *PublicKey) ([]*Certificate, error)
+}
+
 func (c *Certificate) VerifyChain(roots *x509.CertPool, intermediates *x509.CertPool, checkRevocation bool) ([]*Certificate, error) {
 
 	if roots == nil {

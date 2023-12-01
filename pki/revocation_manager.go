@@ -2,14 +2,10 @@ package pki
 
 import (
 	"bytes"
-	"context"
 	"crypto"
 	"encoding/base64"
 	"fmt"
 	"log"
-
-	"github.com/rahn-it/svalin/ent"
-	"github.com/rahn-it/svalin/ent/revocation"
 )
 
 var ErrRevoked = &revokedError{}
@@ -30,14 +26,12 @@ func (e *revokedError) Is(target error) bool {
 var RevocationManager *revocationManager
 
 type revocationManager struct {
-	db       *ent.Client
 	verifier Verifier
 }
 
 func InitRevocationManager(verifier Verifier) {
 
 	RevocationManager = &revocationManager{
-		db:       db,
 		verifier: verifier,
 	}
 }
@@ -63,16 +57,6 @@ func (r *revocationManager) CheckPayload(payload []byte) error {
 
 func (r *revocationManager) checkRevokedHash(hash []byte, hasher crypto.Hash) error {
 	baseHash := base64.StdEncoding.EncodeToString(hash)
-
-	revModel, err := r.db.Revocation.Query().Where(revocation.HashEQ(baseHash), revocation.HasherEQ(uint64(hasher))).Only(context.Background())
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil
-		}
-		errDangerous := fmt.Errorf("WARNING: failed to query revocation: %w", err)
-		log.Print(errDangerous)
-		return errDangerous
-	}
 
 	revocation, err := RevocationFromBinary(revModel.Revocation)
 	if err != nil {

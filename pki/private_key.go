@@ -63,7 +63,7 @@ func (key *PrivateKey) binaryEncode(password []byte) ([]byte, error) {
 
 }
 
-func privateKeyFromBinary(keyPEM []byte, password []byte) (*PrivateKey, error) {
+func PrivateKeyFromBinary(keyPEM []byte, password []byte) (*PrivateKey, error) {
 	keyBytes, err := util.DecryptDataWithPassword(password, keyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt private key: %w", err)
@@ -101,7 +101,7 @@ func PrivateKeyFromPem(keyPEM []byte, password []byte) (*PrivateKey, error) {
 		return nil, fmt.Errorf("failed to decode CA private key PEM")
 	}
 
-	return privateKeyFromBinary(block.Bytes, password)
+	return PrivateKeyFromBinary(block.Bytes, password)
 }
 
 func (key *PrivateKey) PublicKey() *PublicKey {

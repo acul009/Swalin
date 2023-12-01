@@ -79,3 +79,10 @@ func CredentialsFromPem(pemBytes []byte, password []byte) (*PermanentCredentials
 		key:  key,
 	}, nil
 }
+
+func CredentialsFromCertAndKey(cert *Certificate, key *PrivateKey) *PermanentCredentials {
+	return &PermanentCredentials{
+		cert: cert,
+		key:  key,
+	}
+}

@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/rahn-it/svalin/config"
-	"github.com/rahn-it/svalin/ent"
-	"github.com/rahn-it/svalin/ent/user"
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/util"
 )
 
-func Login(conn *RpcConnection, username string, password []byte, totpCode string) (*pki.PermanentCredentials, error) {
+type LoginSuccess struct {
+	Root        *pki.Certificate
+	Upstream    *pki.Certificate
+	Credentials *pki.PermanentCredentials
+}
+
+func Login(conn *RpcConnection, username string, password []byte, totpCode string) (*LoginSuccess, error) {
 	defer conn.Close(500, "")
 
 	credentials, err := pki.GenerateCredentials()
@@ -60,12 +63,12 @@ func Login(conn *RpcConnection, username string, password []byte, totpCode strin
 		return nil, fmt.Errorf("error hashing password: %w", err)
 	}
 
-	login := &loginRequest{
+	loginReq := &loginRequest{
 		PasswordHash: hash,
 		Totp:         totpCode,
 	}
 
-	err = WriteMessage[*loginRequest](session, login)
+	err = WriteMessage[*loginRequest](session, loginReq)
 	if err != nil {
 		return nil, fmt.Errorf("error writing login request: %w", err)
 	}
@@ -82,40 +85,17 @@ func Login(conn *RpcConnection, username string, password []byte, totpCode strin
 		return nil, fmt.Errorf("error decrypting private key: %w", err)
 	}
 
-	err = pki.SaveUserCredentials(username, password, success.Cert, privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("error saving user credentials: %w", err)
+	login := &LoginSuccess{
+		Root:        success.RootCert,
+		Upstream:    success.UpstreamCert,
+		Credentials: pki.CredentialsFromCertAndKey(success.Cert, privateKey),
 	}
 
-	err = pki.Root.Set(success.RootCert)
-	if err != nil {
-		return nil, fmt.Errorf("error saving root cert: %w", err)
-	}
-
-	err = pki.Upstream.Set(success.UpstreamCert)
-	if err != nil {
-		return nil, fmt.Errorf("error saving upstream cert: %w", err)
-	}
-
-	config.V().Set("upstream.address", conn.connection.RemoteAddr().String())
-	err = config.Save()
-	if err != nil {
-		return nil, fmt.Errorf("error saving config: %w", err)
-	}
-
-	err = session.Close()
-	if err != nil {
-		return nil, fmt.Errorf("error closing session: %w", err)
-	}
-
-	userCredentials, err := pki.GetUserCredentials(username, password)
-	if err != nil {
-		return nil, fmt.Errorf("error getting user credentials: %w", err)
-	}
+	session.Close()
 
 	conn.Close(200, "done")
 
-	return userCredentials, nil
+	return login, nil
 }
 
 type loginParameterRequest struct {
@@ -188,100 +168,100 @@ func acceptLoginRequest(conn *RpcConnection) error {
 
 	// check if the user exists
 
-	db := config.DB()
+	// db := config.DB()
 
-	var failed = false
+	// var failed = false
 
-	user, err := db.User.Query().Where(user.UsernameEQ(username)).Only(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			failed = true
-		} else {
-			return fmt.Errorf("error reading params request: %w", err)
-		}
-	}
+	// user, err := db.User.Query().Where(user.UsernameEQ(username)).Only(ctx)
+	// if err != nil {
+	// 	if ent.IsNotFound(err) {
+	// 		failed = true
+	// 	} else {
+	// 		return fmt.Errorf("error reading params request: %w", err)
+	// 	}
+	// }
 
-	// return the client hashing parameters, return a decoy if the user does not exist
+	// // return the client hashing parameters, return a decoy if the user does not exist
 
-	var clientHashing util.ArgonParameters
-	if failed {
-		log.Printf("User %s does not exist, generating decoy", username)
-		clientHashing, err = util.GenerateDecoyArgonParametersFromSeed([]byte(username), pki.GetSeed())
-		if err != nil {
-			return fmt.Errorf("error generating argon parameters: %w", err)
-		}
-	} else {
-		log.Printf("User %s exists, using existing parameters %+v", username, user.PasswordClientHashingOptions)
-		clientHashing = *user.PasswordClientHashingOptions
-	}
+	// var clientHashing util.ArgonParameters
+	// if failed {
+	// 	log.Printf("User %s does not exist, generating decoy", username)
+	// 	clientHashing, err = util.GenerateDecoyArgonParametersFromSeed([]byte(username), pki.GetSeed())
+	// 	if err != nil {
+	// 		return fmt.Errorf("error generating argon parameters: %w", err)
+	// 	}
+	// } else {
+	// 	log.Printf("User %s exists, using existing parameters %+v", username, user.PasswordClientHashingOptions)
+	// 	clientHashing = *user.PasswordClientHashingOptions
+	// }
 
-	loginParams := loginParameters{
-		PasswordParams: clientHashing,
-	}
+	// loginParams := loginParameters{
+	// 	PasswordParams: clientHashing,
+	// }
 
-	err = WriteMessage[*loginParameters](session, &loginParams)
-	if err != nil {
-		return fmt.Errorf("error writing login parameters: %w", err)
-	}
+	// err = WriteMessage[*loginParameters](session, &loginParams)
+	// if err != nil {
+	// 	return fmt.Errorf("error writing login parameters: %w", err)
+	// }
 
-	// read the login request
+	// // read the login request
 
-	login := loginRequest{}
+	// login := loginRequest{}
 
-	err = ReadMessage[*loginRequest](session, &login)
-	if err != nil {
-		return fmt.Errorf("error reading login request: %w", err)
-	}
+	// err = ReadMessage[*loginRequest](session, &login)
+	// if err != nil {
+	// 	return fmt.Errorf("error reading login request: %w", err)
+	// }
 
-	if failed {
-		return fmt.Errorf("user does not exist")
-	}
+	// if failed {
+	// 	return fmt.Errorf("user does not exist")
+	// }
 
-	// check the password hash
-	err = util.VerifyPassword(login.PasswordHash, user.PasswordDoubleHashed, *user.PasswordServerHashingOptions)
-	if err != nil {
-		return fmt.Errorf("error verifying password: %w", err)
-	}
+	// // check the password hash
+	// err = util.VerifyPassword(login.PasswordHash, user.PasswordDoubleHashed, *user.PasswordServerHashingOptions)
+	// if err != nil {
+	// 	return fmt.Errorf("error verifying password: %w", err)
+	// }
 
-	// check the totp code
-	if !util.ValidateTotp(user.TotpSecret, login.Totp) {
-		return fmt.Errorf("error validating totp: %w", err)
-	}
+	// // check the totp code
+	// if !util.ValidateTotp(user.TotpSecret, login.Totp) {
+	// 	return fmt.Errorf("error validating totp: %w", err)
+	// }
 
-	// login successful, return the certificate and encrypted private key
-	cert, err := pki.CertificateFromPem([]byte(user.Certificate))
-	if err != nil {
-		return fmt.Errorf("error parsing user certificate: %w", err)
-	}
+	// // login successful, return the certificate and encrypted private key
+	// cert, err := pki.CertificateFromPem([]byte(user.Certificate))
+	// if err != nil {
+	// 	return fmt.Errorf("error parsing user certificate: %w", err)
+	// }
 
-	rootCert, err := pki.Root.Get()
-	if err != nil {
-		return fmt.Errorf("error loading root certificate: %w", err)
-	}
+	// rootCert, err := pki.Root.Get()
+	// if err != nil {
+	// 	return fmt.Errorf("error loading root certificate: %w", err)
+	// }
 
-	hostcredentials, err := pki.GetHostCredentials()
-	if err != nil {
-		return fmt.Errorf("error loading host credentials: %w", err)
-	}
+	// hostcredentials, err := pki.GetHostCredentials()
+	// if err != nil {
+	// 	return fmt.Errorf("error loading host credentials: %w", err)
+	// }
 
-	serverCert, err := hostcredentials.Certificate()
-	if err != nil {
-		return fmt.Errorf("error loading current certificate: %w", err)
-	}
+	// serverCert, err := hostcredentials.Certificate()
+	// if err != nil {
+	// 	return fmt.Errorf("error loading current certificate: %w", err)
+	// }
 
-	success := &loginSuccessResponse{
-		RootCert:            rootCert,
-		UpstreamCert:        serverCert,
-		Cert:                cert,
-		EncryptedPrivateKey: user.EncryptedPrivateKey,
-	}
+	// success := &loginSuccessResponse{
+	// 	RootCert:            rootCert,
+	// 	UpstreamCert:        serverCert,
+	// 	Cert:                cert,
+	// 	EncryptedPrivateKey: user.EncryptedPrivateKey,
+	// }
 
-	err = WriteMessage[*loginSuccessResponse](session, success)
-	if err != nil {
-		return fmt.Errorf("error writing login success response: %w", err)
-	}
+	// err = WriteMessage[*loginSuccessResponse](session, success)
+	// if err != nil {
+	// 	return fmt.Errorf("error writing login success response: %w", err)
+	// }
 
-	session.Close()
+	// session.Close()
 
 	return nil
 }

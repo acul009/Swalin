@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/rahn-it/svalin/permissions"
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/util"
 
@@ -125,14 +124,7 @@ func (s *RpcSession) handleIncoming(commands *CommandCollection) error {
 
 	log.Printf("Header: %+v", header)
 
-	err = permissions.MayStartCommand(s.partnerKey, header.Cmd)
-	if err != nil {
-		s.WriteResponseHeader(SessionResponseHeader{
-			Code: 403,
-			Msg:  "permission denied",
-		})
-		return fmt.Errorf("permission denied: %w", err)
-	}
+	// TODO: Check if the command is allowed (permissions)
 
 	handler, ok := commands.Get(header.Cmd)
 	if !ok {
@@ -209,12 +201,7 @@ func ReadMessage[P any](s *RpcSession, payload P) error {
 		return fmt.Errorf("error reading message: %w", err)
 	}
 
-	myPub, err := s.credentials.PublicKey()
-	if err != nil {
-		return fmt.Errorf("error getting current public key: %w", err)
-	}
-
-	err = message.Verify(s.connection.nonceStorage, myPub)
+	err = message.Verify(s.connection.nonceStorage, s.credentials.PublicKey())
 	if err != nil {
 		return fmt.Errorf("error verifying message: %w", err)
 	}
