@@ -5,12 +5,13 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log"
+	"sync"
+
 	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/rpc"
 	"github.com/rahn-it/svalin/util"
-	"log"
-	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -26,10 +27,6 @@ import (
 )
 
 func StartUI() {
-	err := config.SetSubdir("client")
-	if err != nil {
-		panic(err)
-	}
 
 	a := app.NewWithID("io.fyne.demo")
 	a.SetIcon(data.FyneLogo)

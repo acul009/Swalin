@@ -9,7 +9,7 @@ import (
 type Scope interface {
 	Update(fn func(b *bolt.Bucket) error) error
 	View(fn func(b *bolt.Bucket) error) error
-	Scope(name []byte) Scope
+	Scope(name string) Scope
 }
 
 var _ Scope = (*scope)(nil)
@@ -54,10 +54,11 @@ func (s *scope) View(fn func(s *bolt.Bucket) error) error {
 	})
 }
 
-func (s *scope) Scope(name []byte) Scope {
+func (s *scope) Scope(name string) Scope {
+	key := []byte(name)
 	subPath := make([][]byte, len(s.path), len(s.path)+1)
 	copy(subPath, s.path)
-	subPath = append(subPath, name)
+	subPath = append(subPath, key)
 
 	err := s.db.Update(func(tx *bolt.Tx) error {
 		bucket, err := getBucket(tx, s.context, s.path)
@@ -65,7 +66,7 @@ func (s *scope) Scope(name []byte) Scope {
 			return fmt.Errorf("failed to access scope: %w", err)
 		}
 
-		_, err = bucket.CreateBucketIfNotExists(name)
+		_, err = bucket.CreateBucketIfNotExists(key)
 		if err != nil {
 			return fmt.Errorf("failed to create scope: %w", err)
 		}

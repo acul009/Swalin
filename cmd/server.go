@@ -14,6 +14,7 @@ import (
 
 	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/server"
 
 	"github.com/spf13/cobra"
 )
@@ -36,7 +37,8 @@ to quickly create a Cobra application.`,
 			panic(err)
 		}
 
-		addr := "localhost:1234"
+		config := profile.Config()
+		config.BindFlags(cmd.Flags())
 
 		// credentials, err := pki.GetHostCredentials()
 		// if err != nil {
@@ -50,7 +52,7 @@ to quickly create a Cobra application.`,
 		// 	}
 		// }
 
-		server, err := server.
+		server, err := server.Open(profile)
 		if err != nil {
 			panic(err)
 		}

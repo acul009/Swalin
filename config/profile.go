@@ -8,9 +8,10 @@ import (
 )
 
 type Profile struct {
-	name string
-	dir  string
-	db   *db.DB
+	name   string
+	dir    string
+	db     *db.DB
+	config *Config
 }
 
 func OpenProfile(name string) (*Profile, error) {
@@ -26,6 +27,8 @@ func OpenProfile(name string) (*Profile, error) {
 	}
 
 	p.db = db
+
+	p.config = newConfig(p.Scope().Scope("config"))
 
 	return p, nil
 }
@@ -48,4 +51,8 @@ func (p *Profile) DB() *db.DB {
 
 func (p *Profile) Scope() db.Scope {
 	return p.db.Scope([]byte(p.name))
+}
+
+func (p *Profile) Config() *Config {
+	return p.config
 }

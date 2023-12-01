@@ -20,6 +20,8 @@ type Server struct {
 }
 
 func Open(profile *config.Profile) (*Server, error) {
+	config := profile.Config()
+	config.Default("server.address", "localhost:1234")
 
 	verifier, err := pki.NewLocalVerify()
 	if err != nil {
@@ -28,7 +30,7 @@ func Open(profile *config.Profile) (*Server, error) {
 
 	ConfigManager := NewConfigManager(verifier, nil)
 
-	devices := NewDeviceList(profile.Scope().Scope([]byte("devices")))
+	devices := NewDeviceList(profile.Scope().Scope("devices"))
 
 	cmds := rpc.NewCommandCollection(
 		rpc.PingHandler,
@@ -40,6 +42,8 @@ func Open(profile *config.Profile) (*Server, error) {
 		rpc.VerifyCertificateChainHandler,
 		// CreateHostConfigCommandHandler[*TunnelConfig],
 	)
+
+	listenAddr := config.String("server.address")
 
 	rpcS, err := rpc.NewRpcServer(listenAddr, cmds, verifier, credentials)
 	if err != nil {
