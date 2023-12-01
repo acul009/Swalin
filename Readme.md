@@ -1,12 +1,13 @@
-# github.com/rahn-it/svalin
+# Svalin
 
-An Open-Source RMM-Software focused on selfhosting and security.
+An Open-Source RMM-Software focused on ease of use and security.
 
 ## Goals
 
 These goals are not reached yet, but are intended to guide the development to eventually reach them.
 
 - The system should be secure, even if the server is taken over.
+- Setup and integration of new agents should be dead simple
 
 ## Road to 0.1
 
