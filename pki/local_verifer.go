@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	"github.com/rahn-it/svalin/config"
+
 	"github.com/rahn-it/svalin/ent"
 	"github.com/rahn-it/svalin/ent/device"
 	"github.com/rahn-it/svalin/ent/user"
@@ -31,7 +31,6 @@ func NewLocalVerify() (*localVerify, error) {
 
 	intermediatePool := x509.NewCertPool()
 
-	db := config.DB()
 	users, err := db.User.Query().All(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to query users: %w", err)
@@ -77,8 +76,6 @@ func (v *localVerify) VerifyPublicKey(pub *PublicKey) ([]*Certificate, error) {
 		}
 		return v.Verify(upstream)
 	}
-
-	db := config.DB()
 
 	// check for user with public key
 	user, err := db.User.Query().Where(user.PublicKeyEQ(pub.Base64Encode())).Only(context.Background())

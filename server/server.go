@@ -1,10 +1,11 @@
-package rmm
+package server
 
 import (
 	"fmt"
 
 	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/rmm"
 	"github.com/rahn-it/svalin/rpc"
 	"github.com/rahn-it/svalin/util"
 
@@ -13,30 +14,28 @@ import (
 
 type Server struct {
 	*rpc.RpcServer
+	profile       *config.Profile
 	devices       util.UpdateableMap[string, *DeviceInfo]
 	configManager *ConfigManager
 }
 
-func NewDefaultServer(listenAddr string, credentials *pki.PermanentCredentials) (*Server, error) {
+func Open(profile *config.Profile) (*Server, error) {
 
 	verifier, err := pki.NewLocalVerify()
 	if err != nil {
 		return nil, fmt.Errorf("error creating local verify: %w", err)
 	}
 
-	ConfigManager := NewConfigManager(verifier, config.DB())
+	ConfigManager := NewConfigManager(verifier, nil)
 
-	devices, err := NewDeviceListFromDB()
-	if err != nil {
-		return nil, fmt.Errorf("error loading devices from db: %w", err)
-	}
+	devices := NewDeviceList(profile.Scope().Scope([]byte("devices")))
 
 	cmds := rpc.NewCommandCollection(
 		rpc.PingHandler,
 		rpc.RegisterUserHandler,
 		// rpc.GetPendingEnrollmentsHandler,
 		rpc.EnrollAgentHandler,
-		CreateGetDevicesCommandHandler(devices),
+		rmm.CreateGetDevicesCommandHandler(devices),
 		rpc.ForwardCommandHandler,
 		rpc.VerifyCertificateChainHandler,
 		// CreateHostConfigCommandHandler[*TunnelConfig],

@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+
 	"github.com/rahn-it/svalin/util"
 )
 
@@ -37,7 +38,7 @@ func (key *PrivateKey) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("cannot unmarshal private key")
 }
 
-func (key *PrivateKey) BinaryEncode(password []byte) ([]byte, error) {
+func (key *PrivateKey) binaryEncode(password []byte) ([]byte, error) {
 	if password == nil {
 		return nil, fmt.Errorf("password cannot be nil")
 	}
@@ -62,7 +63,7 @@ func (key *PrivateKey) BinaryEncode(password []byte) ([]byte, error) {
 
 }
 
-func PrivateKeyFromBinary(keyPEM []byte, password []byte) (*PrivateKey, error) {
+func privateKeyFromBinary(keyPEM []byte, password []byte) (*PrivateKey, error) {
 	keyBytes, err := util.DecryptDataWithPassword(password, keyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt private key: %w", err)
@@ -80,7 +81,7 @@ func PrivateKeyFromBinary(keyPEM []byte, password []byte) (*PrivateKey, error) {
 }
 
 func (key *PrivateKey) PemEncode(password []byte) ([]byte, error) {
-	encryptedBytes, err := key.BinaryEncode(password)
+	encryptedBytes, err := key.binaryEncode(password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal private key: %w", err)
 	}
@@ -100,7 +101,7 @@ func PrivateKeyFromPem(keyPEM []byte, password []byte) (*PrivateKey, error) {
 		return nil, fmt.Errorf("failed to decode CA private key PEM")
 	}
 
-	return PrivateKeyFromBinary(block.Bytes, password)
+	return privateKeyFromBinary(block.Bytes, password)
 }
 
 func (key *PrivateKey) GetPublicKey() *PublicKey {

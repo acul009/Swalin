@@ -2,9 +2,8 @@ package pki
 
 import (
 	"crypto/tls"
+	"encoding/pem"
 	"fmt"
-	"github.com/rahn-it/svalin/config"
-	"path/filepath"
 )
 
 type Credentials interface {
@@ -13,130 +12,30 @@ type Credentials interface {
 }
 
 type PermanentCredentials struct {
-	certStorage       *storedCertificate
-	privateKeyStorage *storedPrivateKey
+	cert *Certificate
+	key  *PrivateKey
 }
 
-func GetUserCredentials(username string, password []byte) (*PermanentCredentials, error) {
-	credentials := getCredentials(password, username, "users")
-	if !credentials.Available() {
-		return nil, fmt.Errorf("user credentials not found")
-	}
-
-	_, err := credentials.GetPrivateKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user credentials: %w", err)
-	}
-
-	return credentials, nil
+func (u *PermanentCredentials) Certificate() *Certificate {
+	return u.cert
 }
 
-func SaveUserCredentials(username string, password []byte, cert *Certificate, key *PrivateKey) error {
-	credentials := getCredentials(password, username, "users")
-	err := credentials.Set(cert, key)
-	if err != nil {
-		return fmt.Errorf("failed to save user credentials: %w", err)
-	}
-
-	return nil
+func (u *PermanentCredentials) GetPublicKey() *PublicKey {
+	return u.cert.GetPublicKey()
 }
 
-func ListAvailableUserCredentials() ([]string, error) {
-	userFolder := config.GetFilePath("users", "*.key")
-
-	matches, err := filepath.Glob(userFolder)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list user credentials: %w", err)
-	}
-
-	users := make([]string, 0, len(matches))
-
-	for _, match := range matches {
-		newUser := filepath.Base(match)
-		ext := filepath.Ext(match)
-		users = append(users, newUser[0:len(newUser)-len(ext)])
-	}
-
-	return users, nil
+func (u *PermanentCredentials) PrivateKey() *PrivateKey {
+	return u.key
 }
 
-func getCredentials(password []byte, filename string, path ...string) *PermanentCredentials {
-	certStorage := &storedCertificate{
-		allowOverride: false,
-		filename:      filepath.Join(append(path, filename+".crt")...),
-	}
-
-	keyStorage := &storedPrivateKey{
-		allowOverride: false,
-		filename:      filepath.Join(append(path, filename+".key")...),
-		password:      password,
-	}
-
-	return &PermanentCredentials{
-		certStorage:       certStorage,
-		privateKeyStorage: keyStorage,
-	}
-}
-
-func (u *PermanentCredentials) Available() bool {
-	return u.certStorage.Available() && u.privateKeyStorage.Available()
-}
-
-func (u *PermanentCredentials) Get() (*Certificate, *PrivateKey, error) {
-	cert, err := u.certStorage.Get()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get certificate: %w", err)
-	}
-
-	key, err := u.privateKeyStorage.Get()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get private key: %w", err)
-	}
-
-	return cert, key, nil
-}
-
-func (u *PermanentCredentials) Set(cert *Certificate, key *PrivateKey) error {
-	err := u.certStorage.Set(cert)
-	if err != nil {
-		return fmt.Errorf("failed to set certificate: %w", err)
-	}
-
-	err = u.privateKeyStorage.Set(key)
-	if err != nil {
-		return fmt.Errorf("failed to set private key: %w", err)
-	}
-
-	return nil
-}
-
-func (u *PermanentCredentials) GetCertificate() (*Certificate, error) {
-	return u.certStorage.Get()
-}
-
-func (u *PermanentCredentials) GetPublicKey() (*PublicKey, error) {
-	cert, err := u.GetCertificate()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current cert: %w", err)
-	}
-
-	return cert.GetPublicKey(), nil
-}
-
-func (u *PermanentCredentials) GetPrivateKey() (*PrivateKey, error) {
-	return u.privateKeyStorage.Get()
+func (u *PermanentCredentials) Get() (*Certificate, *PrivateKey) {
+	return u.cert, u.key
 }
 
 func (u *PermanentCredentials) GetTlsCert() (*tls.Certificate, error) {
-	cert, err := u.GetCertificate()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current cert: %w", err)
-	}
+	cert := u.Certificate()
 
-	key, err := u.GetPrivateKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current key: %w", err)
-	}
+	key := u.PrivateKey()
 
 	tlsCert := &tls.Certificate{
 		Certificate: [][]byte{cert.Raw},
@@ -146,11 +45,38 @@ func (u *PermanentCredentials) GetTlsCert() (*tls.Certificate, error) {
 	return tlsCert, nil
 }
 
-func (u *PermanentCredentials) GetName() (string, error) {
-	cert, err := u.GetCertificate()
+func (u *PermanentCredentials) GetName() string {
+	return u.cert.GetName()
+}
+
+func (u *PermanentCredentials) PemEncode(password []byte) ([]byte, error) {
+	certPem := u.Certificate().PemEncode()
+	keyPem, err := u.PrivateKey().PemEncode(password)
 	if err != nil {
-		return "", fmt.Errorf("failed to get current cert: %w", err)
+		return nil, fmt.Errorf("failed to encode private key: %w", err)
 	}
 
-	return cert.GetName(), nil
+	return append(certPem, keyPem...), nil
+}
+
+func CredentialsFromPem(pemBytes []byte, password []byte) (*PermanentCredentials, error) {
+	certBlock, rest := pem.Decode(pemBytes)
+	if certBlock == nil {
+		return nil, fmt.Errorf("failed to decode certificate PEM")
+	}
+
+	cert, err := CertificateFromBinary(certBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	key, err := PrivateKeyFromPem(rest, password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	return &PermanentCredentials{
+		cert: cert,
+		key:  key,
+	}, nil
 }

@@ -6,15 +6,14 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/rahn-it/svalin/config"
-	"github.com/rahn-it/svalin/pki"
-	"github.com/rahn-it/svalin/rmm"
-	"github.com/rahn-it/svalin/rpc"
 	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/rpc"
 
 	"github.com/spf13/cobra"
 )
@@ -31,31 +30,27 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("server called")
-		err := config.SetSubdir("server")
-		if err != nil {
-			panic(err)
-		}
 
-		err = config.InitDB()
+		profile, err := config.OpenProfile("server")
 		if err != nil {
 			panic(err)
 		}
 
 		addr := "localhost:1234"
 
-		credentials, err := pki.GetHostCredentials()
-		if err != nil {
-			if errors.Is(err, pki.ErrNotInitialized) {
-				credentials, err = rpc.WaitForServerSetup(addr)
-				if err != nil {
-					panic(err)
-				}
-			} else {
-				panic(err)
-			}
-		}
+		// credentials, err := pki.GetHostCredentials()
+		// if err != nil {
+		// 	if errors.Is(err, pki.ErrNotInitialized) {
+		// 		credentials, err = rpc.WaitForServerSetup(addr)
+		// 		if err != nil {
+		// 			panic(err)
+		// 		}
+		// 	} else {
+		// 		panic(err)
+		// 	}
+		// }
 
-		server, err := rmm.NewDefaultServer(addr, credentials)
+		server, err := server.
 		if err != nil {
 			panic(err)
 		}

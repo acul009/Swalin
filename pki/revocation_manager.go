@@ -6,10 +6,10 @@ import (
 	"crypto"
 	"encoding/base64"
 	"fmt"
-	"github.com/rahn-it/svalin/config"
+	"log"
+
 	"github.com/rahn-it/svalin/ent"
 	"github.com/rahn-it/svalin/ent/revocation"
-	"log"
 )
 
 var ErrRevoked = &revokedError{}
@@ -35,7 +35,6 @@ type revocationManager struct {
 }
 
 func InitRevocationManager(verifier Verifier) {
-	db := config.DB()
 
 	RevocationManager = &revocationManager{
 		db:       db,

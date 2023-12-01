@@ -75,16 +75,16 @@ func getTemplate(pub *PublicKey) (*x509.Certificate, error) {
 	}, nil
 }
 
-func generateRootCert(commonName string) (*Certificate, *PrivateKey, error) {
-	// Generate a new CA private key
-	rootPrivateKey, err := generateKeypair()
+func GenerateRootCredentials(commonName string) (*PermanentCredentials, error) {
+
+	credentials, err := GenerateCredentials()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate root private key: %w", err)
+		return nil, fmt.Errorf("failed to generate credentials: %w", err)
 	}
 
-	caTemplate, err := getTemplate(rootPrivateKey.GetPublicKey())
+	caTemplate, err := getTemplate(credentials.GetPublicKey())
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate root template: %w", err)
+		return nil, fmt.Errorf("failed to generate root template: %w", err)
 	}
 
 	caTemplate.Subject = pkix.Name{
@@ -97,12 +97,15 @@ func generateRootCert(commonName string) (*Certificate, *PrivateKey, error) {
 	caTemplate.BasicConstraintsValid = true
 
 	// Create and save the self-signed CA certificate
-	rootCert, err := signCert(caTemplate, rootPrivateKey, caTemplate)
+	rootCert, err := signCert(caTemplate, credentials.GetPrivateKey(), caTemplate)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to sign CA certificate: %w", err)
+		return nil, fmt.Errorf("failed to sign CA certificate: %w", err)
 	}
 
-	return rootCert, rootPrivateKey, nil
+	return &PermanentCredentials{
+		cert: rootCert,
+		key:  credentials.GetPrivateKey(),
+	}, nil
 }
 
 func signCert(template *x509.Certificate, caKey *PrivateKey, caCert *x509.Certificate) (*Certificate, error) {
@@ -174,10 +177,7 @@ func CreateServerCert(name string, pub *PublicKey, caCredentials *PermanentCrede
 	serverTemplate.NotAfter = time.Now().Add(serverValidFor)
 	serverTemplate.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature
 
-	caCert, caKey, err := caCredentials.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get CA credentials: %w", err)
-	}
+	caCert, caKey := caCredentials.Get()
 
 	if !caCert.IsCA {
 		return nil, fmt.Errorf("credentials are not a CA")
@@ -205,10 +205,7 @@ func CreateAgentCert(name string, pub *PublicKey, caCredentials *PermanentCreden
 	agentTemplate.NotAfter = time.Now().Add(agentValidFor)
 	agentTemplate.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature
 
-	caCert, caKey, err := caCredentials.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get CA credentials: %w", err)
-	}
+	caCert, caKey := caCredentials.Get()
 
 	if !caCert.IsCA {
 		return nil, fmt.Errorf("credentials are not a CA")

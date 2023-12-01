@@ -39,10 +39,10 @@ func (t *TempCredentials) toPermanentCredentials(password []byte, cert *Certific
 	return credentials, nil
 }
 
-func (t *TempCredentials) GetPublicKey() (*PublicKey, error) {
-	return t.publicKey, nil
+func (t *TempCredentials) GetPublicKey() *PublicKey {
+	return t.publicKey
 }
 
-func (t *TempCredentials) GetPrivateKey() (*PrivateKey, error) {
-	return t.privateKey, nil
+func (t *TempCredentials) GetPrivateKey() *PrivateKey {
+	return t.privateKey
 }

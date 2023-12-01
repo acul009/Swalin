@@ -5,8 +5,7 @@ import (
 )
 
 type ObservableMap[K comparable, T any] interface {
-	Size() int
-	GetAll() map[K]T
+	ForEach(f func(key K, value T) error) error
 	Get(key K) (T, bool)
 	Subscribe(onSet func(K, T), onRemove func(K, T)) func()
 }
@@ -54,14 +53,16 @@ func (m *genericObservableMap[K, T]) Has(key K) bool {
 	return ok
 }
 
-func (m *genericObservableMap[K, T]) GetAll() map[K]T {
-	copy := make(map[K]T)
+func (m *genericObservableMap[K, T]) ForEach(f func(key K, value T) error) error {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 	for k, v := range m.m {
-		copy[k] = v
+		err := f(k, v)
+		if err != nil {
+			return err
+		}
 	}
-	return copy
+	return nil
 }
 
 func (m *genericObservableMap[K, T]) Set(key K, value T) {
