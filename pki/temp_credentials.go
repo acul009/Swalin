@@ -2,8 +2,9 @@ package pki
 
 import (
 	"fmt"
-	"log"
 )
+
+var _ Credentials = (*TempCredentials)(nil)
 
 type TempCredentials struct {
 	publicKey  *PublicKey
@@ -18,31 +19,29 @@ func GenerateCredentials() (*TempCredentials, error) {
 
 	credentials := &TempCredentials{
 		privateKey: privateKey,
-		publicKey:  privateKey.GetPublicKey(),
+		publicKey:  privateKey.PublicKey(),
 	}
 
 	return credentials, nil
 }
 
-func (t *TempCredentials) toPermanentCredentials(password []byte, cert *Certificate, filename string, path ...string) (*PermanentCredentials, error) {
-	if !cert.GetPublicKey().Equal(t.publicKey) {
+func (t *TempCredentials) ToPermanentCredentials(cert *Certificate) (*PermanentCredentials, error) {
+	if !cert.PublicKey().Equal(t.publicKey) {
 		return nil, fmt.Errorf("public key of certificate does not match")
 	}
 
-	credentials := getCredentials(password, filename, path...)
-	log.Printf("credentials: %+v", credentials)
-	err := credentials.Set(cert, t.privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set credentials: %w", err)
+	credentials := &PermanentCredentials{
+		cert: cert,
+		key:  t.privateKey,
 	}
 
 	return credentials, nil
 }
 
-func (t *TempCredentials) GetPublicKey() *PublicKey {
+func (t *TempCredentials) PublicKey() *PublicKey {
 	return t.publicKey
 }
 
-func (t *TempCredentials) GetPrivateKey() *PrivateKey {
+func (t *TempCredentials) PrivateKey() *PrivateKey {
 	return t.privateKey
 }

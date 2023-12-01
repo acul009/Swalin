@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rahn-it/svalin/permissions"
-	"github.com/rahn-it/svalin/pki"
-	"github.com/rahn-it/svalin/util"
 	"io"
 	"log"
 	"strings"
 	"sync"
+
+	"github.com/rahn-it/svalin/permissions"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/util"
 
 	"github.com/quic-go/quic-go"
 )
@@ -68,7 +69,7 @@ func newRpcSession(stream quic.Stream, conn *RpcConnection) *RpcSession {
 	var pubkey *pki.PublicKey = nil
 
 	if conn.partner != nil {
-		pubkey = conn.partner.GetPublicKey()
+		pubkey = conn.partner.PublicKey()
 	}
 
 	return &RpcSession{
@@ -208,7 +209,7 @@ func ReadMessage[P any](s *RpcSession, payload P) error {
 		return fmt.Errorf("error reading message: %w", err)
 	}
 
-	myPub, err := s.credentials.GetPublicKey()
+	myPub, err := s.credentials.PublicKey()
 	if err != nil {
 		return fmt.Errorf("error getting current public key: %w", err)
 	}

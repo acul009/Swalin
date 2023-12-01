@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+
 	"github.com/rahn-it/svalin/pki"
 )
 
@@ -140,7 +141,7 @@ func (v *upstreamVerify) VerifyPublicKey(pub *pki.PublicKey) ([]*pki.Certificate
 		return nil, fmt.Errorf("failed to check if public key is root: %w", err)
 	}
 
-	if root.GetPublicKey().Equal(pub) {
+	if root.PublicKey().Equal(pub) {
 		return []*pki.Certificate{root}, nil
 	}
 
@@ -148,7 +149,7 @@ func (v *upstreamVerify) VerifyPublicKey(pub *pki.PublicKey) ([]*pki.Certificate
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if public key is upstream: %w", err)
 	}
-	if upstream.GetPublicKey().Equal(pub) {
+	if upstream.PublicKey().Equal(pub) {
 		return v.Verify(upstream)
 	}
 

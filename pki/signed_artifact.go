@@ -17,7 +17,7 @@ type SignedArtifact[T ArtifactPayload] struct {
 
 func NewSignedArtifact[T ArtifactPayload](credentials *PermanentCredentials, artifact T) (*SignedArtifact[T], error) {
 
-	cert, err := credentials.GetCertificate()
+	cert, err := credentials.Certificate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current cert: %w", err)
 	}

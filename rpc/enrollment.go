@@ -3,12 +3,13 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"github.com/rahn-it/svalin/config"
-	"github.com/rahn-it/svalin/pki"
-	"github.com/rahn-it/svalin/util"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/util"
 
 	"github.com/quic-go/quic-go"
 )
@@ -102,7 +103,7 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 
 func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
 	m.cleanup()
-	encodedKey := cert.GetPublicKey().Base64Encode()
+	encodedKey := cert.PublicKey().Base64Encode()
 
 	log.Printf("enrollment accepted for %s", encodedKey)
 

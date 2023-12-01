@@ -104,7 +104,7 @@ func PrivateKeyFromPem(keyPEM []byte, password []byte) (*PrivateKey, error) {
 	return privateKeyFromBinary(block.Bytes, password)
 }
 
-func (key *PrivateKey) GetPublicKey() *PublicKey {
+func (key *PrivateKey) PublicKey() *PublicKey {
 	pub := PublicKey(key.PublicKey)
 	return &pub
 }

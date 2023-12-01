@@ -48,7 +48,7 @@ func Open(profile *config.Profile) (*Server, error) {
 
 	rpcS.Connections().Subscribe(
 		func(_ uuid.UUID, rc *rpc.RpcConnection) {
-			key := rc.Partner().GetPublicKey().Base64Encode()
+			key := rc.Partner().PublicKey().Base64Encode()
 			devices.Update(key, func(d *DeviceInfo, found bool) (*DeviceInfo, bool) {
 				if !found {
 					return nil, false
@@ -59,7 +59,7 @@ func Open(profile *config.Profile) (*Server, error) {
 			})
 		},
 		func(_ uuid.UUID, rc *rpc.RpcConnection) {
-			key := rc.Partner().GetPublicKey().Base64Encode()
+			key := rc.Partner().PublicKey().Base64Encode()
 			devices.Update(key, func(d *DeviceInfo, found bool) (*DeviceInfo, bool) {
 				if !found {
 					return nil, false

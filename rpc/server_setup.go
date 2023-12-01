@@ -3,30 +3,30 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"github.com/rahn-it/svalin/config"
+	"log"
+
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/util"
-	"log"
 
 	"github.com/quic-go/quic-go"
 )
 
-func WaitForServerSetup(listenAddr string) (*pki.PermanentCredentials, error) {
+func WaitForServerSetup(listenAddr string) (*pki.PermanentCredentials, *pki.Certificate, error) {
 
 	credentials, err := pki.GenerateCredentials()
 	if err != nil {
-		return nil, fmt.Errorf("error generating temp credentials: %w", err)
+		return nil, nil, fmt.Errorf("error generating temp credentials: %w", err)
 	}
 
 	tlsConf, err := getTlsServerConfig([]TlsConnectionProto{ProtoServerInit})
 	if err != nil {
-		return nil, fmt.Errorf("error getting server tls config: %w", err)
+		return nil, nil, fmt.Errorf("error getting server tls config: %w", err)
 	}
 
 	quicConf := &quic.Config{}
 	listener, err := quic.ListenAddr(listenAddr, tlsConf, quicConf)
 	if err != nil {
-		return nil, fmt.Errorf("error creating QUIC server: %w", err)
+		return nil, nil, fmt.Errorf("error creating QUIC server: %w", err)
 	}
 
 	initNonceStorage = util.NewNonceStorage()
@@ -41,7 +41,7 @@ func WaitForServerSetup(listenAddr string) (*pki.PermanentCredentials, error) {
 
 		log.Printf("Connection accepted")
 
-		rpcCredentials, err := acceptServerInitialization(conn, credentials)
+		rpcCredentials, rootCert, err := acceptServerInitialization(conn, credentials)
 		if err != nil {
 			err := fmt.Errorf("error initializing server: %w", err)
 			log.Println(err)
@@ -49,9 +49,9 @@ func WaitForServerSetup(listenAddr string) (*pki.PermanentCredentials, error) {
 			// no error, initialization was successful
 			err = listener.Close()
 			if err != nil {
-				return nil, fmt.Errorf("error closing listener: %w", err)
+				return nil, nil, fmt.Errorf("error closing listener: %w", err)
 			}
-			return rpcCredentials, nil
+			return rpcCredentials, rootCert, nil
 		}
 	}
 }
@@ -67,12 +67,74 @@ type serverInitResponse struct {
 	ServerCert *pki.Certificate
 }
 
-func acceptServerInitialization(quicConn quic.Connection, credentials *pki.TempCredentials) (*pki.PermanentCredentials, error) {
+func acceptServerInitialization(quicConn quic.Connection, credentials *pki.TempCredentials) (*pki.PermanentCredentials, *pki.Certificate, error) {
 	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoServerInit, credentials, pki.NewNilVerifier())
 
 	log.Printf("Opening init QUIC stream...")
 
 	session, err := conn.AcceptSession(context.Background())
+	if err != nil {
+		return nil, nil, fmt.Errorf("error opening QUIC stream: %w", err)
+	}
+
+	err = session.mutateState(RpcSessionCreated, RpcSessionOpen)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error mutating session state: %w", err)
+	}
+
+	log.Printf("Session opened, reading public key...")
+
+	err = exchangeKeys(session)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error exchanging keys: %w", err)
+	}
+
+	log.Printf("preparing init request...")
+
+	initRequest := &serverInitRequest{
+		ServerPubKey: credentials.PublicKey(),
+	}
+
+	log.Printf("Sending init request...")
+
+	err = WriteMessage[*serverInitRequest](session, initRequest)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error writing message: %w", err)
+	}
+
+	log.Printf("Awaiting init response...")
+
+	response := &serverInitResponse{}
+	err = ReadMessage[*serverInitResponse](session, response)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error reading message: %w", err)
+	}
+
+	log.Printf("Init response received")
+
+	rootCert := response.RootCa
+
+	if !session.partnerKey.Equal(rootCert.PublicKey()) {
+		return nil, nil, fmt.Errorf("root public key does not match certificate")
+	}
+
+	serverCert := response.ServerCert
+
+	rpcCredentials, err := credentials.ToPermanentCredentials(serverCert)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error upgrading credentials: %w", err)
+	}
+
+	session.Close()
+	conn.Close(200, "done")
+
+	return rpcCredentials, rootCert, nil
+}
+
+func SetupServer(conn *RpcConnection, rootCredentials *pki.PermanentCredentials, nameForServer string) (*pki.Certificate, error) {
+	conn.credentials = rootCredentials
+
+	session, err := conn.OpenSession(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("error opening QUIC stream: %w", err)
 	}
@@ -82,83 +144,11 @@ func acceptServerInitialization(quicConn quic.Connection, credentials *pki.TempC
 		return nil, fmt.Errorf("error mutating session state: %w", err)
 	}
 
-	log.Printf("Session opened, reading public key...")
-
-	err = exchangeKeys(session)
-	if err != nil {
-		return nil, fmt.Errorf("error exchanging keys: %w", err)
-	}
-
-	log.Printf("preparing init request...")
-
-	pubMe, err := credentials.GetPublicKey()
-	if err != nil {
-		return nil, fmt.Errorf("error getting current public key: %w", err)
-	}
-
-	initRequest := &serverInitRequest{
-		ServerPubKey: pubMe,
-	}
-
-	log.Printf("Sending init request...")
-
-	err = WriteMessage[*serverInitRequest](session, initRequest)
-	if err != nil {
-		return nil, fmt.Errorf("error writing message: %w", err)
-	}
-
-	log.Printf("Awaiting init response...")
-
-	response := &serverInitResponse{}
-	err = ReadMessage[*serverInitResponse](session, response)
-	if err != nil {
-		return nil, fmt.Errorf("error reading message: %w", err)
-	}
-
-	log.Printf("Init response received")
-
-	rootCert := response.RootCa
-
-	if !session.partnerKey.Equal(rootCert.GetPublicKey()) {
-		return nil, fmt.Errorf("root public key does not match certificate")
-	}
-
-	serverCert := response.ServerCert
-
-	rpcCredentials, err := credentials.UpgradeToHostCredentials(serverCert)
-	if err != nil {
-		return nil, fmt.Errorf("error upgrading credentials: %w", err)
-	}
-
-	err = pki.Root.Set(rootCert)
-	if err != nil {
-		return nil, fmt.Errorf("error saving root certificate: %w", err)
-	}
-
-	session.Close()
-	conn.Close(200, "done")
-
-	return rpcCredentials, nil
-}
-
-func SetupServer(conn *RpcConnection, rootCredentials *pki.PermanentCredentials, nameForServer string) error {
-	conn.credentials = rootCredentials
-
-	session, err := conn.OpenSession(context.Background())
-	if err != nil {
-		return fmt.Errorf("error opening QUIC stream: %w", err)
-	}
-
-	err = session.mutateState(RpcSessionCreated, RpcSessionOpen)
-	if err != nil {
-		return fmt.Errorf("error mutating session state: %w", err)
-	}
-
 	log.Printf("Session opened, sending public key")
 
 	err = exchangeKeys(session)
 	if err != nil {
-		return fmt.Errorf("error exchanging keys: %w", err)
+		return nil, fmt.Errorf("error exchanging keys: %w", err)
 	}
 
 	log.Printf("reading initialization request^...")
@@ -167,11 +157,11 @@ func SetupServer(conn *RpcConnection, rootCredentials *pki.PermanentCredentials,
 
 	err = ReadMessage[*serverInitRequest](session, req)
 	if err != nil {
-		return fmt.Errorf("error reading message: %w", err)
+		return nil, fmt.Errorf("error reading message: %w", err)
 	}
 
 	if !session.partnerKey.Equal(req.ServerPubKey) {
-		return fmt.Errorf("server public key does not match sender")
+		return nil, fmt.Errorf("server public key does not match sender")
 	}
 
 	session.partnerKey = req.ServerPubKey
@@ -180,39 +170,23 @@ func SetupServer(conn *RpcConnection, rootCredentials *pki.PermanentCredentials,
 
 	serverHostCert, err := pki.CreateServerCert(nameForServer, req.ServerPubKey, rootCredentials)
 	if err != nil {
-		return fmt.Errorf("error creating server certificate: %w", err)
+		return nil, fmt.Errorf("error creating server certificate: %w", err)
 	}
 
 	log.Printf("Created server certificate:\n%s\n\n", string(serverHostCert.PemEncode()))
 
-	rootCert, err := pki.Root.Get()
-	if err != nil {
-		return fmt.Errorf("error getting root certificate: %w", err)
-	}
-
 	response := &serverInitResponse{
-		RootCa:     rootCert,
+		RootCa:     rootCredentials.Certificate(),
 		ServerCert: serverHostCert,
 	}
 
 	err = WriteMessage[*serverInitResponse](session, response)
 	if err != nil {
-		return fmt.Errorf("error writing message: %w", err)
+		return nil, fmt.Errorf("error writing message: %w", err)
 	}
 
 	session.Close()
 	conn.Close(200, "done")
 
-	config.V().Set("upstream.address", conn.connection.RemoteAddr().String())
-	err = config.Save()
-	if err != nil {
-		return fmt.Errorf("error saving config: %w", err)
-	}
-
-	err = pki.Upstream.Set(serverHostCert)
-	if err != nil {
-		return fmt.Errorf("error saving upstream certificate: %w", err)
-	}
-
-	return nil
+	return serverHostCert, nil
 }

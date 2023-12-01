@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+
 	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/util"
@@ -12,7 +13,7 @@ func RegisterUserHandler() RpcCommand {
 }
 
 func NewRegisterUserCmd(credentials *pki.PermanentCredentials, password []byte, totpSecret string, currentTotp string) (*registerUserCmd, error) {
-	privateKey, err := credentials.GetPrivateKey()
+	privateKey, err := credentials.PrivateKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
@@ -32,7 +33,7 @@ func NewRegisterUserCmd(credentials *pki.PermanentCredentials, password []byte, 
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	cert, err := credentials.GetCertificate()
+	cert, err := credentials.Certificate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get certificate: %w", err)
 	}
@@ -116,7 +117,7 @@ func (r *registerUserCmd) ExecuteServer(session *RpcSession) error {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	encodedPub := cert.GetPublicKey().Base64Encode()
+	encodedPub := cert.PublicKey().Base64Encode()
 
 	// create user
 	db := config.DB()

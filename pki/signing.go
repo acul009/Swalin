@@ -7,8 +7,9 @@ import (
 	"encoding/asn1"
 	"encoding/json"
 	"fmt"
-	"github.com/rahn-it/svalin/util"
 	"io"
+
+	"github.com/rahn-it/svalin/util"
 )
 
 var ErrSignatureInvalid = SignatureVerificationError{
@@ -91,7 +92,7 @@ type PackedData struct {
 }
 
 func packAndSign(data []byte, c Credentials) ([]byte, error) {
-	key, err := c.GetPrivateKey()
+	key, err := c.PrivateKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}

@@ -3,9 +3,10 @@ package pki
 import (
 	"encoding/asn1"
 	"fmt"
-	"github.com/rahn-it/svalin/util"
 	"log"
 	"time"
+
+	"github.com/rahn-it/svalin/util"
 )
 
 type SignedBlob struct {
@@ -24,7 +25,7 @@ type blobDerHelper struct {
 }
 
 func NewSignedBlob(credentials *PermanentCredentials, payload []byte) (*SignedBlob, error) {
-	creator, err := credentials.GetCertificate()
+	creator, err := credentials.Certificate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current cert: %w", err)
 	}
@@ -115,7 +116,7 @@ func LoadSignedBlob(raw []byte, verifier Verifier) (*SignedBlob, error) {
 		return nil, errDangerous
 	}
 
-	err = cert.GetPublicKey().verifyBytes(packed.Data, packed.Signature, true)
+	err = cert.PublicKey().verifyBytes(packed.Data, packed.Signature, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}

@@ -65,7 +65,7 @@ func (v *localVerify) VerifyPublicKey(pub *PublicKey) ([]*Certificate, error) {
 		return nil, fmt.Errorf("failed to check if public key is root: %w", err)
 	}
 
-	if root.GetPublicKey().Equal(pub) {
+	if root.PublicKey().Equal(pub) {
 		return []*Certificate{root}, nil
 	}
 

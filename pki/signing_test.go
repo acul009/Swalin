@@ -2,10 +2,11 @@ package pki_test
 
 import (
 	"bytes"
-	"github.com/rahn-it/svalin/pki"
 	"io"
 	"reflect"
 	"testing"
+
+	"github.com/rahn-it/svalin/pki"
 )
 
 type testData struct {
@@ -20,7 +21,7 @@ func TestSignBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	myPublicKey, err := credentials.GetPublicKey()
+	myPublicKey, err := credentials.PublicKey()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +55,7 @@ func TestPackedReadWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pub, err := credentials.GetPublicKey()
+	pub, err := credentials.PublicKey()
 	if err != nil {
 		t.Fatal(err)
 	}

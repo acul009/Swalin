@@ -82,7 +82,7 @@ func GenerateRootCredentials(commonName string) (*PermanentCredentials, error) {
 		return nil, fmt.Errorf("failed to generate credentials: %w", err)
 	}
 
-	caTemplate, err := getTemplate(credentials.GetPublicKey())
+	caTemplate, err := getTemplate(credentials.PublicKey())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate root template: %w", err)
 	}
@@ -97,14 +97,14 @@ func GenerateRootCredentials(commonName string) (*PermanentCredentials, error) {
 	caTemplate.BasicConstraintsValid = true
 
 	// Create and save the self-signed CA certificate
-	rootCert, err := signCert(caTemplate, credentials.GetPrivateKey(), caTemplate)
+	rootCert, err := signCert(caTemplate, credentials.PrivateKey(), caTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign CA certificate: %w", err)
 	}
 
 	return &PermanentCredentials{
 		cert: rootCert,
-		key:  credentials.GetPrivateKey(),
+		key:  credentials.PrivateKey(),
 	}, nil
 }
 
@@ -139,7 +139,7 @@ func generateUserCert(username string, caKey *PrivateKey, caCert *Certificate) (
 		return nil, nil, fmt.Errorf("failed to generate user private key: %w", err)
 	}
 
-	userTemplate, err := getTemplate(userPrivateKey.GetPublicKey())
+	userTemplate, err := getTemplate(userPrivateKey.PublicKey())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate CA template: %w", err)
 	}

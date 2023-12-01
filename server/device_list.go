@@ -84,11 +84,11 @@ func (d *DeviceList) ForEach(handler func(key string, value *DeviceInfo) error) 
 			di := &DeviceInfo{
 				Certificate: cert,
 				liveInfo: LiveDeviceInfo{
-					Online: d.isOnline(cert.GetPublicKey().Base64Encode()),
+					Online: d.isOnline(cert.PublicKey().Base64Encode()),
 				},
 			}
 
-			return handler(cert.GetPublicKey().Base64Encode(), di)
+			return handler(cert.PublicKey().Base64Encode(), di)
 		})
 	})
 }
@@ -100,7 +100,7 @@ func (d *DeviceList) Subscribe(onUpdate func(string, *DeviceInfo), onRemove func
 func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
 	// TODO: verify certificate
 
-	key := cert.GetPublicKey().Base64Encode()
+	key := cert.PublicKey().Base64Encode()
 	rawKey := []byte(key)
 	pem := cert.PemEncode()
 

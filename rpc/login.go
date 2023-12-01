@@ -3,12 +3,13 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"log"
+
 	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/ent"
 	"github.com/rahn-it/svalin/ent/user"
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/util"
-	"log"
 )
 
 func Login(conn *RpcConnection, username string, password []byte, totpCode string) (*pki.PermanentCredentials, error) {
@@ -263,7 +264,7 @@ func acceptLoginRequest(conn *RpcConnection) error {
 		return fmt.Errorf("error loading host credentials: %w", err)
 	}
 
-	serverCert, err := hostcredentials.GetCertificate()
+	serverCert, err := hostcredentials.Certificate()
 	if err != nil {
 		return fmt.Errorf("error loading current certificate: %w", err)
 	}

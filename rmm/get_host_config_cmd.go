@@ -2,10 +2,11 @@ package rmm
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/rpc"
 	"github.com/rahn-it/svalin/util"
-	"log"
 )
 
 func CreateHostConfigCommandHandler[T HostConfig](source util.ObservableMap[string, *pki.SignedArtifact[T]]) func() rpc.RpcCommand {
@@ -35,7 +36,7 @@ func (c *GetConfigCommand[T]) GetKey() string {
 }
 
 func (c *GetConfigCommand[T]) ExecuteServer(session *rpc.RpcSession) error {
-	requested := c.Host.GetPublicKey().Base64Encode()
+	requested := c.Host.PublicKey().Base64Encode()
 
 	artifact, ok := c.sourceMap.Get(requested)
 	if !ok {

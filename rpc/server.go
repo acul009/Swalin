@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rahn-it/svalin/pki"
-	"github.com/rahn-it/svalin/util"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/util"
 
 	"github.com/google/uuid"
 	"github.com/quic-go/quic-go"
@@ -62,7 +63,7 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, verifier pk
 		return nil, fmt.Errorf("error creating QUIC server: %w", err)
 	}
 
-	cert, err := credentials.GetCertificate()
+	cert, err := credentials.Certificate()
 	if err != nil {
 		return nil, fmt.Errorf("error getting certificate: %w", err)
 	}

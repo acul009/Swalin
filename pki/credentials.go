@@ -7,9 +7,11 @@ import (
 )
 
 type Credentials interface {
-	GetPrivateKey() (*PrivateKey, error)
-	GetPublicKey() (*PublicKey, error)
+	PrivateKey() *PrivateKey
+	PublicKey() *PublicKey
 }
+
+var _ Credentials = (*PermanentCredentials)(nil)
 
 type PermanentCredentials struct {
 	cert *Certificate
@@ -20,8 +22,8 @@ func (u *PermanentCredentials) Certificate() *Certificate {
 	return u.cert
 }
 
-func (u *PermanentCredentials) GetPublicKey() *PublicKey {
-	return u.cert.GetPublicKey()
+func (u *PermanentCredentials) PublicKey() *PublicKey {
+	return u.cert.PublicKey()
 }
 
 func (u *PermanentCredentials) PrivateKey() *PrivateKey {

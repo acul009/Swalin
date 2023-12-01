@@ -2,9 +2,10 @@ package rpc
 
 import (
 	"fmt"
-	"github.com/rahn-it/svalin/pki"
 	"io"
 	"log"
+
+	"github.com/rahn-it/svalin/pki"
 )
 
 func ForwardCommandHandler() RpcCommand {
@@ -109,7 +110,7 @@ func (f *forwardCommand) ExecuteClient(session *RpcSession) error {
 		return fmt.Errorf("error mutating session state: %w", err)
 	}
 
-	session.partnerKey = f.Target.GetPublicKey()
+	session.partnerKey = f.Target.PublicKey()
 
 	log.Printf("Session forwarded, starting next command...")
 

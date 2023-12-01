@@ -71,7 +71,7 @@ func (cert *Certificate) Equal(compare *Certificate) bool {
 	return bytes.Equal(cert.Raw, compare.Raw)
 }
 
-func (cert *Certificate) GetPublicKey() *PublicKey {
+func (cert *Certificate) PublicKey() *PublicKey {
 	certTyped, ok := cert.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
 		panic("public key is not of type *ecdsa.PublicKey")

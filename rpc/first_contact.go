@@ -3,10 +3,11 @@ package rpc
 import (
 	"encoding/asn1"
 	"fmt"
-	"github.com/rahn-it/svalin/pki"
-	"github.com/rahn-it/svalin/util"
 	"io"
 	"log"
+
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/util"
 )
 
 func exchangeKeys(session *RpcSession) error {
@@ -55,7 +56,7 @@ func receivePartnerKey(session *RpcSession) error {
 func sendMyKey(session *RpcSession) error {
 	credentials := session.credentials
 
-	pubKey, err := credentials.GetPublicKey()
+	pubKey, err := credentials.PublicKey()
 	if err != nil {
 		return fmt.Errorf("error getting public key: %w", err)
 	}
