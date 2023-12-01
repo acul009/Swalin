@@ -153,9 +153,7 @@ func generateUserCert(username string, caKey *PrivateKey, caCert *Certificate) (
 	userTemplate.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign
 	userTemplate.IsCA = true
 
-	typedCert := x509.Certificate(*caCert)
-
-	cert, err := signCert(userTemplate, caKey, &typedCert)
+	cert, err := signCert(userTemplate, caKey, caCert.ToX509())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to sign user certificate: %w", err)
 	}
@@ -179,7 +177,7 @@ func CreateServerCert(name string, pub *PublicKey, caCredentials *PermanentCrede
 
 	caCert, caKey := caCredentials.Get()
 
-	if !caCert.IsCA {
+	if !caCert.IsCA() {
 		return nil, fmt.Errorf("credentials are not a CA")
 	}
 
@@ -207,7 +205,7 @@ func CreateAgentCert(name string, pub *PublicKey, caCredentials *PermanentCreden
 
 	caCert, caKey := caCredentials.Get()
 
-	if !caCert.IsCA {
+	if !caCert.IsCA() {
 		return nil, fmt.Errorf("credentials are not a CA")
 	}
 

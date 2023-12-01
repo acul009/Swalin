@@ -25,10 +25,7 @@ type blobDerHelper struct {
 }
 
 func NewSignedBlob(credentials *PermanentCredentials, payload []byte) (*SignedBlob, error) {
-	creator, err := credentials.Certificate()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current cert: %w", err)
-	}
+	creator := credentials.Certificate()
 
 	timeStamp := time.Now().Unix()
 

@@ -42,8 +42,8 @@ func CertificateFromBinary(cert []byte) (*Certificate, error) {
 	return ImportCertificate(certTyped)
 }
 
-func (cert *Certificate) PemEncode() []byte {
-	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+func (c *Certificate) PemEncode() []byte {
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.cert.Raw})
 }
 
 func CertificateFromPem(certPEM []byte) (*Certificate, error) {
@@ -116,4 +116,8 @@ func (c *Certificate) Type() CertType {
 	}
 
 	return CertTypeError
+}
+
+func (c *Certificate) IsCA() bool {
+	return c.cert.IsCA
 }

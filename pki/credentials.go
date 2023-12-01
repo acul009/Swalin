@@ -35,13 +35,10 @@ func (u *PermanentCredentials) Get() (*Certificate, *PrivateKey) {
 }
 
 func (u *PermanentCredentials) GetTlsCert() (*tls.Certificate, error) {
-	cert := u.Certificate()
-
-	key := u.PrivateKey()
 
 	tlsCert := &tls.Certificate{
-		Certificate: [][]byte{cert.Raw},
-		PrivateKey:  key.ToEcdsa(),
+		Certificate: [][]byte{u.cert.cert.Raw},
+		PrivateKey:  u.key.ToEcdsa(),
 	}
 
 	return tlsCert, nil

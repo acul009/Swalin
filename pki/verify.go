@@ -5,22 +5,10 @@ import (
 	"fmt"
 )
 
-var rootPool *x509.CertPool
-
 func (c *Certificate) VerifyChain(roots *x509.CertPool, intermediates *x509.CertPool, checkRevocation bool) ([]*Certificate, error) {
 
 	if roots == nil {
-		if rootPool == nil {
-			rootPool = x509.NewCertPool()
-			root, err := Root.Get()
-			if err != nil {
-				return nil, fmt.Errorf("failed to load root certificate: %w", err)
-			}
-
-			rootPool.AddCert(root.ToX509())
-		}
-
-		roots = rootPool
+		return nil, fmt.Errorf("roots are nil")
 	}
 
 	chains, err := c.ToX509().Verify(x509.VerifyOptions{

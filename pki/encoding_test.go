@@ -9,10 +9,11 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"fmt"
-	"github.com/rahn-it/svalin/pki"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/rahn-it/svalin/pki"
 )
 
 type testMarshal struct {
@@ -78,8 +79,8 @@ func TestJson(t *testing.T) {
 		t.Errorf("expected %v, got %v", pub, unmarshalled.PublicKey)
 	}
 
-	if !bytes.Equal(cert.Raw, unmarshalled.Certificate.Raw) {
-		t.Errorf("expected %v, got %v", cert.Raw, unmarshalled.Certificate.Raw)
+	if !bytes.Equal(cert.BinaryEncode(), unmarshalled.Certificate.BinaryEncode()) {
+		t.Errorf("expected %v, got %v", cert.BinaryEncode(), unmarshalled.Certificate.BinaryEncode())
 	}
 
 }

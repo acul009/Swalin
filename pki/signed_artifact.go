@@ -17,12 +17,7 @@ type SignedArtifact[T ArtifactPayload] struct {
 
 func NewSignedArtifact[T ArtifactPayload](credentials *PermanentCredentials, artifact T) (*SignedArtifact[T], error) {
 
-	cert, err := credentials.Certificate()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current cert: %w", err)
-	}
-
-	if !artifact.MayPublish(cert) {
+	if !artifact.MayPublish(credentials.Certificate()) {
 		return nil, fmt.Errorf("not authorized to publish this artifact")
 	}
 
