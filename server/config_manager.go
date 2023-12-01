@@ -16,7 +16,7 @@ type ConfigManager struct {
 
 func NewConfigManager(verifier pki.Verifier, scope db.Scope) *ConfigManager {
 
-	hostConfigScope := scope.Scope([]byte("host_config"))
+	hostConfigScope := scope.Scope("host_configs")
 
 	return &ConfigManager{
 		tunnelConfigHandler: NewHostConfigHandler[*rmm.TunnelConfig](verifier, hostConfigScope),
@@ -34,7 +34,7 @@ type HostConfigHandler[T rmm.HostConfig] struct {
 func NewHostConfigHandler[T rmm.HostConfig](verifier pki.Verifier, scope db.Scope) *HostConfigHandler[T] {
 	var t T
 
-	db := scope.Scope([]byte(t.GetConfigKey()))
+	db := scope.Scope(t.GetConfigKey())
 
 	return &HostConfigHandler[T]{
 		verifier:        verifier,

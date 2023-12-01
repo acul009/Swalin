@@ -7,6 +7,7 @@ import (
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/rmm"
 	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/system"
 	"github.com/rahn-it/svalin/util"
 
 	"github.com/google/uuid"
@@ -14,14 +15,22 @@ import (
 
 type Server struct {
 	*rpc.RpcServer
+	serverConfig  *serverConfig
 	profile       *config.Profile
-	devices       util.UpdateableMap[string, *DeviceInfo]
+	devices       util.ObservableMap[string, *system.DeviceInfo]
 	configManager *ConfigManager
 }
 
 func Open(profile *config.Profile) (*Server, error) {
 	config := profile.Config()
 	config.Default("server.address", "localhost:1234")
+
+	scope := profile.Scope()
+
+	serverConfig, err := openServerConfig(scope.Scope("server"))
+	if err != nil {
+		return nil, fmt.Errorf("error opening server config: %w", err)
+	}
 
 	verifier, err := pki.NewLocalVerify()
 	if err != nil {
@@ -30,7 +39,7 @@ func Open(profile *config.Profile) (*Server, error) {
 
 	ConfigManager := NewConfigManager(verifier, nil)
 
-	devices := NewDeviceList(profile.Scope().Scope("devices"))
+	devices := NewDeviceList(scope.Scope("devices"))
 
 	cmds := rpc.NewCommandCollection(
 		rpc.PingHandler,
@@ -45,7 +54,7 @@ func Open(profile *config.Profile) (*Server, error) {
 
 	listenAddr := config.String("server.address")
 
-	rpcS, err := rpc.NewRpcServer(listenAddr, cmds, verifier, credentials)
+	rpcS, err := rpc.NewRpcServer(listenAddr, cmds, verifier, serverConfig.Credentials())
 	if err != nil {
 		return nil, fmt.Errorf("error creating rpc server: %w", err)
 	}
@@ -53,31 +62,18 @@ func Open(profile *config.Profile) (*Server, error) {
 	rpcS.Connections().Subscribe(
 		func(_ uuid.UUID, rc *rpc.RpcConnection) {
 			key := rc.Partner().PublicKey().Base64Encode()
-			devices.Update(key, func(d *DeviceInfo, found bool) (*DeviceInfo, bool) {
-				if !found {
-					return nil, false
-				}
-
-				d.Online = true
-				return d, true
-			})
+			devices.setOnlineStatus(key, true)
 		},
 		func(_ uuid.UUID, rc *rpc.RpcConnection) {
 			key := rc.Partner().PublicKey().Base64Encode()
-			devices.Update(key, func(d *DeviceInfo, found bool) (*DeviceInfo, bool) {
-				if !found {
-					return nil, false
-				}
-
-				d.Online = false
-				return d, true
-			})
+			devices.setOnlineStatus(key, false)
 		},
 	)
 
 	s := &Server{
 		RpcServer:     rpcS,
 		devices:       devices,
+		serverConfig:  serverConfig,
 		configManager: ConfigManager,
 	}
 

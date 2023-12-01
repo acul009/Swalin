@@ -5,30 +5,22 @@ import (
 
 	"github.com/rahn-it/svalin/db"
 	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/system"
 	"github.com/rahn-it/svalin/util"
 	"go.etcd.io/bbolt"
 )
 
-type DeviceInfo struct {
-	Certificate *pki.Certificate
-	liveInfo    LiveDeviceInfo
-}
-
-type LiveDeviceInfo struct {
-	Online bool
-}
-
-var _ util.ObservableMap[string, *DeviceInfo] = (*DeviceList)(nil)
+var _ util.ObservableMap[string, *system.DeviceInfo] = (*DeviceList)(nil)
 
 type DeviceList struct {
-	observerHandler *util.MapObserverHandler[string, *DeviceInfo]
+	observerHandler *util.MapObserverHandler[string, *system.DeviceInfo]
 	scope           db.Scope
 	online          map[string]bool
 }
 
 func NewDeviceList(scope db.Scope) *DeviceList {
 	return &DeviceList{
-		observerHandler: util.NewMapObserverHandler[string, *DeviceInfo](),
+		observerHandler: util.NewMapObserverHandler[string, *system.DeviceInfo](),
 		scope:           scope,
 	}
 }
@@ -45,7 +37,7 @@ func (d *DeviceList) isOnline(key string) bool {
 	return online
 }
 
-func (d *DeviceList) Get(key string) (*DeviceInfo, bool) {
+func (d *DeviceList) Get(key string) (*system.DeviceInfo, bool) {
 	var raw []byte
 	err := d.scope.View(func(b *bbolt.Bucket) error {
 		raw = b.Get([]byte(key))
@@ -65,15 +57,15 @@ func (d *DeviceList) Get(key string) (*DeviceInfo, bool) {
 		panic(err)
 	}
 
-	return &DeviceInfo{
+	return &system.DeviceInfo{
 		Certificate: cert,
-		liveInfo: LiveDeviceInfo{
+		LiveInfo: system.LiveDeviceInfo{
 			Online: d.isOnline(key),
 		},
 	}, true
 }
 
-func (d *DeviceList) ForEach(handler func(key string, value *DeviceInfo) error) error {
+func (d *DeviceList) ForEach(handler func(key string, value *system.DeviceInfo) error) error {
 	return d.scope.View(func(b *bbolt.Bucket) error {
 		return b.ForEach(func(k, v []byte) error {
 			cert, err := pki.CertificateFromPem(v)
@@ -81,9 +73,9 @@ func (d *DeviceList) ForEach(handler func(key string, value *DeviceInfo) error) 
 				return err
 			}
 
-			di := &DeviceInfo{
+			di := &system.DeviceInfo{
 				Certificate: cert,
-				liveInfo: LiveDeviceInfo{
+				LiveInfo: system.LiveDeviceInfo{
 					Online: d.isOnline(cert.PublicKey().Base64Encode()),
 				},
 			}
@@ -93,7 +85,7 @@ func (d *DeviceList) ForEach(handler func(key string, value *DeviceInfo) error) 
 	})
 }
 
-func (d *DeviceList) Subscribe(onUpdate func(string, *DeviceInfo), onRemove func(string, *DeviceInfo)) func() {
+func (d *DeviceList) Subscribe(onUpdate func(string, *system.DeviceInfo), onRemove func(string, *system.DeviceInfo)) func() {
 	return d.observerHandler.Subscribe(onUpdate, onRemove)
 }
 
@@ -116,9 +108,9 @@ func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
 		return fmt.Errorf("failed to add device: %w", err)
 	}
 
-	di := &DeviceInfo{
+	di := &system.DeviceInfo{
 		Certificate: cert,
-		liveInfo: LiveDeviceInfo{
+		LiveInfo: system.LiveDeviceInfo{
 			Online: d.isOnline(key),
 		},
 	}
@@ -126,4 +118,12 @@ func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
 	d.observerHandler.NotifyUpdate(key, di)
 
 	return nil
+}
+
+func (d *DeviceList) setOnlineStatus(key string, online bool) {
+	if online {
+		d.online[key] = true
+	} else {
+		delete(d.online, key)
+	}
 }
