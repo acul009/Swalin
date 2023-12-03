@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/crypto/argon2"
 
+	"math/big"
 	pseudorand "math/rand"
 )
 
@@ -237,4 +238,28 @@ func deriveKeyFromPassword(password []byte, params ArgonParameters) ([]byte, err
 
 	key := argon2.IDKey(password, params.Salt, uint32(params.TimeCost), uint32(params.MemoryCost), uint8(params.Parallelism), uint32(params.KeyLength))
 	return key, nil
+}
+
+const passwordLength = 64
+const passwordCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?"
+const charsetLength = len(passwordCharset)
+
+func GeneratePassword() ([]byte, error) {
+	// Create a byte slice to hold the random password
+	password := make([]byte, passwordLength)
+
+	max := big.NewInt(int64(charsetLength))
+
+	for i := 0; i < passwordLength; i++ {
+		// Generate a random index within the character set length
+		index, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			return []byte{}, err
+		}
+
+		// Use the index to select a character from the character set
+		password[i] = passwordCharset[index.Int64()]
+	}
+
+	return password, nil
 }

@@ -2,12 +2,12 @@ package server
 
 import (
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"io"
 
 	"github.com/rahn-it/svalin/db"
 	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/system"
 	"go.etcd.io/bbolt"
 )
 
@@ -63,38 +63,12 @@ func (sc *serverConfig) Seed() []byte {
 }
 
 func (sc *serverConfig) loadCredentials() error {
-	var password []byte
-	var raw []byte
-	err := sc.scope.View(func(b *bbolt.Bucket) error {
-		pVal := b.Get([]byte("password"))
-		if password == nil {
-			return errors.New("password not found")
-		}
-
-		val := b.Get([]byte("credentials"))
-		if raw == nil {
-			return errors.New("credentials not found")
-		}
-
-		password = make([]byte, len(pVal))
-		copy(password, pVal)
-
-		raw = make([]byte, len(val))
-		copy(raw, val)
-
-		return nil
-	})
-
+	creds, err := system.LoadHostCredentials(sc.scope)
 	if err != nil {
-		return fmt.Errorf("failed to load credentials: %w", err)
+		return fmt.Errorf("failed to load host credentials: %w", err)
 	}
 
-	credentials, err := pki.CredentialsFromPem(raw, password)
-	if err != nil {
-		return fmt.Errorf("failed to parse credentials: %w", err)
-	}
-
-	sc.credentials = credentials
+	sc.credentials = creds
 	return nil
 }
 
