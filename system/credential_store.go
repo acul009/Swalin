@@ -3,6 +3,7 @@ package system
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/rahn-it/svalin/db"
 	"github.com/rahn-it/svalin/pki"
@@ -23,16 +24,18 @@ func (cs *CredentialStore) LoadCredentials(name string, password []byte) (*pki.P
 
 	var raw []byte
 	err := cs.scope.View(func(b *bbolt.Bucket) error {
-		raw = b.Get([]byte(name))
+		val := b.Get([]byte(name))
+		if val == nil {
+			return errors.New("credentials not found")
+		}
+
+		raw = make([]byte, len(val))
+		copy(raw, val)
 		return nil
 	})
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to load credentials: %w", err)
-	}
-
-	if raw == nil {
-		return nil, errors.New("credentials not found")
 	}
 
 	credentials, err := pki.CredentialsFromPem(raw, password)
@@ -67,7 +70,7 @@ func (cs *CredentialStore) List() []string {
 	names := make([]string, 16)
 	err := cs.scope.View(func(b *bbolt.Bucket) error {
 		return b.ForEach(func(k, v []byte) error {
-			names = append(names, string(k))
+			names = append(names, strings.Clone(string(k)))
 			return nil
 		})
 	})

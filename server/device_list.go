@@ -40,7 +40,13 @@ func (d *DeviceList) isOnline(key string) bool {
 func (d *DeviceList) Get(key string) (*system.DeviceInfo, bool) {
 	var raw []byte
 	err := d.scope.View(func(b *bbolt.Bucket) error {
-		raw = b.Get([]byte(key))
+		val := b.Get([]byte(key))
+		if val == nil {
+			return nil
+		}
+
+		raw = make([]byte, len(val))
+		copy(raw, val)
 		return nil
 	})
 	if err != nil {

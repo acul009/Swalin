@@ -51,7 +51,8 @@ func (sc *serverConfig) initSeed() error {
 			}
 		}
 
-		sc.seed = seed
+		sc.seed = make([]byte, len(seed))
+		copy(sc.seed, seed)
 		return nil
 	})
 
@@ -65,15 +66,21 @@ func (sc *serverConfig) loadCredentials() error {
 	var password []byte
 	var raw []byte
 	err := sc.scope.View(func(b *bbolt.Bucket) error {
-		password = b.Get([]byte("password"))
+		pVal := b.Get([]byte("password"))
 		if password == nil {
 			return errors.New("password not found")
 		}
 
-		raw = b.Get([]byte("credentials"))
+		val := b.Get([]byte("credentials"))
 		if raw == nil {
 			return errors.New("credentials not found")
 		}
+
+		password = make([]byte, len(pVal))
+		copy(password, pVal)
+
+		raw = make([]byte, len(val))
+		copy(raw, val)
 
 		return nil
 	})

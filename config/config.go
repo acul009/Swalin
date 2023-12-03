@@ -75,7 +75,13 @@ func (c *Config) String(key string) string {
 	var dbVal []byte
 
 	err := c.scope.View(func(b *bbolt.Bucket) error {
-		dbVal = b.Get([]byte(key))
+		val := b.Get([]byte(key))
+		if val == nil {
+			return nil
+		}
+
+		dbVal = make([]byte, len(val))
+		copy(dbVal, val)
 		return nil
 	})
 	if err != nil {

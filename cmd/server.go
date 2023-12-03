@@ -40,18 +40,6 @@ to quickly create a Cobra application.`,
 		config := profile.Config()
 		config.BindFlags(cmd.Flags())
 
-		// credentials, err := pki.GetHostCredentials()
-		// if err != nil {
-		// 	if errors.Is(err, pki.ErrNotInitialized) {
-		// 		credentials, err = rpc.WaitForServerSetup(addr)
-		// 		if err != nil {
-		// 			panic(err)
-		// 		}
-		// 	} else {
-		// 		panic(err)
-		// 	}
-		// }
-
 		server, err := server.Open(profile)
 		if err != nil {
 			panic(err)
