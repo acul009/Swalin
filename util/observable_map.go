@@ -6,7 +6,6 @@ import (
 
 type ObservableMap[K comparable, T any] interface {
 	ForEach(f func(key K, value T) error) error
-	Get(key K) (T, bool)
 	Subscribe(onSet func(K, T), onRemove func(K, T)) func()
 }
 

@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/rahn-it/svalin/config"
 
 	"github.com/spf13/cobra"
 )
@@ -22,11 +21,6 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("cli called")
-
-		err := config.SetSubdir("client")
-		if err != nil {
-			panic(err)
-		}
 
 		// addr := "localhost:1234"
 

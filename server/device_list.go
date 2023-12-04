@@ -7,7 +7,6 @@ import (
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/system"
 	"github.com/rahn-it/svalin/util"
-	"go.etcd.io/bbolt"
 )
 
 var _ util.ObservableMap[string, *system.DeviceInfo] = (*DeviceList)(nil)
@@ -39,7 +38,7 @@ func (d *DeviceList) isOnline(key string) bool {
 
 func (d *DeviceList) Get(key string) (*system.DeviceInfo, bool) {
 	var raw []byte
-	err := d.scope.View(func(b *bbolt.Bucket) error {
+	err := d.scope.View(func(b db.Bucket) error {
 		val := b.Get([]byte(key))
 		if val == nil {
 			return nil
@@ -72,7 +71,7 @@ func (d *DeviceList) Get(key string) (*system.DeviceInfo, bool) {
 }
 
 func (d *DeviceList) ForEach(handler func(key string, value *system.DeviceInfo) error) error {
-	return d.scope.View(func(b *bbolt.Bucket) error {
+	return d.scope.View(func(b db.Bucket) error {
 		return b.ForEach(func(k, v []byte) error {
 			cert, err := pki.CertificateFromPem(v)
 			if err != nil {
@@ -102,7 +101,7 @@ func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
 	rawKey := []byte(key)
 	pem := cert.PemEncode()
 
-	err := d.scope.Update(func(b *bbolt.Bucket) error {
+	err := d.scope.Update(func(b db.Bucket) error {
 		raw := b.Get(rawKey)
 		if raw != nil {
 			return fmt.Errorf("device already exists")

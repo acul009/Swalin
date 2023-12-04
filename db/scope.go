@@ -7,8 +7,8 @@ import (
 )
 
 type Scope interface {
-	Update(fn func(b *bolt.Bucket) error) error
-	View(fn func(b *bolt.Bucket) error) error
+	Update(fn func(b Bucket) error) error
+	View(fn func(b Bucket) error) error
 	Scope(name string) Scope
 }
 
@@ -20,21 +20,23 @@ type scope struct {
 	path    [][]byte
 }
 
-func getBucket(tx *bolt.Tx, context []byte, path [][]byte) (*bolt.Bucket, error) {
-	bucket, err := tx.CreateBucketIfNotExists(context)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create context bucket: %w", err)
+func getBucket(tx *bolt.Tx, context []byte, path [][]byte) (*bucket, error) {
+	bucket := tx.Bucket(context)
+	if bucket == nil {
+		return nil, fmt.Errorf("failed to get context bucket")
 	}
+
 	for _, p := range path {
-		bucket, err = bucket.CreateBucketIfNotExists(p)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create path bucket: %w", err)
+		bucket = bucket.Bucket(p)
+		if bucket == nil {
+			return nil, fmt.Errorf("failed to get path bucket")
 		}
 	}
-	return bucket, nil
+
+	return newBucket(bucket), nil
 }
 
-func (s *scope) Update(fn func(s *bolt.Bucket) error) error {
+func (s *scope) Update(fn func(s Bucket) error) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		bucket, err := getBucket(tx, s.context, s.path)
 		if err != nil {
@@ -44,7 +46,7 @@ func (s *scope) Update(fn func(s *bolt.Bucket) error) error {
 	})
 }
 
-func (s *scope) View(fn func(s *bolt.Bucket) error) error {
+func (s *scope) View(fn func(s Bucket) error) error {
 	return s.db.View(func(tx *bolt.Tx) error {
 		bucket, err := getBucket(tx, s.context, s.path)
 		if err != nil {

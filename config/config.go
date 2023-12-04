@@ -7,7 +7,6 @@ import (
 	"github.com/rahn-it/svalin/db"
 	"github.com/spf13/cast"
 	"github.com/spf13/pflag"
-	"go.etcd.io/bbolt"
 )
 
 type Config struct {
@@ -51,7 +50,7 @@ func (c *Config) Default(key string, value string) {
 
 func (c *Config) Save(key string, value any) {
 	cast := cast.ToString(value)
-	err := c.scope.Update(func(b *bbolt.Bucket) error {
+	err := c.scope.Update(func(b db.Bucket) error {
 		return b.Put([]byte(key), []byte(cast))
 	})
 
@@ -74,7 +73,7 @@ func (c *Config) String(key string) string {
 
 	var dbVal []byte
 
-	err := c.scope.View(func(b *bbolt.Bucket) error {
+	err := c.scope.View(func(b db.Bucket) error {
 		val := b.Get([]byte(key))
 		if val == nil {
 			return nil

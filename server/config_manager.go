@@ -7,7 +7,6 @@ import (
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/rmm"
 	"github.com/rahn-it/svalin/util"
-	"go.etcd.io/bbolt"
 )
 
 type ConfigManager struct {
@@ -53,7 +52,7 @@ func (h *HostConfigHandler[T]) Subscribe(onSet func(string, *pki.SignedArtifact[
 
 func (h *HostConfigHandler[T]) Get(key string) (*pki.SignedArtifact[T], bool) {
 	var raw []byte
-	err := h.db.View(func(b *bbolt.Bucket) error {
+	err := h.db.View(func(b db.Bucket) error {
 		raw = b.Get([]byte(key))
 		return nil
 	})
@@ -74,7 +73,7 @@ func (h *HostConfigHandler[T]) Get(key string) (*pki.SignedArtifact[T], bool) {
 }
 
 func (h *HostConfigHandler[T]) ForEach(handler func(key string, value *pki.SignedArtifact[T]) error) error {
-	return h.db.View(func(b *bbolt.Bucket) error {
+	return h.db.View(func(b db.Bucket) error {
 		return b.ForEach(func(k, v []byte) error {
 			artifact, err := pki.LoadSignedArtifact[T](v, h.verifier)
 			if err != nil {
@@ -90,7 +89,7 @@ func (h *HostConfigHandler[T]) UpdateConfig(config *pki.SignedArtifact[T]) error
 	pubKey := config.Artifact().GetHost().Base64Encode()
 	pubKeyRaw := []byte(pubKey)
 
-	err := h.db.Update(func(b *bbolt.Bucket) error {
+	err := h.db.Update(func(b db.Bucket) error {
 		raw := b.Get(pubKeyRaw)
 
 		if raw != nil {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/rahn-it/svalin/db"
 	"github.com/rahn-it/svalin/pki"
-	"go.etcd.io/bbolt"
 )
 
 type CredentialStore struct {
@@ -23,7 +22,7 @@ func OpenCredentialStore(scope db.Scope) *CredentialStore {
 func (cs *CredentialStore) LoadCredentials(name string, password []byte) (*pki.PermanentCredentials, error) {
 
 	var raw []byte
-	err := cs.scope.View(func(b *bbolt.Bucket) error {
+	err := cs.scope.View(func(b db.Bucket) error {
 		val := b.Get([]byte(name))
 		if val == nil {
 			return errors.New("credentials not found")
@@ -55,7 +54,7 @@ func (cs *CredentialStore) SaveCredentials(name string, credentials *pki.Permane
 
 	key := []byte(name)
 
-	err = cs.scope.Update(func(b *bbolt.Bucket) error {
+	err = cs.scope.Update(func(b db.Bucket) error {
 		return b.Put(key, raw)
 	})
 
@@ -68,7 +67,7 @@ func (cs *CredentialStore) SaveCredentials(name string, credentials *pki.Permane
 
 func (cs *CredentialStore) List() []string {
 	names := make([]string, 16)
-	err := cs.scope.View(func(b *bbolt.Bucket) error {
+	err := cs.scope.View(func(b db.Bucket) error {
 		return b.ForEach(func(k, v []byte) error {
 			names = append(names, strings.Clone(string(k)))
 			return nil

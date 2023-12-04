@@ -3,13 +3,15 @@ package rmm
 import (
 	"context"
 	"fmt"
-	"github.com/rahn-it/svalin/util"
 	"log"
 	"sync"
+
+	"github.com/rahn-it/svalin/system"
+	"github.com/rahn-it/svalin/util"
 )
 
 type Device struct {
-	*DeviceInfo
+	*system.DeviceInfo
 	c            *Client
 	mutex        sync.Mutex
 	processes    util.UpdateableMap[int32, *ProcessInfo]

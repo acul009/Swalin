@@ -2,10 +2,12 @@ package rmm
 
 import (
 	"context"
+	"log"
+
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/system"
 	"github.com/rahn-it/svalin/util"
-	"log"
 )
 
 type Client struct {
@@ -52,8 +54,8 @@ func (c *Client) initSyncedDeviceList() {
 
 	var dRunning util.AsyncAction
 
-	devicesInfo := util.NewSyncedMap[string, *DeviceInfo](
-		func(m util.UpdateableMap[string, *DeviceInfo]) {
+	devicesInfo := util.NewSyncedMap[string, *system.DeviceInfo](
+		func(m util.UpdateableMap[string, *system.DeviceInfo]) {
 			cmd := NewGetDevicesCommand(m)
 			running, err := c.dispatch().SendCommand(context.Background(), cmd)
 			if err != nil {
@@ -62,7 +64,7 @@ func (c *Client) initSyncedDeviceList() {
 			}
 			dRunning = running
 		},
-		func(_ util.UpdateableMap[string, *DeviceInfo]) {
+		func(_ util.UpdateableMap[string, *system.DeviceInfo]) {
 			err := dRunning.Close()
 			if err != nil {
 				log.Printf("Error unsubscribing from devices: %v", err)
@@ -75,7 +77,7 @@ func (c *Client) initSyncedDeviceList() {
 	devices := util.NewSyncedMap[string, *Device](
 		func(m util.UpdateableMap[string, *Device]) {
 			unsub = devicesInfo.Subscribe(
-				func(s string, di *DeviceInfo) {
+				func(s string, di *system.DeviceInfo) {
 					m.Update(s, func(d *Device, found bool) (*Device, bool) {
 						if !found {
 							d = &Device{
@@ -87,7 +89,7 @@ func (c *Client) initSyncedDeviceList() {
 						return d, true
 					})
 				},
-				func(s string, _ *DeviceInfo) {
+				func(s string, _ *system.DeviceInfo) {
 					m.Delete(s)
 				},
 			)

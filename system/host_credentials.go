@@ -7,7 +7,6 @@ import (
 	"github.com/rahn-it/svalin/db"
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/util"
-	"go.etcd.io/bbolt"
 )
 
 var hostPasswordKey = []byte("host-password")
@@ -15,7 +14,7 @@ var hostCredentialsKey = []byte("host-credentials")
 
 func LoadHostCredentials(scope db.Scope) (*pki.PermanentCredentials, error) {
 	var creds *pki.PermanentCredentials
-	err := scope.View(func(b *bbolt.Bucket) error {
+	err := scope.View(func(b db.Bucket) error {
 		password := b.Get(hostPasswordKey)
 		if password == nil {
 			return errors.New("host password not found")
@@ -57,7 +56,7 @@ func SaveHostCredentials(scope db.Scope, credentials *pki.PermanentCredentials) 
 		return fmt.Errorf("failed to encode credentials: %w", err)
 	}
 
-	return scope.Update(func(b *bbolt.Bucket) error {
+	return scope.Update(func(b db.Bucket) error {
 		err := b.Put(hostPasswordKey, password)
 		if err != nil {
 			return fmt.Errorf("failed to save password: %w", err)

@@ -88,7 +88,9 @@ func (c *verifyCertificateChainCmd) GetKey() string {
 }
 
 type upstreamVerify struct {
-	ep *RpcEndpoint
+	root     *pki.Certificate
+	upstream *pki.Certificate
+	ep       *RpcEndpoint
 }
 
 func NewUpstreamVerify(ep *RpcEndpoint) (*upstreamVerify, error) {
@@ -103,25 +105,18 @@ func (v *upstreamVerify) Verify(cert *pki.Certificate) ([]*pki.Certificate, erro
 		return nil, fmt.Errorf("certificate is nil")
 	}
 
-	root, err := pki.Root.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if certificate is root: %w", err)
-	}
-	if root.Equal(cert) {
-		return []*pki.Certificate{root}, nil
+	if v.root.Equal(cert) {
+		return []*pki.Certificate{v.root}, nil
 	}
 
-	upstream, err := pki.Upstream.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if certificate is upstream: %w", err)
-	}
-	if upstream.Equal(cert) {
-		return v.Verify(upstream)
+	if v.upstream.Equal(cert) {
+		// TODO: verify chain to root
+		return []*pki.Certificate{v.upstream}, nil
 	}
 
 	chain := make([]*pki.Certificate, 0, 1)
 
-	err = v.ep.SendSyncCommand(context.Background(),
+	err := v.ep.SendSyncCommand(context.Background(),
 		&verifyCertificateChainCmd{
 			Cert:  cert,
 			chain: chain,
@@ -136,28 +131,19 @@ func (v *upstreamVerify) Verify(cert *pki.Certificate) ([]*pki.Certificate, erro
 }
 
 func (v *upstreamVerify) VerifyPublicKey(pub *pki.PublicKey) ([]*pki.Certificate, error) {
-	root, err := pki.Root.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if public key is root: %w", err)
+	if v.root.PublicKey().Equal(pub) {
+		return []*pki.Certificate{v.root}, nil
 	}
 
-	if root.PublicKey().Equal(pub) {
-		return []*pki.Certificate{root}, nil
-	}
-
-	upstream, err := pki.Upstream.Get()
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if public key is upstream: %w", err)
-	}
-	if upstream.PublicKey().Equal(pub) {
-		return v.Verify(upstream)
+	if v.upstream.PublicKey().Equal(pub) {
+		return v.Verify(v.upstream)
 	}
 
 	cmd := &verifyCertificateChainCmd{
 		Key: pub,
 	}
 
-	err = v.ep.SendSyncCommand(context.Background(), cmd)
+	err := v.ep.SendSyncCommand(context.Background(), cmd)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to request certificate chain: %w", err)

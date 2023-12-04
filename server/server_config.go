@@ -8,7 +8,6 @@ import (
 	"github.com/rahn-it/svalin/db"
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/system"
-	"go.etcd.io/bbolt"
 )
 
 type serverConfig struct {
@@ -36,7 +35,7 @@ func openServerConfig(scope db.Scope) (*serverConfig, error) {
 }
 
 func (sc *serverConfig) initSeed() error {
-	return sc.scope.View(func(b *bbolt.Bucket) error {
+	return sc.scope.View(func(b db.Bucket) error {
 		seed := b.Get([]byte("seed"))
 		if seed == nil {
 			seed := make([]byte, 32)
