@@ -2,6 +2,7 @@ package rmm
 
 import (
 	"fmt"
+
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/rpc"
 )
@@ -39,14 +40,8 @@ func (c *uploadHostConfigCommand[T]) ExecuteServer(session *rpc.RpcSession) erro
 		return fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
-	err = SaveHostConfigToDB[T](conf)
-	if err != nil {
-		session.WriteResponseHeader(rpc.SessionResponseHeader{
-			Code: 500,
-			Msg:  "Error saving host config",
-		})
-		return fmt.Errorf("error saving host config: %w", err)
-	}
+	//TODO
+	conf.Raw()
 
 	session.WriteResponseHeader(rpc.SessionResponseHeader{
 		Code: 200,

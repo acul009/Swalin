@@ -37,3 +37,20 @@ func (c *Certificate) VerifyChain(roots *x509.CertPool, intermediates *x509.Cert
 
 	return chain, nil
 }
+
+var _ Verifier = nilVerifier{}
+
+type nilVerifier struct {
+}
+
+func NewNilVerifier() Verifier {
+	return nilVerifier{}
+}
+
+func (n nilVerifier) Verify(cert *Certificate) ([]*Certificate, error) {
+	return nil, nil
+}
+
+func (n nilVerifier) VerifyPublicKey(pub *PublicKey) ([]*Certificate, error) {
+	return nil, nil
+}

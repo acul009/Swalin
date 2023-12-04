@@ -3,11 +3,11 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"github.com/rahn-it/svalin/config"
-	"github.com/rahn-it/svalin/pki"
-	"github.com/rahn-it/svalin/util"
 	"sync"
 	"time"
+
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/util"
 
 	"github.com/quic-go/quic-go"
 )
@@ -25,21 +25,7 @@ type RpcEndpoint struct {
 	mutex sync.Mutex
 }
 
-func ConnectToUpstream(ctx context.Context, credentials pki.Credentials) (*RpcEndpoint, error) {
-	upstreamAddr := config.V().GetString("upstream.address")
-	if upstreamAddr == "" {
-		return nil, fmt.Errorf("upstream address is missing")
-	}
-
-	upstreamCert, err := pki.Upstream.Get()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing upstream certificate: %w", err)
-	}
-
-	return newRpcEndpoint(ctx, upstreamAddr, credentials, upstreamCert)
-}
-
-func newRpcEndpoint(ctx context.Context, addr string, credentials pki.Credentials, partner *pki.Certificate) (*RpcEndpoint, error) {
+func ConnectToServer(ctx context.Context, addr string, credentials pki.Credentials, partner *pki.Certificate) (*RpcEndpoint, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("address cannot be empty")
 	}

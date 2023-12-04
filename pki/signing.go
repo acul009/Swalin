@@ -59,12 +59,12 @@ func MarshalAndSign(v any, c Credentials) ([]byte, error) {
 	return msg, nil
 }
 
-func UnmarshalAndVerify(signedData []byte, v any, publicKey *PublicKey, checkRevocation bool) error {
+func UnmarshalAndVerify(signedData []byte, v any, publicKey *PublicKey) error {
 	if len(signedData) == 0 {
 		return fmt.Errorf("empty signed data")
 	}
 
-	msg, err := unpackAndVerify(signedData, publicKey, checkRevocation)
+	msg, err := unpackAndVerify(signedData, publicKey)
 	if err != nil {
 		return fmt.Errorf("failed to verify signature: %w", err)
 	}
@@ -77,13 +77,13 @@ func UnmarshalAndVerify(signedData []byte, v any, publicKey *PublicKey, checkRev
 	return nil
 }
 
-func ReadAndUnmarshalAndVerify(reader io.Reader, v any, publicKey *PublicKey, checkRevocation bool) error {
+func ReadAndUnmarshalAndVerify(reader io.Reader, v any, publicKey *PublicKey) error {
 	der, err := util.ReadSingleDer(reader)
 	if err != nil {
 		return fmt.Errorf("failed to read asn1 block: %w", err)
 	}
 
-	return UnmarshalAndVerify(der, v, publicKey, checkRevocation)
+	return UnmarshalAndVerify(der, v, publicKey)
 }
 
 type PackedData struct {
@@ -111,13 +111,13 @@ func packAndSign(data []byte, c Credentials) ([]byte, error) {
 	return packed, nil
 }
 
-func unpackAndVerify(packed []byte, publicKey *PublicKey, checkRevocation bool) ([]byte, error) {
+func unpackAndVerify(packed []byte, publicKey *PublicKey) ([]byte, error) {
 	d, err := unpack(packed)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unpack data: %w", err)
 	}
 
-	err = publicKey.verifyBytes(d.Data, d.Signature, checkRevocation)
+	err = publicKey.verifyBytes(d.Data, d.Signature)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
@@ -151,19 +151,12 @@ func (p *PrivateKey) signBytes(data []byte) ([]byte, error) {
 	return signature, nil
 }
 
-func (pub *PublicKey) verifyBytes(data []byte, signature []byte, checkRevocation bool) error {
+func (pub *PublicKey) verifyBytes(data []byte, signature []byte) error {
 	if pub == nil {
 		return fmt.Errorf("public key cannot be nil")
 	}
 
 	hash := crypto.SHA512.New().Sum(data)
-
-	if checkRevocation {
-		err := RevocationManager.CheckPayload(data)
-		if err != nil {
-			return fmt.Errorf("failed revocation check: %w", err)
-		}
-	}
 
 	ok := ecdsa.VerifyASN1(pub.ToEcdsa(), hash, signature)
 

@@ -22,10 +22,10 @@ type user struct {
 	totpSecret           []byte
 }
 
-func OpenUserStore(scope db.Scope) *userStore {
+func openUserStore(scope db.Scope) (*userStore, error) {
 	return &userStore{
 		scope: scope,
-	}
+	}, nil
 }
 
 const userPrefix = "user_"

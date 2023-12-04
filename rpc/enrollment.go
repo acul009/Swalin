@@ -7,12 +7,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/util"
 
 	"github.com/quic-go/quic-go"
 )
+
+type EndPointInitInfo struct {
+	Root        *pki.Certificate
+	Upstream    *pki.Certificate
+	Credentials *pki.PermanentCredentials
+}
 
 type enrollmentManager struct {
 	waitingEnrollments util.UpdateableMap[string, *enrollmentConnection]
@@ -152,27 +157,13 @@ func (m *enrollmentManager) subscribe(onSet func(string, Enrollment), onRemove f
 	)
 }
 
-func (m *enrollmentManager) getAll() map[string]Enrollment {
-	allConns := m.waitingEnrollments.GetAll()
-	copy := make(map[string]Enrollment)
-	for key, conn := range allConns {
-		copy[key] = conn.enrollment
-	}
-
-	return copy
-}
-
 type enrollmentResponse struct {
 	Cert     *pki.Certificate
 	Root     *pki.Certificate
 	Upstream *pki.Certificate
 }
 
-func EnrollWithUpstream() (*pki.PermanentCredentials, error) {
-	addr := config.V().GetString("upstream.address")
-	if addr == "" {
-		return nil, fmt.Errorf("upstream address is missing")
-	}
+func EnrollWithUpstream(addr string) (*EndPointInitInfo, error) {
 
 	tlsConf := getTlsTempClientConfig([]TlsConnectionProto{ProtoAgentEnroll})
 
@@ -197,11 +188,13 @@ func EnrollWithUpstream() (*pki.PermanentCredentials, error) {
 	}
 
 	conn := newRpcConnection(quicConn, nil, RpcRoleInit, initNonceStorage, nil, ProtoAgentEnroll, tempCredentials, pki.NewNilVerifier())
+	defer conn.Close(0, "")
 
 	session, err := conn.OpenSession(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("error opening session: %w", err)
 	}
+	defer session.Close()
 
 	err = session.mutateState(RpcSessionCreated, RpcSessionOpen)
 	if err != nil {
@@ -220,30 +213,15 @@ func EnrollWithUpstream() (*pki.PermanentCredentials, error) {
 		return nil, fmt.Errorf("error reading certificate: %w", err)
 	}
 
-	err = pki.Root.Set(response.Root)
-	if err != nil {
-		return nil, fmt.Errorf("error setting root certificate: %w", err)
-	}
-
-	err = pki.Upstream.Set(response.Upstream)
-	if err != nil {
-		return nil, fmt.Errorf("error setting upstream certificate: %w", err)
-	}
-
-	credentials, err := tempCredentials.UpgradeToHostCredentials(response.Cert)
+	credentials, err := tempCredentials.ToPermanentCredentials(response.Cert)
 	if err != nil {
 		return nil, fmt.Errorf("error upgrading to host credentials: %w", err)
 	}
 
-	err = session.Close()
-	if err != nil {
-		return nil, fmt.Errorf("error closing session: %w", err)
+	initInfo := &EndPointInitInfo{
+		Root:        response.Root,
+		Upstream:    response.Upstream,
+		Credentials: credentials,
 	}
-
-	err = conn.Close(200, "enrollment complete")
-	if err != nil {
-		return nil, fmt.Errorf("error closing connection: %w", err)
-	}
-
-	return credentials, nil
+	return initInfo, nil
 }

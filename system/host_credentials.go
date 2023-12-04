@@ -41,7 +41,7 @@ func LoadHostCredentials(scope db.Scope) (*pki.PermanentCredentials, error) {
 	return creds, nil
 }
 
-func SaveHostCredentials(scope db.Scope, credentials *pki.PermanentCredentials) error {
+func SaveHostCredentials(b db.Bucket, credentials *pki.PermanentCredentials) error {
 	if credentials == nil {
 		return errors.New("credentials cannot be nil")
 	}
@@ -56,17 +56,15 @@ func SaveHostCredentials(scope db.Scope, credentials *pki.PermanentCredentials) 
 		return fmt.Errorf("failed to encode credentials: %w", err)
 	}
 
-	return scope.Update(func(b db.Bucket) error {
-		err := b.Put(hostPasswordKey, password)
-		if err != nil {
-			return fmt.Errorf("failed to save password: %w", err)
-		}
+	err = b.Put(hostPasswordKey, password)
+	if err != nil {
+		return fmt.Errorf("failed to save password: %w", err)
+	}
 
-		err = b.Put(hostCredentialsKey, raw)
-		if err != nil {
-			return fmt.Errorf("failed to save credentials: %w", err)
-		}
+	err = b.Put(hostCredentialsKey, raw)
+	if err != nil {
+		return fmt.Errorf("failed to save credentials: %w", err)
+	}
 
-		return nil
-	})
+	return nil
 }

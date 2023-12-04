@@ -196,7 +196,7 @@ func ReadMessage[P any](s *RpcSession, payload P) error {
 		Payload: payload,
 	}
 
-	err := pki.ReadAndUnmarshalAndVerify(s.stream, message, s.partnerKey, false)
+	err := pki.ReadAndUnmarshalAndVerify(s.stream, message, s.partnerKey)
 	if err != nil {
 		return fmt.Errorf("error reading message: %w", err)
 	}

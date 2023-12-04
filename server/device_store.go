@@ -15,11 +15,11 @@ type deviceStore struct {
 	observableHandler *util.MapObserverHandler[string, *pki.Certificate]
 }
 
-func OpenDeviceStore(scope db.Scope) *deviceStore {
+func openDeviceStore(scope db.Scope) (*deviceStore, error) {
 	return &deviceStore{
 		scope:             scope,
 		observableHandler: util.NewMapObserverHandler[string, *pki.Certificate](),
-	}
+	}, nil
 }
 
 // Get retrieves a certificate from the device store based on the specified key.
@@ -31,7 +31,7 @@ func OpenDeviceStore(scope db.Scope) *deviceStore {
 //   - *pki.Certificate: the retrieved certificate. If no certificate is found, it returns nil.
 //   - error: any error that occurred during the retrieval process.
 func (s *deviceStore) GetDevice(key *pki.PublicKey) (*pki.Certificate, error) {
-	byteKey := key.BinaryEncode()
+	byteKey := []byte(key.Base64Encode())
 	var raw []byte
 	err := s.scope.View(func(b db.Bucket) error {
 		found := b.Get(byteKey)

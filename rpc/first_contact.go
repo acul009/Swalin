@@ -56,13 +56,8 @@ func receivePartnerKey(session *RpcSession) error {
 func sendMyKey(session *RpcSession) error {
 	credentials := session.credentials
 
-	pubKey, err := credentials.PublicKey()
-	if err != nil {
-		return fmt.Errorf("error getting public key: %w", err)
-	}
-
 	packed, err := asn1.Marshal(keyPayload{
-		PubKey: pubKey.BinaryEncode(),
+		PubKey: credentials.PublicKey().BinaryEncode(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to pack data to asn1: %w", err)

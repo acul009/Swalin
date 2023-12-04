@@ -1,9 +1,6 @@
 package server
 
 import (
-	"fmt"
-
-	"github.com/rahn-it/svalin/db"
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/system"
 	"github.com/rahn-it/svalin/util"
@@ -13,14 +10,15 @@ var _ util.ObservableMap[string, *system.DeviceInfo] = (*DeviceList)(nil)
 
 type DeviceList struct {
 	observerHandler *util.MapObserverHandler[string, *system.DeviceInfo]
-	scope           db.Scope
+	deviceStore     *deviceStore
 	online          map[string]bool
 }
 
-func NewDeviceList(scope db.Scope) *DeviceList {
+func newDeviceList(deviceStore *deviceStore) *DeviceList {
 	return &DeviceList{
 		observerHandler: util.NewMapObserverHandler[string, *system.DeviceInfo](),
-		scope:           scope,
+		deviceStore:     deviceStore,
+		online:          make(map[string]bool),
 	}
 }
 
@@ -36,57 +34,16 @@ func (d *DeviceList) isOnline(key string) bool {
 	return online
 }
 
-func (d *DeviceList) Get(key string) (*system.DeviceInfo, bool) {
-	var raw []byte
-	err := d.scope.View(func(b db.Bucket) error {
-		val := b.Get([]byte(key))
-		if val == nil {
-			return nil
+func (d *DeviceList) ForEach(fn func(key string, value *system.DeviceInfo) error) error {
+	return d.deviceStore.ForEach(func(key string, cert *pki.Certificate) error {
+		di := &system.DeviceInfo{
+			Certificate: cert,
+			LiveInfo: system.LiveDeviceInfo{
+				Online: d.isOnline(key),
+			},
 		}
 
-		raw = make([]byte, len(val))
-		copy(raw, val)
-		return nil
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	if raw == nil {
-		delete(d.online, key)
-		return nil, false
-	}
-
-	cert, err := pki.CertificateFromPem(raw)
-	if err != nil {
-		panic(err)
-	}
-
-	return &system.DeviceInfo{
-		Certificate: cert,
-		LiveInfo: system.LiveDeviceInfo{
-			Online: d.isOnline(key),
-		},
-	}, true
-}
-
-func (d *DeviceList) ForEach(handler func(key string, value *system.DeviceInfo) error) error {
-	return d.scope.View(func(b db.Bucket) error {
-		return b.ForEach(func(k, v []byte) error {
-			cert, err := pki.CertificateFromPem(v)
-			if err != nil {
-				return err
-			}
-
-			di := &system.DeviceInfo{
-				Certificate: cert,
-				LiveInfo: system.LiveDeviceInfo{
-					Online: d.isOnline(cert.PublicKey().Base64Encode()),
-				},
-			}
-
-			return handler(cert.PublicKey().Base64Encode(), di)
-		})
+		return fn(key, di)
 	})
 }
 
@@ -95,23 +52,9 @@ func (d *DeviceList) Subscribe(onUpdate func(string, *system.DeviceInfo), onRemo
 }
 
 func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
-	// TODO: verify certificate
+	// TODO
 
 	key := cert.PublicKey().Base64Encode()
-	rawKey := []byte(key)
-	pem := cert.PemEncode()
-
-	err := d.scope.Update(func(b db.Bucket) error {
-		raw := b.Get(rawKey)
-		if raw != nil {
-			return fmt.Errorf("device already exists")
-		}
-		return b.Put(rawKey, pem)
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to add device: %w", err)
-	}
 
 	di := &system.DeviceInfo{
 		Certificate: cert,

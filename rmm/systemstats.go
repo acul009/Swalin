@@ -2,8 +2,9 @@ package rmm
 
 import (
 	"fmt"
-	"github.com/rahn-it/svalin/util"
 	"time"
+
+	"github.com/rahn-it/svalin/util"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/host"
@@ -142,37 +143,18 @@ func MonitorProcesses(errChan chan<- error) (util.UpdateableMap[int32, *ProcessI
 
 	go func() {
 		for {
-			pids, err := process.Pids()
+			processes, err := process.Processes()
 			if err != nil {
 				errChan <- fmt.Errorf("error getting processes: %w", err)
 				return
 			}
 
-			known := list.GetAll()
-
-			for _, pid := range pids {
-				_, ok := known[pid]
-				if !ok {
-
-					process, err := process.NewProcess(pid)
-					if err != nil {
-						errChan <- fmt.Errorf("error getting process: %w", err)
-						return
-					}
-
-					name, _ := process.Name()
-
-					list.Set(pid, &ProcessInfo{
-						Name: name,
-						Pid:  pid,
-					})
-				} else {
-					delete(known, pid)
-				}
-			}
-
-			for pid := range known {
-				list.Delete(pid)
+			for _, p := range processes {
+				name, _ := p.Name()
+				list.Set(p.Pid, &ProcessInfo{
+					Name: name,
+					Pid:  p.Pid,
+				})
 			}
 
 			time.Sleep(5 * time.Second)

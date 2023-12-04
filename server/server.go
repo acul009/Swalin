@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/rahn-it/svalin/config"
-	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/rmm"
 	"github.com/rahn-it/svalin/rpc"
 	"github.com/rahn-it/svalin/system"
@@ -15,10 +14,14 @@ import (
 
 type Server struct {
 	*rpc.RpcServer
-	serverConfig  *serverConfig
-	profile       *config.Profile
-	devices       util.ObservableMap[string, *system.DeviceInfo]
-	configManager *ConfigManager
+	serverConfig    *serverConfig
+	profile         *config.Profile
+	userStore       *userStore
+	deviceStore     *deviceStore
+	revocationStore *system.RevocationStore
+	verifier        *LocalCertificateVerifier
+	devices         util.ObservableMap[string, *system.DeviceInfo]
+	configManager   *ConfigManager
 }
 
 func Open(profile *config.Profile) (*Server, error) {
@@ -32,14 +35,29 @@ func Open(profile *config.Profile) (*Server, error) {
 		return nil, fmt.Errorf("error opening server config: %w", err)
 	}
 
-	verifier, err := pki.NewLocalVerify()
+	userStore, err := openUserStore(scope.Scope("users"))
 	if err != nil {
-		return nil, fmt.Errorf("error creating local verify: %w", err)
+		return nil, fmt.Errorf("error opening user store: %w", err)
+	}
+
+	deviceStore, err := openDeviceStore(scope.Scope("devices"))
+	if err != nil {
+		return nil, fmt.Errorf("error opening device store: %w", err)
+	}
+
+	revocationStore, err := system.OpenRevocationStore(scope.Scope("revocation"), serverConfig.Root())
+	if err != nil {
+		return nil, fmt.Errorf("error opening revocation store: %w", err)
+	}
+
+	verifier, err := newLocalCertificateVerifier(serverConfig.Root(), userStore, deviceStore, revocationStore)
+	if err != nil {
+		return nil, fmt.Errorf("error creating local certificate verifier: %w", err)
 	}
 
 	ConfigManager := NewConfigManager(verifier, nil)
 
-	devices := NewDeviceList(scope.Scope("devices"))
+	devices := newDeviceList(deviceStore)
 
 	cmds := rpc.NewCommandCollection(
 		rpc.PingHandler,
@@ -71,10 +89,15 @@ func Open(profile *config.Profile) (*Server, error) {
 	)
 
 	s := &Server{
-		RpcServer:     rpcS,
-		devices:       devices,
-		serverConfig:  serverConfig,
-		configManager: ConfigManager,
+		RpcServer:       rpcS,
+		profile:         profile,
+		userStore:       userStore,
+		deviceStore:     deviceStore,
+		revocationStore: revocationStore,
+		verifier:        verifier,
+		devices:         devices,
+		serverConfig:    serverConfig,
+		configManager:   ConfigManager,
 	}
 
 	return s, nil
@@ -82,4 +105,21 @@ func Open(profile *config.Profile) (*Server, error) {
 
 func (s *Server) Run() error {
 	return s.RpcServer.Run()
+}
+
+func InitServer(profile *config.Profile) error {
+	scope := profile.Scope()
+
+	listenAddr := profile.Config().String("server.address")
+	credentials, root, err := rpc.WaitForServerSetup(listenAddr)
+	if err != nil {
+		return fmt.Errorf("error waiting for server setup: %w", err)
+	}
+
+	err = initServerConfig(scope.Scope("server"), credentials, root)
+	if err != nil {
+		return fmt.Errorf("error initializing server config: %w", err)
+	}
+
+	return nil
 }

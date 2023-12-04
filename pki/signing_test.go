@@ -34,7 +34,7 @@ func TestSignBytes(t *testing.T) {
 
 	unmarshalled := &testData{}
 
-	err = pki.UnmarshalAndVerify(marshalled, unmarshalled, credentials.PublicKey(), false)
+	err = pki.UnmarshalAndVerify(marshalled, unmarshalled, credentials.PublicKey())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,17 +105,17 @@ func TestPackedReadWrite(t *testing.T) {
 
 	unmarshalled3 := make([]byte, 10000)
 
-	err = pki.ReadAndUnmarshalAndVerify(reader, unmarshalled1, pub, false)
+	err = pki.ReadAndUnmarshalAndVerify(reader, unmarshalled1, pub)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = pki.ReadAndUnmarshalAndVerify(reader, unmarshalled2, pub, false)
+	err = pki.ReadAndUnmarshalAndVerify(reader, unmarshalled2, pub)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = pki.ReadAndUnmarshalAndVerify(reader, &unmarshalled3, pub, false)
+	err = pki.ReadAndUnmarshalAndVerify(reader, &unmarshalled3, pub)
 	if err != nil {
 		t.Fatal(err)
 	}

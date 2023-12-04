@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 
@@ -14,6 +15,7 @@ type serverConfig struct {
 	scope       db.Scope
 	seed        []byte
 	credentials *pki.PermanentCredentials
+	root        *pki.Certificate
 }
 
 func openServerConfig(scope db.Scope) (*serverConfig, error) {
@@ -24,6 +26,11 @@ func openServerConfig(scope db.Scope) (*serverConfig, error) {
 	err := sc.initSeed()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize seed: %w", err)
+	}
+
+	err = sc.loadRoot()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load root: %w", err)
 	}
 
 	err = sc.loadCredentials()
@@ -73,4 +80,41 @@ func (sc *serverConfig) loadCredentials() error {
 
 func (sc *serverConfig) Credentials() *pki.PermanentCredentials {
 	return sc.credentials
+}
+
+func (sc *serverConfig) loadRoot() error {
+	return sc.scope.View(func(b db.Bucket) error {
+		raw := b.Get([]byte("root"))
+
+		if raw == nil {
+			return errors.New("root certificate not found")
+		}
+		root, err := pki.CertificateFromPem(raw)
+		if err != nil {
+			return fmt.Errorf("failed to load root certificate: %w", err)
+		}
+
+		sc.root = root
+		return nil
+	})
+}
+
+func (sc *serverConfig) Root() *pki.Certificate {
+	return sc.root
+}
+
+func initServerConfig(scope db.Scope, credentials *pki.PermanentCredentials, root *pki.Certificate) error {
+	return scope.Update(func(b db.Bucket) error {
+		err := b.Put([]byte("root"), root.PemEncode())
+		if err != nil {
+			return fmt.Errorf("failed to save root certificate: %w", err)
+		}
+
+		err = system.SaveHostCredentials(b, credentials)
+		if err != nil {
+			return fmt.Errorf("failed to save host credentials: %w", err)
+		}
+
+		return nil
+	})
 }

@@ -9,13 +9,7 @@ import (
 	"github.com/rahn-it/svalin/util"
 )
 
-type LoginSuccess struct {
-	Root        *pki.Certificate
-	Upstream    *pki.Certificate
-	Credentials *pki.PermanentCredentials
-}
-
-func Login(conn *RpcConnection, username string, password []byte, totpCode string) (*LoginSuccess, error) {
+func Login(conn *RpcConnection, username string, password []byte, totpCode string) (*EndPointInitInfo, error) {
 	defer conn.Close(500, "")
 
 	credentials, err := pki.GenerateCredentials()
@@ -85,7 +79,7 @@ func Login(conn *RpcConnection, username string, password []byte, totpCode strin
 		return nil, fmt.Errorf("error decrypting private key: %w", err)
 	}
 
-	login := &LoginSuccess{
+	login := &EndPointInitInfo{
 		Root:        success.RootCert,
 		Upstream:    success.UpstreamCert,
 		Credentials: pki.CredentialsFromCertAndKey(success.Cert, privateKey),

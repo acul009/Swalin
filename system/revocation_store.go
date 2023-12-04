@@ -18,11 +18,11 @@ type revocation struct {
 	date  int64
 }
 
-func OpenRevocationStore(scope db.Scope, root *pki.Certificate) *RevocationStore {
+func OpenRevocationStore(scope db.Scope, root *pki.Certificate) (*RevocationStore, error) {
 	return &RevocationStore{
 		scope: scope,
 		root:  root,
-	}
+	}, nil
 }
 
 func (rs *RevocationStore) getHashers() map[string]crypto.Hash {
@@ -31,7 +31,11 @@ func (rs *RevocationStore) getHashers() map[string]crypto.Hash {
 	}
 }
 
-func (rs *RevocationStore) Check(payload []byte) error {
+func (rs *RevocationStore) CheckCertificate(cert *pki.Certificate) error {
+	return rs.check(cert.BinaryEncode())
+}
+
+func (rs *RevocationStore) check(payload []byte) error {
 	hashers := rs.getHashers()
 
 	hashKeys := make([][]byte, 0, len(hashers))
@@ -45,7 +49,7 @@ func (rs *RevocationStore) Check(payload []byte) error {
 		hashKeys = append(hashKeys, hashKey)
 	}
 
-	rs.scope.View(func(b db.Bucket) error {
+	return nil
+	// TODO
 
-	})
 }

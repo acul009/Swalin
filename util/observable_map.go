@@ -4,12 +4,12 @@ import (
 	"sync"
 )
 
-type ObservableMap[K comparable, T any] interface {
+type ObservableMap[K any, T any] interface {
 	ForEach(f func(key K, value T) error) error
 	Subscribe(onSet func(K, T), onRemove func(K, T)) func()
 }
 
-type UpdateableMap[K comparable, T any] interface {
+type UpdateableMap[K any, T any] interface {
 	ObservableMap[K, T]
 	Set(key K, value T)
 	Delete(key K)

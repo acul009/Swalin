@@ -113,7 +113,7 @@ func LoadSignedBlob(raw []byte, verifier Verifier) (*SignedBlob, error) {
 		return nil, errDangerous
 	}
 
-	err = cert.PublicKey().verifyBytes(packed.Data, packed.Signature, true)
+	err = cert.PublicKey().verifyBytes(packed.Data, packed.Signature)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
