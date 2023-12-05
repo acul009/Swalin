@@ -61,18 +61,15 @@ func Open(profile *config.Profile) (*Server, error) {
 
 	cmds := rpc.NewCommandCollection(
 		rpc.PingHandler,
-		rpc.RegisterUserHandler,
-		// rpc.GetPendingEnrollmentsHandler,
 		rpc.EnrollAgentHandler,
 		rmm.CreateGetDevicesCommandHandler(devices),
 		rpc.ForwardCommandHandler,
-		rpc.VerifyCertificateChainHandler,
-		// CreateHostConfigCommandHandler[*TunnelConfig],
+		system.CreateUpstreamVerificationCommandHandler(verifier),
 	)
 
 	listenAddr := config.String("server.address")
 
-	rpcS, err := rpc.NewRpcServer(listenAddr, cmds, verifier, serverConfig.Credentials())
+	rpcS, err := rpc.NewRpcServer(listenAddr, cmds, verifier, serverConfig.Credentials(), serverConfig.Root())
 	if err != nil {
 		return nil, fmt.Errorf("error creating rpc server: %w", err)
 	}
@@ -108,15 +105,26 @@ func (s *Server) Run() error {
 }
 
 func InitServer(profile *config.Profile) error {
-	scope := profile.Scope()
+	scope := profile.Scope().Scope("server")
 
+	configFound, err := checkForServerConfig(scope)
+	if err != nil {
+		return fmt.Errorf("error checking for server config: %w", err)
+	}
+
+	if configFound {
+		return nil
+	}
+
+	profile.Config().Default("server.address", "localhost:1234")
 	listenAddr := profile.Config().String("server.address")
 	credentials, root, err := rpc.WaitForServerSetup(listenAddr)
 	if err != nil {
 		return fmt.Errorf("error waiting for server setup: %w", err)
 	}
+	profile.Config().Save("server.address", listenAddr)
 
-	err = initServerConfig(scope.Scope("server"), credentials, root)
+	err = initServerConfig(scope, credentials, root)
 	if err != nil {
 		return fmt.Errorf("error initializing server config: %w", err)
 	}

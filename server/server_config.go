@@ -103,6 +103,22 @@ func (sc *serverConfig) Root() *pki.Certificate {
 	return sc.root
 }
 
+func checkForServerConfig(scope db.Scope) (bool, error) {
+	found := false
+	err := scope.View(func(b db.Bucket) error {
+		root := b.Get([]byte("root"))
+		if root != nil {
+			found = true
+		}
+		return nil
+	})
+	if err != nil {
+		return false, fmt.Errorf("failed to check for server config: %w", err)
+	}
+
+	return found, nil
+}
+
 func initServerConfig(scope db.Scope, credentials *pki.PermanentCredentials, root *pki.Certificate) error {
 	return scope.Update(func(b db.Bucket) error {
 		err := b.Put([]byte("root"), root.PemEncode())

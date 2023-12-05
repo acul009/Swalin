@@ -22,6 +22,7 @@ type EndPointInitInfo struct {
 type enrollmentManager struct {
 	waitingEnrollments util.UpdateableMap[string, *enrollmentConnection]
 	upstream           *pki.Certificate
+	root               *pki.Certificate
 	mutex              sync.Mutex
 }
 
@@ -40,10 +41,11 @@ type Enrollment struct {
 
 const maxEnrollmentTime = 5 * time.Minute
 
-func newEnrollmentManager(upstream *pki.Certificate) *enrollmentManager {
+func newEnrollmentManager(upstream *pki.Certificate, root *pki.Certificate) *enrollmentManager {
 	return &enrollmentManager{
 		waitingEnrollments: util.NewObservableMap[string, *enrollmentConnection](),
 		upstream:           upstream,
+		root:               root,
 		mutex:              sync.Mutex{},
 	}
 }
@@ -51,13 +53,17 @@ func newEnrollmentManager(upstream *pki.Certificate) *enrollmentManager {
 func (m *enrollmentManager) cleanup() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	for key, econn := range m.waitingEnrollments.GetAll() {
+	timeout := make([]string, 0)
+	m.waitingEnrollments.ForEach(func(key string, econn *enrollmentConnection) error {
 		if econn.mutex.TryLock() && time.Since(econn.enrollment.RequestTime) > maxEnrollmentTime {
-			log.Printf("enrollment timed out for %s", key)
-			econn.connection.Close(408, "enrollment timed out")
-			m.waitingEnrollments.Delete(key)
+			timeout = append(timeout, key)
+			econn.mutex.Unlock()
 		}
-		econn.mutex.Unlock()
+		return nil
+	})
+
+	for _, key := range timeout {
+		m.waitingEnrollments.Delete(key)
 	}
 }
 
@@ -123,19 +129,13 @@ func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
 
 	m.waitingEnrollments.Delete(encodedKey)
 
-	root, err := pki.Root.Get()
-	if err != nil {
-		econn.connection.Close(500, "error getting root certificate")
-		return fmt.Errorf("error getting root certificate: %w", err)
-	}
-
 	reponse := &enrollmentResponse{
 		Cert:     cert,
-		Root:     root,
+		Root:     m.root,
 		Upstream: m.upstream,
 	}
 
-	err = WriteMessage[*enrollmentResponse](econn.session, reponse)
+	err := WriteMessage[*enrollmentResponse](econn.session, reponse)
 	if err != nil {
 		econn.connection.Close(500, "error writing response")
 		return fmt.Errorf("error writing response: %w", err)

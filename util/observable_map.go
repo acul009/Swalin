@@ -12,6 +12,7 @@ type ObservableMap[K any, T any] interface {
 type UpdateableMap[K any, T any] interface {
 	ObservableMap[K, T]
 	Set(key K, value T)
+	Get(key K) (T, bool)
 	Delete(key K)
 	Update(key K, updateFunc func(value T, found bool) (T, bool))
 }

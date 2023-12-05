@@ -49,7 +49,7 @@ const (
 	RpcServerStopped
 )
 
-func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, verifier pki.Verifier, credentials *pki.PermanentCredentials) (*RpcServer, error) {
+func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, verifier pki.Verifier, credentials *pki.PermanentCredentials, root *pki.Certificate) (*RpcServer, error) {
 	tlsConf, err := getTlsServerConfig([]TlsConnectionProto{ProtoRpc, ProtoClientLogin, ProtoAgentEnroll})
 	if err != nil {
 		return nil, fmt.Errorf("error getting server tls config: %w", err)
@@ -63,11 +63,6 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, verifier pk
 		return nil, fmt.Errorf("error creating QUIC server: %w", err)
 	}
 
-	cert, err := credentials.Certificate()
-	if err != nil {
-		return nil, fmt.Errorf("error getting certificate: %w", err)
-	}
-
 	return &RpcServer{
 		listener:          listener,
 		rpcCommands:       rpcCommands,
@@ -76,7 +71,7 @@ func NewRpcServer(listenAddr string, rpcCommands *CommandCollection, verifier pk
 		mutex:             sync.Mutex{},
 		nonceStorage:      util.NewNonceStorage(),
 		credentials:       credentials,
-		enrollment:        newEnrollmentManager(cert),
+		enrollment:        newEnrollmentManager(credentials.Certificate(), root),
 		verifier:          verifier,
 	}, nil
 }
@@ -169,8 +164,12 @@ func (s *RpcServer) accept() (*RpcConnection, error) {
 	return connection, nil
 }
 
-func (s *RpcServer) Connections() util.UpdateableMap[uuid.UUID, *RpcConnection] {
+func (s *RpcServer) Connections() util.ObservableMap[uuid.UUID, *RpcConnection] {
 	return s.activeConnections
+}
+
+func (s *RpcServer) Enrollments() *enrollmentManager {
+	return s.enrollment
 }
 
 func (s *RpcServer) removeConnection(uuid uuid.UUID) {
@@ -250,7 +249,6 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 		return fmt.Errorf("RPC server not running")
 	}
 	s.state = RpcServerStopped
-	connectionsToClose := s.activeConnections.GetAll()
 	s.mutex.Unlock()
 
 	// tell all connections to close
@@ -259,7 +257,7 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 
 	errorList := make([]error, 0)
 
-	for _, connection := range connectionsToClose {
+	s.activeConnections.ForEach(func(_ uuid.UUID, connection *RpcConnection) error {
 		wg.Add(1)
 		go func(connection *RpcConnection) {
 			err := connection.Close(code, msg)
@@ -268,7 +266,8 @@ func (s *RpcServer) Close(code quic.ApplicationErrorCode, msg string) error {
 			}
 			wg.Done()
 		}(connection)
-	}
+		return nil
+	})
 
 	go func() {
 		wg.Wait()
@@ -297,14 +296,20 @@ func (s *RpcServer) cleanup() {
 func (s *RpcServer) getConnectionWith(partner *pki.Certificate) (*RpcConnection, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	for _, connection := range s.activeConnections.GetAll() {
+	var conn *RpcConnection
+	s.activeConnections.ForEach(func(uuid uuid.UUID, connection *RpcConnection) error {
 		if connection.partner == nil {
-			continue
+			return nil
 		}
-
 		if connection.partner.Equal(partner) {
-			return connection, nil
+			conn = connection
+			return errors.New("found connection")
 		}
+		return nil
+	})
+
+	if conn != nil {
+		return conn, nil
 	}
 
 	return nil, fmt.Errorf("no connection found")

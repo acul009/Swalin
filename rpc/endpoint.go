@@ -25,7 +25,7 @@ type RpcEndpoint struct {
 	mutex sync.Mutex
 }
 
-func ConnectToServer(ctx context.Context, addr string, credentials pki.Credentials, partner *pki.Certificate) (*RpcEndpoint, error) {
+func ConnectToServer(ctx context.Context, addr string, credentials pki.Credentials, partner *pki.Certificate, verifier pki.Verifier) (*RpcEndpoint, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("address cannot be empty")
 	}
@@ -49,20 +49,13 @@ func ConnectToServer(ctx context.Context, addr string, credentials pki.Credentia
 		return nil, fmt.Errorf("error creating QUIC connection: %w", err)
 	}
 
-	rpcConn := newRpcConnection(quicConn, nil, RpcRoleClient, util.NewNonceStorage(), partner, ProtoRpc, credentials, nil)
+	rpcConn := newRpcConnection(quicConn, nil, RpcRoleClient, util.NewNonceStorage(), partner, ProtoRpc, credentials, verifier)
 
 	ep := &RpcEndpoint{
 		conn:  rpcConn,
 		state: RpcEndpointRunning,
 		mutex: sync.Mutex{},
 	}
-
-	verifier, err := NewUpstreamVerify(ep)
-	if err != nil {
-		return nil, fmt.Errorf("error creating upstream verify: %w", err)
-	}
-
-	ep.conn.verifier = verifier
 
 	return ep, nil
 }
