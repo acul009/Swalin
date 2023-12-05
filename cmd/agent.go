@@ -4,19 +4,10 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
 
+	"github.com/rahn-it/svalin/agent"
 	"github.com/rahn-it/svalin/config"
-	"github.com/rahn-it/svalin/pki"
-	"github.com/rahn-it/svalin/rmm"
-	"github.com/rahn-it/svalin/rpc"
 
 	"github.com/spf13/cobra"
 )
@@ -34,57 +25,20 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Printf("agent called")
 
-		profile, err := config.OpenProfile("agent")
+		profile, err := config.OpenProfile("default", "agent")
 		if err != nil {
 			panic(err)
 		}
 
-		err := config.SetSubdir("agent")
+		agent, err := agent.Connect(profile)
 		if err != nil {
 			panic(err)
 		}
 
-		credentials, err := pki.GetHostCredentials()
+		err = agent.Run()
 		if err != nil {
-			if errors.Is(err, pki.ErrNotInitialized) {
-				log.Printf("agent not yet initialized")
-				credentials, err = rpc.EnrollWithUpstream()
-				if err != nil {
-					panic(err)
-				}
-			} else {
-				panic(err)
-			}
+			panic(err)
 		}
-
-		agent, err := rmm.AgentConnect(context.Background(), credentials)
-
-		wg := sync.WaitGroup{}
-
-		wg.Add(1)
-		go func() {
-			err = agent.Run()
-			if err != nil {
-				panic(err)
-			}
-			wg.Done()
-		}()
-
-		interrupt := make(chan os.Signal, 1)
-		signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
-
-		go func() {
-			<-interrupt
-			err := agent.Close()
-			if err != nil {
-				err := fmt.Errorf("error shutting down program: error closing agent: %w", err)
-				log.Println(err)
-			} else {
-				log.Println("Agent closed without errors")
-			}
-		}()
-
-		wg.Wait()
 	},
 }
 

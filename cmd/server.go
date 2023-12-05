@@ -32,13 +32,18 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("server called")
 
-		profile, err := config.OpenProfile("server")
+		profile, err := config.OpenProfile("default", "server")
 		if err != nil {
 			panic(err)
 		}
 
 		config := profile.Config()
 		config.BindFlags(cmd.Flags())
+
+		err = server.Init(profile)
+		if err != nil {
+			panic(err)
+		}
 
 		server, err := server.Open(profile)
 		if err != nil {

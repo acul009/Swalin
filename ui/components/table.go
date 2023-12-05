@@ -1,9 +1,10 @@
 package components
 
 import (
-	"github.com/rahn-it/svalin/util"
 	"log"
 	"sync"
+
+	"github.com/rahn-it/svalin/util"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/layout"
@@ -121,11 +122,16 @@ func (t *Table[T, U]) CreateRenderer() fyne.WidgetRenderer {
 		},
 	)
 
-	all := t.m.GetAll()
+	count := 0
 
-	tr.rowMap = make(map[T]int, len(all))
+	t.m.ForEach(func(key T, value U) error {
+		count++
+		return nil
+	})
 
-	cellAmount := len(all) * len(t.cols)
+	tr.rowMap = make(map[T]int, count)
+
+	cellAmount := count * len(t.cols)
 
 	if t.displayHeader {
 		cellAmount += len(t.cols)
@@ -143,16 +149,18 @@ func (t *Table[T, U]) CreateRenderer() fyne.WidgetRenderer {
 		}
 	}
 
-	for key, val := range t.m.GetAll() {
+	t.m.ForEach(func(key T, value U) error {
 
 		tr.rowMap[key] = len(tr.cells)
 
 		for _, col := range t.cols {
 			cell := col.newCell()
 			tr.cells = append(tr.cells, cell)
-			cell.update(val)
+			cell.update(value)
 		}
-	}
+
+		return nil
+	})
 
 	return tr
 

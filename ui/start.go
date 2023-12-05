@@ -1,15 +1,12 @@
 package ui
 
 import (
-	"context"
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"log"
 	"sync"
 
 	"github.com/rahn-it/svalin/config"
-	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/rpc"
 	"github.com/rahn-it/svalin/util"
 
@@ -20,7 +17,8 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/data/validation"
-	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
@@ -32,22 +30,56 @@ func StartUI() {
 	a.SetIcon(data.FyneLogo)
 	w := a.NewWindow("Fyne Demo")
 
-	if config.V().GetString("upstream.address") != "" {
-		unlock(w)
-	} else {
-		setup(w)
-	}
+	chooseProfile(w)
 
 	w.Resize(fyne.NewSize(800, 600))
 	w.ShowAndRun()
 }
 
+func chooseProfile(w fyne.Window) {
+	profiles, err := config.ListProfiles("client")
+	if err != nil {
+		panic(err)
+	}
+
+	if len(profiles) == 0 {
+		setup(w)
+		return
+	}
+
+	profileSelect := widget.NewSelect(profiles, nil)
+
+	selectButton := widget.NewButton("Select", func() {
+
+	})
+	selectButton.Disable()
+
+	profileSelect.OnChanged = func(s string) {
+		if s == "" {
+			selectButton.Disable()
+		} else {
+			selectButton.Enable()
+		}
+	}
+
+	newButton := widget.NewButtonWithIcon("New", theme.ContentAddIcon(), func() {
+		setup(w)
+	})
+
+	w.SetContent(container.NewVBox(
+		widget.NewLabel("Choose profile"),
+		profileSelect,
+		selectButton,
+		layout.NewSpacer(),
+		newButton,
+	))
+}
+
 func unlock(w fyne.Window) {
 	infoLabel := widget.NewLabel("Please login")
 
-	availableUsers, err := pki.ListAvailableUserCredentials()
-	if err != nil {
-		panic(err)
+	availableUsers := []string{
+		"admin",
 	}
 
 	userSelect := widget.NewSelect(availableUsers, nil)
@@ -62,20 +94,6 @@ func unlock(w fyne.Window) {
 	form.SubmitText = "Login"
 
 	submitFunc := func() {
-		username := userSelect.Selected
-		password := passwordField.Text
-
-		credentials, err := pki.GetUserCredentials(username, []byte(password))
-		if err != nil {
-			if errors.Is(err, pki.ErrWrongPassword) {
-				dialog.ShowError(fmt.Errorf("wrong password"), w)
-				return
-			} else {
-				panic(err)
-			}
-		}
-
-		startMainMenu(w, credentials)
 	}
 
 	form.OnSubmit = submitFunc
@@ -153,18 +171,6 @@ func setupLoginForm(w fyne.Window, conn *rpc.RpcConnection) {
 
 	form.OnSubmit = func() {
 
-		username := userInput.Text
-
-		password := passwordInput.Text
-
-		totpCode := totpInput.Text
-
-		credentials, err := rpc.Login(conn, username, []byte(password), totpCode)
-		if err != nil {
-			panic(err)
-		}
-
-		startMainMenu(w, credentials)
 	}
 
 	w.SetContent(
@@ -215,45 +221,45 @@ func setupServerForm(w fyne.Window, conn *rpc.RpcConnection) {
 
 			fmt.Printf("\ntotp secret: %s\ntotp code: %s\n", totpSecret, totpCode)
 
-			serverName := serverNameInput.Text
+			// serverName := serverNameInput.Text
 
-			username := userInput.Text
+			// username := userInput.Text
 
-			password := passwordInput.Text
+			// password := passwordInput.Text
 
-			err = pki.InitRoot(username, []byte(password))
-			if err != nil {
-				log.Printf("failed to init root: %v", err)
-				return
-			}
+			// err = pki.InitRoot(username, []byte(password))
+			// if err != nil {
+			// 	log.Printf("failed to init root: %v", err)
+			// 	return
+			// }
 
-			credentials, err := pki.GetUserCredentials(username, []byte(password))
-			if err != nil {
-				log.Printf("failed to get user credentials: %v", err)
-				return
-			}
+			// credentials, err := pki.GetUserCredentials(username, []byte(password))
+			// if err != nil {
+			// 	log.Printf("failed to get user credentials: %v", err)
+			// 	return
+			// }
 
-			err = rpc.SetupServer(conn, credentials, serverName)
-			if err != nil {
-				log.Printf("failed to setup server: %v", err)
-			}
+			// err = rpc.SetupServer(conn, credentials, serverName)
+			// if err != nil {
+			// 	log.Printf("failed to setup server: %v", err)
+			// }
 
-			reg, err := rpc.NewRegisterUserCmd(credentials, []byte(password), totpSecret, totpCode)
-			if err != nil {
-				panic(err)
-			}
+			// reg, err := rpc.NewRegisterUserCmd(credentials, []byte(password), totpSecret, totpCode)
+			// if err != nil {
+			// 	panic(err)
+			// }
 
-			cli, err := rpc.ConnectToUpstream(context.Background(), credentials)
-			if err != nil {
-				panic(err)
-			}
+			// cli, err := rpc.ConnectToUpstream(context.Background(), credentials)
+			// if err != nil {
+			// 	panic(err)
+			// }
 
-			err = cli.SendSyncCommand(context.Background(), reg)
-			if err != nil {
-				panic(err)
-			}
+			// err = cli.SendSyncCommand(context.Background(), reg)
+			// if err != nil {
+			// 	panic(err)
+			// }
 
-			startMainMenu(w, credentials)
+			// startMainMenu(w, credentials)
 		}()
 	}
 

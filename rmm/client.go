@@ -2,6 +2,7 @@ package rmm
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/rahn-it/svalin/pki"
@@ -17,21 +18,7 @@ type Client struct {
 }
 
 func ClientConnect(ctx context.Context, credentials *pki.PermanentCredentials) (*Client, error) {
-	ep, err := rpc.ConnectToUpstream(ctx, credentials)
-	if err != nil {
-		return nil, err
-	}
-
-	c := &Client{
-		ep: ep,
-	}
-
-	c.initSyncedDeviceList()
-
-	th := newTunnelHandler(ep)
-	c.tunnelHandler = th
-
-	return c, nil
+	return nil, errors.New("deprecated")
 }
 
 func (c *Client) Tunnels() *tunnelHandler {

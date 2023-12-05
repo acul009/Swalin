@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/rmm"
@@ -104,7 +105,7 @@ func (s *Server) Run() error {
 	return s.RpcServer.Run()
 }
 
-func InitServer(profile *config.Profile) error {
+func Init(profile *config.Profile) error {
 	scope := profile.Scope().Scope("server")
 
 	configFound, err := checkForServerConfig(scope)
@@ -118,6 +119,9 @@ func InitServer(profile *config.Profile) error {
 
 	profile.Config().Default("server.address", "localhost:1234")
 	listenAddr := profile.Config().String("server.address")
+
+	log.Printf("Server Waiting for initial setup on %s", listenAddr)
+
 	credentials, root, err := rpc.WaitForServerSetup(listenAddr)
 	if err != nil {
 		return fmt.Errorf("error waiting for server setup: %w", err)

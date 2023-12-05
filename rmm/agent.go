@@ -2,7 +2,9 @@ package rmm
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/rpc"
 )
@@ -13,16 +15,18 @@ type Agent struct {
 
 func AgentConnect(ctx context.Context, credentials *pki.PermanentCredentials) (*Agent, error) {
 
-	ep, err := rpc.ConnectToUpstream(ctx, credentials)
-	if err != nil {
-		return nil, fmt.Errorf("unable to connect to upstream server: %w", err)
-	}
+	// ep, err := rpc.ConnectToUpstream(ctx, credentials)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("unable to connect to upstream server: %w", err)
+	// }
 
-	a := &Agent{
-		RpcEndpoint: ep,
-	}
+	// a := &Agent{
+	// 	RpcEndpoint: ep,
+	// }
 
-	return a, nil
+	// return a, nil
+
+	return nil, errors.New("deprecated")
 }
 
 func (a *Agent) Run() error {

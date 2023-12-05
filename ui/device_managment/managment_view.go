@@ -1,11 +1,12 @@
 package managment
 
 import (
+	"log"
+
 	"github.com/rahn-it/svalin/rmm"
 	"github.com/rahn-it/svalin/ui/components"
 	"github.com/rahn-it/svalin/ui/mainview.go"
 	"github.com/rahn-it/svalin/util"
-	"log"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/layout"
@@ -71,7 +72,7 @@ func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
 				return widget.NewIcon(offlineIcon)
 			},
 			func(device *rmm.Device, icon *widget.Icon) {
-				if device.Online {
+				if device.DeviceInfo.LiveInfo.Online {
 					icon.SetResource(onlineIcon)
 				} else {
 					icon.SetResource(offlineIcon)

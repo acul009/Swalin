@@ -2,10 +2,11 @@ package managment
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/rahn-it/svalin/rmm"
 	"github.com/rahn-it/svalin/ui/components"
 	"github.com/rahn-it/svalin/util"
-	"strconv"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -40,21 +41,7 @@ func newTunnelDisplay(cli *rmm.Client, device *rmm.Device) *tunnelDisplay {
 					return
 				}
 
-				all := m.GetAll()
-
-				for _, tunnel := range tc.Tcp {
-					m.Update(tunnel.Name, func(value *rmm.TcpTunnel, found bool) (*rmm.TcpTunnel, bool) {
-						if found {
-							delete(all, tunnel.Name)
-						}
-
-						return tunnel, true
-					})
-				}
-
-				for _, tunnel := range all {
-					m.Delete(tunnel.Name)
-				}
+				// TODO
 			})
 		},
 		func(m util.UpdateableMap[string, *rmm.TcpTunnel]) {},
