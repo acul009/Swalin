@@ -14,12 +14,12 @@ type userStore struct {
 }
 
 type user struct {
-	certificate          *pki.Certificate
-	encryptedPrivateKey  []byte
-	clientHashingParams  *util.ArgonParameters
-	serverHashingParams  *util.ArgonParameters
-	doubleHashedPassword []byte
-	totpSecret           []byte
+	Certificate          *pki.Certificate
+	EncryptedPrivateKey  []byte
+	ClientHashingParams  *util.ArgonParameters
+	ServerHashingParams  *util.ArgonParameters
+	DoubleHashedPassword []byte
+	TotpSecret           []byte
 }
 
 func openUserStore(scope db.Scope) (*userStore, error) {
@@ -32,8 +32,8 @@ const userPrefix = "user_"
 const usernamePrefix = "username_"
 
 func (us *userStore) SaveUser(u *user) error {
-	publicKey := u.certificate.PublicKey().Base64Encode()
-	username := u.certificate.GetName()
+	publicKey := u.Certificate.PublicKey().Base64Encode()
+	username := u.Certificate.GetName()
 
 	raw, err := json.Marshal(u)
 	if err != nil {

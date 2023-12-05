@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/rpc"
 	"github.com/rahn-it/svalin/util"
 
@@ -221,11 +222,23 @@ func setupServerForm(w fyne.Window, conn *rpc.RpcConnection) {
 
 			fmt.Printf("\ntotp secret: %s\ntotp code: %s\n", totpSecret, totpCode)
 
-			// serverName := serverNameInput.Text
+			serverName := serverNameInput.Text
 
-			// username := userInput.Text
+			username := userInput.Text
 
-			// password := passwordInput.Text
+			password := passwordInput.Text
+
+			credentials, err := pki.GenerateRootCredentials(username)
+			if err != nil {
+				log.Printf("failed to generate root credentials: %v", err)
+				return
+			}
+
+			upstream, err := rpc.SetupServer(conn, credentials, serverName)
+			if err != nil {
+				log.Printf("failed to setup server: %v", err)
+				return
+			}
 
 			// err = pki.InitRoot(username, []byte(password))
 			// if err != nil {

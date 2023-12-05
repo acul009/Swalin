@@ -42,7 +42,7 @@ func newLocalCertificateVerifier(root *pki.Certificate, userStore *userStore, de
 	intermediates := x509.NewCertPool()
 
 	err := userStore.ForEach(func(user *user) error {
-		intermediates.AddCert(user.certificate.ToX509())
+		intermediates.AddCert(user.Certificate.ToX509())
 		return nil
 	})
 	if err != nil {
@@ -92,7 +92,7 @@ func (v *LocalCertificateVerifier) findCertificate(pub *pki.PublicKey) (*pki.Cer
 	}
 
 	if user != nil {
-		return user.certificate, nil
+		return user.Certificate, nil
 	}
 
 	device, err := v.deviceStore.GetDevice(pub)
