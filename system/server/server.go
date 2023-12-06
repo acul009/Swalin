@@ -5,12 +5,9 @@ import (
 	"log"
 
 	"github.com/rahn-it/svalin/config"
-	"github.com/rahn-it/svalin/rmm"
 	"github.com/rahn-it/svalin/rpc"
 	"github.com/rahn-it/svalin/system"
 	"github.com/rahn-it/svalin/util"
-
-	"github.com/google/uuid"
 )
 
 type Server struct {
@@ -26,6 +23,8 @@ type Server struct {
 }
 
 func Open(profile *config.Profile) (*Server, error) {
+	log.Printf("opening server for profile %s", profile.Name())
+
 	config := profile.Config()
 	config.Default("server.address", "localhost:1234")
 
@@ -39,6 +38,11 @@ func Open(profile *config.Profile) (*Server, error) {
 	userStore, err := openUserStore(scope.Scope("users"))
 	if err != nil {
 		return nil, fmt.Errorf("error opening user store: %w", err)
+	}
+
+	userVerifier, error := newNewUserVerifier(serverConfig.Root())
+	if error != nil {
+		return nil, fmt.Errorf("error creating new user verifier: %w", error)
 	}
 
 	deviceStore, err := openDeviceStore(scope.Scope("devices"))
@@ -56,16 +60,17 @@ func Open(profile *config.Profile) (*Server, error) {
 		return nil, fmt.Errorf("error creating local certificate verifier: %w", err)
 	}
 
-	ConfigManager := NewConfigManager(verifier, nil)
+	// ConfigManager := NewConfigManager(verifier, nil)
 
-	devices := newDeviceList(deviceStore)
+	// devices := newDeviceList(deviceStore)
 
 	cmds := rpc.NewCommandCollection(
 		rpc.PingHandler,
 		rpc.EnrollAgentHandler,
-		rmm.CreateGetDevicesCommandHandler(devices),
+		// rmm.CreateGetDevicesCommandHandler(devices),
 		rpc.ForwardCommandHandler,
 		system.CreateUpstreamVerificationCommandHandler(verifier),
+		system.CreateRegisterUserCommandHandler(userVerifier, userStore.newUser),
 	)
 
 	listenAddr := config.String("server.address")
@@ -75,16 +80,16 @@ func Open(profile *config.Profile) (*Server, error) {
 		return nil, fmt.Errorf("error creating rpc server: %w", err)
 	}
 
-	rpcS.Connections().Subscribe(
-		func(_ uuid.UUID, rc *rpc.RpcConnection) {
-			key := rc.Partner().PublicKey().Base64Encode()
-			devices.setOnlineStatus(key, true)
-		},
-		func(_ uuid.UUID, rc *rpc.RpcConnection) {
-			key := rc.Partner().PublicKey().Base64Encode()
-			devices.setOnlineStatus(key, false)
-		},
-	)
+	// rpcS.Connections().Subscribe(
+	// 	func(_ uuid.UUID, rc *rpc.RpcConnection) {
+	// 		key := rc.Partner().PublicKey().Base64Encode()
+	// 		devices.setOnlineStatus(key, true)
+	// 	},
+	// 	func(_ uuid.UUID, rc *rpc.RpcConnection) {
+	// 		key := rc.Partner().PublicKey().Base64Encode()
+	// 		devices.setOnlineStatus(key, false)
+	// 	},
+	// )
 
 	s := &Server{
 		RpcServer:       rpcS,
@@ -93,9 +98,9 @@ func Open(profile *config.Profile) (*Server, error) {
 		deviceStore:     deviceStore,
 		revocationStore: revocationStore,
 		verifier:        verifier,
-		devices:         devices,
-		serverConfig:    serverConfig,
-		configManager:   ConfigManager,
+		// devices:         devices,
+		serverConfig: serverConfig,
+		// configManager:   ConfigManager,
 	}
 
 	return s, nil
@@ -132,6 +137,8 @@ func Init(profile *config.Profile) error {
 	if err != nil {
 		return fmt.Errorf("error initializing server config: %w", err)
 	}
+
+	log.Printf("server setup complete for profile %s", profile.Name())
 
 	return nil
 }

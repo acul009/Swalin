@@ -13,6 +13,7 @@ var _ pki.Verifier = (*LocalCertificateVerifier)(nil)
 
 type LocalCertificateVerifier struct {
 	rootPool        *x509.CertPool
+	root            *pki.Certificate
 	intermediates   *x509.CertPool
 	userStore       *userStore
 	deviceStore     *deviceStore
@@ -41,7 +42,7 @@ func newLocalCertificateVerifier(root *pki.Certificate, userStore *userStore, de
 
 	intermediates := x509.NewCertPool()
 
-	err := userStore.ForEach(func(user *user) error {
+	err := userStore.forEach(func(user *user) error {
 		intermediates.AddCert(user.Certificate.ToX509())
 		return nil
 	})
@@ -51,6 +52,7 @@ func newLocalCertificateVerifier(root *pki.Certificate, userStore *userStore, de
 
 	return &LocalCertificateVerifier{
 		rootPool:        rootPool,
+		root:            root,
 		intermediates:   intermediates,
 		userStore:       userStore,
 		deviceStore:     deviceStore,
@@ -59,6 +61,10 @@ func newLocalCertificateVerifier(root *pki.Certificate, userStore *userStore, de
 }
 
 func (v *LocalCertificateVerifier) Verify(cert *pki.Certificate) ([]*pki.Certificate, error) {
+	if cert.Equal(v.root) {
+		return []*pki.Certificate{v.root}, nil
+	}
+
 	chain, err := v.verifyChain(cert)
 	if err != nil {
 		return nil, err
@@ -77,6 +83,10 @@ func (v *LocalCertificateVerifier) Verify(cert *pki.Certificate) ([]*pki.Certifi
 }
 
 func (v *LocalCertificateVerifier) VerifyPublicKey(pub *pki.PublicKey) ([]*pki.Certificate, error) {
+	if pub.Equal(v.root.PublicKey()) {
+		return []*pki.Certificate{v.root}, nil
+	}
+
 	cert, err := v.findCertificate(pub)
 	if err != nil {
 		return nil, err
@@ -86,9 +96,9 @@ func (v *LocalCertificateVerifier) VerifyPublicKey(pub *pki.PublicKey) ([]*pki.C
 }
 
 func (v *LocalCertificateVerifier) findCertificate(pub *pki.PublicKey) (*pki.Certificate, error) {
-	user, err := v.userStore.GetUser(pub)
+	user, err := v.userStore.getUser(pub)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check for user user: %w", err)
+		return nil, fmt.Errorf("failed to check for user: %w", err)
 	}
 
 	if user != nil {

@@ -1,14 +1,18 @@
 package ui
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/system"
+	"github.com/rahn-it/svalin/system/client"
 	"github.com/rahn-it/svalin/util"
 
 	"fyne.io/fyne/v2"
@@ -131,10 +135,10 @@ func setup(w fyne.Window) {
 
 		switch conn.GetProtocol() {
 		case rpc.ProtoClientLogin:
-			setupLoginForm(w, conn)
+			setupLoginForm(w, address, conn)
 
 		case rpc.ProtoServerInit:
-			setupServerForm(w, conn)
+			setupServerForm(w, address, conn)
 
 		default:
 			conn.Close(400, "")
@@ -147,7 +151,7 @@ func setup(w fyne.Window) {
 	)
 }
 
-func setupLoginForm(w fyne.Window, conn *rpc.RpcConnection) {
+func setupLoginForm(w fyne.Window, addr string, conn *rpc.RpcConnection) {
 
 	userInput := widget.NewEntry()
 
@@ -179,7 +183,7 @@ func setupLoginForm(w fyne.Window, conn *rpc.RpcConnection) {
 	)
 }
 
-func setupServerForm(w fyne.Window, conn *rpc.RpcConnection) {
+func setupServerForm(w fyne.Window, addr string, conn *rpc.RpcConnection) {
 
 	serverNameInput := widget.NewEntry()
 
@@ -240,39 +244,48 @@ func setupServerForm(w fyne.Window, conn *rpc.RpcConnection) {
 				return
 			}
 
-			// err = pki.InitRoot(username, []byte(password))
-			// if err != nil {
-			// 	log.Printf("failed to init root: %v", err)
-			// 	return
-			// }
+			time.Sleep(time.Second)
 
-			// credentials, err := pki.GetUserCredentials(username, []byte(password))
-			// if err != nil {
-			// 	log.Printf("failed to get user credentials: %v", err)
-			// 	return
-			// }
+			regCmd, err := system.NewRegisterUserCmd(credentials, []byte(password), totpSecret, totpCode)
+			if err != nil {
+				log.Printf("failed to create register user command: %v", err)
+				return
+			}
 
-			// err = rpc.SetupServer(conn, credentials, serverName)
-			// if err != nil {
-			// 	log.Printf("failed to setup server: %v", err)
-			// }
+			verifier, err := system.NewFallbackVerifier(credentials.Certificate(), upstream)
+			if err != nil {
+				log.Printf("failed to create fallback verifier: %v", err)
+				return
+			}
 
-			// reg, err := rpc.NewRegisterUserCmd(credentials, []byte(password), totpSecret, totpCode)
-			// if err != nil {
-			// 	panic(err)
-			// }
+			ep, err := rpc.ConnectToServer(context.Background(), addr, credentials, upstream, verifier)
+			if err != nil {
+				log.Printf("failed to connect to server: %v", err)
+				return
+			}
 
-			// cli, err := rpc.ConnectToUpstream(context.Background(), credentials)
-			// if err != nil {
-			// 	panic(err)
-			// }
+			err = ep.SendSyncCommand(context.Background(), regCmd)
+			if err != nil {
+				log.Printf("failed to register user: %v", err)
+				return
+			}
 
-			// err = cli.SendSyncCommand(context.Background(), reg)
-			// if err != nil {
-			// 	panic(err)
-			// }
+			profilename := fmt.Sprintf("%s@%s", username, addr)
 
-			// startMainMenu(w, credentials)
+			profile, err := config.OpenProfile(profilename, "client")
+			if err != nil {
+				log.Printf("failed to open profile: %v", err)
+				return
+			}
+
+			err = client.SetupClient(profile, credentials.Certificate(), upstream, credentials, []byte(password), addr)
+			if err != nil {
+				log.Printf("failed to setup client profile: %v", err)
+				return
+			}
+
+			log.Printf("Successfully registered user %s on server %s", username, serverName)
+
 		}()
 	}
 

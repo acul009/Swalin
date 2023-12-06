@@ -1,7 +1,9 @@
 package server
 
 import (
+	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/rahn-it/svalin/db"
@@ -31,16 +33,44 @@ func openUserStore(scope db.Scope) (*userStore, error) {
 const userPrefix = "user_"
 const usernamePrefix = "username_"
 
-func (us *userStore) SaveUser(u *user) error {
-	publicKey := u.Certificate.PublicKey().Base64Encode()
-	username := u.Certificate.GetName()
+func (us *userStore) newUser(
+	Certificate *pki.Certificate,
+	EncryptedPrivateKey []byte,
+	ClientHashingParams *util.ArgonParameters,
+	ServerHashingParams *util.ArgonParameters,
+	DoubleHashedPassword []byte,
+	TotpSecret []byte,
+) error {
+	username := Certificate.GetName()
+	publicKey := Certificate.PublicKey().Base64Encode()
 
-	raw, err := json.Marshal(u)
+	user := &user{
+		Certificate:          Certificate,
+		EncryptedPrivateKey:  EncryptedPrivateKey,
+		ClientHashingParams:  ClientHashingParams,
+		ServerHashingParams:  ServerHashingParams,
+		DoubleHashedPassword: DoubleHashedPassword,
+		TotpSecret:           TotpSecret,
+	}
+
+	raw, err := json.Marshal(user)
 	if err != nil {
 		return fmt.Errorf("failed to marshal user: %w", err)
 	}
 
 	err = us.scope.Update(func(b db.Bucket) error {
+		currentUserWithKey := b.Get([]byte(userPrefix + publicKey))
+		if currentUserWithKey != nil {
+			return errors.New("public key already in use")
+		}
+
+		currentUserWithName := b.Get([]byte(usernamePrefix + username))
+		if currentUserWithName != nil {
+			if Certificate.PublicKey().Base64Encode() != string(currentUserWithName) {
+				return fmt.Errorf("username already in use")
+			}
+		}
+
 		err := b.Put([]byte(usernamePrefix+username), []byte(publicKey))
 		if err != nil {
 			return fmt.Errorf("failed to set username index: %w", err)
@@ -61,13 +91,13 @@ func (us *userStore) SaveUser(u *user) error {
 	return nil
 }
 
-// GetUser retrieves a user with the given public key.
+// getUser retrieves a user with the given public key.
 //
 // It takes a publicKey of type *pki.PublicKey as a parameter.
 // It returns a user pointer and an error.
 //
 // The function may return a nil user pointer without an error if no user is found.
-func (u *userStore) GetUser(publicKey *pki.PublicKey) (*user, error) {
+func (u *userStore) getUser(publicKey *pki.PublicKey) (*user, error) {
 	encodedKey := publicKey.Base64Encode()
 	var raw []byte
 	err := u.scope.View(func(b db.Bucket) error {
@@ -85,6 +115,10 @@ func (u *userStore) GetUser(publicKey *pki.PublicKey) (*user, error) {
 		return nil, fmt.Errorf("error during transaction: %w", err)
 	}
 
+	if raw == nil {
+		return nil, nil
+	}
+
 	user := &user{}
 
 	err = json.Unmarshal(raw, user)
@@ -95,7 +129,7 @@ func (u *userStore) GetUser(publicKey *pki.PublicKey) (*user, error) {
 	return user, nil
 }
 
-func (u *userStore) GetUserByName(username string) (*user, error) {
+func (u *userStore) getUserByName(username string) (*user, error) {
 	var raw []byte
 	err := u.scope.View(func(b db.Bucket) error {
 		userKey := b.Get([]byte(usernamePrefix + username))
@@ -127,7 +161,7 @@ func (u *userStore) GetUserByName(username string) (*user, error) {
 	return user, nil
 }
 
-func (u *userStore) ForEach(fn func(*user) error) error {
+func (u *userStore) forEach(fn func(*user) error) error {
 	return u.scope.View(func(b db.Bucket) error {
 		b.ForPrefix([]byte(userPrefix), func(k, v []byte) error {
 			user := &user{}
@@ -141,4 +175,47 @@ func (u *userStore) ForEach(fn func(*user) error) error {
 
 		return nil
 	})
+}
+
+var _ pki.Verifier = (*newUserVerifier)(nil)
+
+type newUserVerifier struct {
+	root          *pki.Certificate
+	rootPool      *x509.CertPool
+	intermediates *x509.CertPool
+}
+
+func newNewUserVerifier(root *pki.Certificate) (*newUserVerifier, error) {
+	rootPool := x509.NewCertPool()
+	rootPool.AddCert(root.ToX509())
+
+	intermediates := x509.NewCertPool()
+
+	return &newUserVerifier{
+		root:          root,
+		rootPool:      rootPool,
+		intermediates: intermediates,
+	}, nil
+}
+
+func (v *newUserVerifier) Verify(cert *pki.Certificate) ([]*pki.Certificate, error) {
+	if cert.Equal(v.root) {
+		return []*pki.Certificate{v.root}, nil
+	}
+
+	chain, err := cert.VerifyChain(v.rootPool, v.intermediates)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify certificate: %w", err)
+	}
+
+	certType := cert.Type()
+	if certType != pki.CertTypeUser {
+		return nil, fmt.Errorf("invalid certificate type: %s", certType)
+	}
+
+	return chain, nil
+}
+
+func (v *newUserVerifier) VerifyPublicKey(pub *pki.PublicKey) ([]*pki.Certificate, error) {
+	return nil, errors.New("this verifier is not meant to be used for public keys")
 }

@@ -10,13 +10,31 @@ import (
 
 var _ rpc.RpcCommand = (*registerUserCommand)(nil)
 
+func CreateRegisterUserCommandHandler(
+	verifier pki.Verifier,
+	acceptUser func(
+		Certificate *pki.Certificate,
+		EncryptedPrivateKey []byte,
+		ClientHashingParams *util.ArgonParameters,
+		ServerHashingParams *util.ArgonParameters,
+		DoubleHashedPassword []byte,
+		TotpSecret []byte,
+	) error) rpc.RpcCommandHandler {
+	return func() rpc.RpcCommand {
+		return &registerUserCommand{
+			verifier:   verifier,
+			acceptUser: acceptUser,
+		}
+	}
+}
+
 type registerUserCommand struct {
 	Certificate         *pki.Certificate
 	EncryptedKey        []byte
+	ClientHashingParams *util.ArgonParameters
 	PasswordHash        []byte
 	TotpSecret          string
 	CurrentTotp         string
-	ClientHashingParams *util.ArgonParameters
 	verifier            pki.Verifier
 	acceptUser          func(
 		Certificate *pki.Certificate,
@@ -26,6 +44,38 @@ type registerUserCommand struct {
 		DoubleHashedPassword []byte,
 		TotpSecret []byte,
 	) error
+}
+
+func NewRegisterUserCmd(
+	credentials *pki.PermanentCredentials,
+	password []byte,
+	totpSecret string,
+	currentTotp string,
+) (*registerUserCommand, error) {
+
+	hashingParams, err := util.GenerateArgonParameters(util.ArgonStrengthStrong)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate hashing parameters: %w", err)
+	}
+
+	hashedPassword, err := util.HashPassword(password, hashingParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	encryptedKey, err := credentials.PrivateKey().PemEncode(password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt private key: %w", err)
+	}
+
+	return &registerUserCommand{
+		Certificate:         credentials.Certificate(),
+		EncryptedKey:        encryptedKey,
+		ClientHashingParams: &hashingParams,
+		PasswordHash:        hashedPassword,
+		TotpSecret:          totpSecret,
+		CurrentTotp:         currentTotp,
+	}, nil
 }
 
 func (cmd *registerUserCommand) GetKey() string {
