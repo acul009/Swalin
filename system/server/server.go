@@ -103,6 +103,9 @@ func Open(profile *config.Profile) (*Server, error) {
 		// configManager:   ConfigManager,
 	}
 
+	loginHandler := system.NewLoginHandler(userStore.getUserByName, serverConfig.Seed(), serverConfig.Root(), serverConfig.Credentials().Certificate())
+	rpcS.LoginHandler(loginHandler.HandleLoginRequest)
+
 	return s, nil
 }
 

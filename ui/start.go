@@ -175,7 +175,30 @@ func setupLoginForm(w fyne.Window, addr string, conn *rpc.RpcConnection) {
 	)
 
 	form.OnSubmit = func() {
+		username := userInput.Text
+		password := passwordInput.Text
+		totpCode := totpInput.Text
+		executor := system.NewLoginExecutor(username, []byte(password), totpCode, func(epii *rpc.EndPointInitInfo) error {
 
+			profilename := fmt.Sprintf("%s@%s", username, addr)
+
+			profile, err := config.OpenProfile(profilename, "client")
+			if err != nil {
+				return fmt.Errorf("failed to open profile: %w", err)
+			}
+
+			err = client.SetupClient(profile, epii.Root, epii.Upstream, epii.Credentials, []byte(password), addr)
+			if err != nil {
+				return fmt.Errorf("failed to setup client profile: %w", err)
+			}
+
+			return nil
+		})
+
+		err := rpc.Login(conn, executor.Login)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	w.SetContent(

@@ -45,7 +45,16 @@ type loginRequestHandler struct {
 	upstream *pki.Certificate
 }
 
-func (h *loginRequestHandler) handleLoginRequest(session *rpc.RpcSession) error {
+func NewLoginHandler(getUser func(string) (*User, error), seed []byte, root *pki.Certificate, upstream *pki.Certificate) *loginRequestHandler {
+	return &loginRequestHandler{
+		getUser:  getUser,
+		seed:     seed,
+		root:     root,
+		upstream: upstream,
+	}
+}
+
+func (h *loginRequestHandler) HandleLoginRequest(session *rpc.RpcSession) error {
 
 	// read the parameter request for the username
 
@@ -146,7 +155,16 @@ type loginExecutor struct {
 	onSuccess func(*rpc.EndPointInitInfo) error
 }
 
-func (e *loginExecutor) login(session *rpc.RpcSession) error {
+func NewLoginExecutor(username string, password []byte, totpCode string, onSuccess func(*rpc.EndPointInitInfo) error) *loginExecutor {
+	return &loginExecutor{
+		username:  username,
+		password:  password,
+		totpCode:  totpCode,
+		onSuccess: onSuccess,
+	}
+}
+
+func (e *loginExecutor) Login(session *rpc.RpcSession) error {
 
 	paramRequest := &loginParameterRequest{
 		Username: e.username,
