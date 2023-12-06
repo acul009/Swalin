@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/rahn-it/svalin/db"
 	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/rpc"
 	"github.com/rahn-it/svalin/util"
 )
 
@@ -175,6 +177,123 @@ func (u *userStore) forEach(fn func(*user) error) error {
 
 		return nil
 	})
+}
+
+func (u *userStore) loginHandler(conn rpc.RpcConnection) error {
+
+	// read the parameter request for the username
+
+	log.Printf("reading params request...")
+
+	paramsRequest := loginParameterRequest{}
+
+	err = ReadMessage[*loginParameterRequest](session, &paramsRequest)
+	if err != nil {
+		return fmt.Errorf("error reading params request: %w", err)
+	}
+
+	username := paramsRequest.Username
+
+	log.Printf("Received params request with username: %s\n", username)
+
+	// check if the user exists
+
+	// db := config.DB()
+
+	// var failed = false
+
+	// user, err := db.User.Query().Where(user.UsernameEQ(username)).Only(ctx)
+	// if err != nil {
+	// 	if ent.IsNotFound(err) {
+	// 		failed = true
+	// 	} else {
+	// 		return fmt.Errorf("error reading params request: %w", err)
+	// 	}
+	// }
+
+	// // return the client hashing parameters, return a decoy if the user does not exist
+
+	// var clientHashing util.ArgonParameters
+	// if failed {
+	// 	log.Printf("User %s does not exist, generating decoy", username)
+	// 	clientHashing, err = util.GenerateDecoyArgonParametersFromSeed([]byte(username), pki.GetSeed())
+	// 	if err != nil {
+	// 		return fmt.Errorf("error generating argon parameters: %w", err)
+	// 	}
+	// } else {
+	// 	log.Printf("User %s exists, using existing parameters %+v", username, user.PasswordClientHashingOptions)
+	// 	clientHashing = *user.PasswordClientHashingOptions
+	// }
+
+	// loginParams := loginParameters{
+	// 	PasswordParams: clientHashing,
+	// }
+
+	// err = WriteMessage[*loginParameters](session, &loginParams)
+	// if err != nil {
+	// 	return fmt.Errorf("error writing login parameters: %w", err)
+	// }
+
+	// // read the login request
+
+	// login := loginRequest{}
+
+	// err = ReadMessage[*loginRequest](session, &login)
+	// if err != nil {
+	// 	return fmt.Errorf("error reading login request: %w", err)
+	// }
+
+	// if failed {
+	// 	return fmt.Errorf("user does not exist")
+	// }
+
+	// // check the password hash
+	// err = util.VerifyPassword(login.PasswordHash, user.PasswordDoubleHashed, *user.PasswordServerHashingOptions)
+	// if err != nil {
+	// 	return fmt.Errorf("error verifying password: %w", err)
+	// }
+
+	// // check the totp code
+	// if !util.ValidateTotp(user.TotpSecret, login.Totp) {
+	// 	return fmt.Errorf("error validating totp: %w", err)
+	// }
+
+	// // login successful, return the certificate and encrypted private key
+	// cert, err := pki.CertificateFromPem([]byte(user.Certificate))
+	// if err != nil {
+	// 	return fmt.Errorf("error parsing user certificate: %w", err)
+	// }
+
+	// rootCert, err := pki.Root.Get()
+	// if err != nil {
+	// 	return fmt.Errorf("error loading root certificate: %w", err)
+	// }
+
+	// hostcredentials, err := pki.GetHostCredentials()
+	// if err != nil {
+	// 	return fmt.Errorf("error loading host credentials: %w", err)
+	// }
+
+	// serverCert, err := hostcredentials.Certificate()
+	// if err != nil {
+	// 	return fmt.Errorf("error loading current certificate: %w", err)
+	// }
+
+	// success := &loginSuccessResponse{
+	// 	RootCert:            rootCert,
+	// 	UpstreamCert:        serverCert,
+	// 	Cert:                cert,
+	// 	EncryptedPrivateKey: user.EncryptedPrivateKey,
+	// }
+
+	// err = WriteMessage[*loginSuccessResponse](session, success)
+	// if err != nil {
+	// 	return fmt.Errorf("error writing login success response: %w", err)
+	// }
+
+	// session.Close()
+
+	return nil
 }
 
 var _ pki.Verifier = (*newUserVerifier)(nil)

@@ -39,6 +39,7 @@ type RpcServer struct {
 	credentials       *pki.PermanentCredentials
 	enrollment        *enrollmentManager
 	verifier          pki.Verifier
+	loginHandler      func(session *RpcSession) error
 }
 
 type RpcServerState int16
@@ -215,8 +216,13 @@ func (s *RpcServer) Run() error {
 			go conn.serveRpc(s.rpcCommands)
 
 		case ProtoClientLogin:
+			if s.loginHandler == nil {
+				log.Printf("login request received but login handler is not set")
+				conn.Close(400, "login is disabled")
+				continue
+			}
 			go func() {
-				err := acceptLoginRequest(conn)
+				err := s.acceptLoginRequest(conn)
 				if err != nil {
 					log.Printf("error accepting login request: %v", err)
 				}
@@ -232,6 +238,7 @@ func (s *RpcServer) Run() error {
 
 		default:
 			log.Printf("error accepted connection has wrong protocol: %s", conn.protocol)
+			conn.Close(400, "wrong protocol")
 			continue
 		}
 
@@ -314,4 +321,8 @@ func (s *RpcServer) getConnectionWith(partner *pki.Certificate) (*RpcConnection,
 
 	return nil, fmt.Errorf("no connection found")
 
+}
+
+func (s *RpcServer) LoginHandler(handler func(*RpcSession) error) {
+	s.loginHandler = handler
 }
