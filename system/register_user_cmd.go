@@ -18,7 +18,7 @@ func CreateRegisterUserCommandHandler(
 		ClientHashingParams *util.ArgonParameters,
 		ServerHashingParams *util.ArgonParameters,
 		DoubleHashedPassword []byte,
-		TotpSecret []byte,
+		TotpSecret string,
 	) error) rpc.RpcCommandHandler {
 	return func() rpc.RpcCommand {
 		return &registerUserCommand{
@@ -42,7 +42,7 @@ type registerUserCommand struct {
 		ClientHashingParams *util.ArgonParameters,
 		ServerHashingParams *util.ArgonParameters,
 		DoubleHashedPassword []byte,
-		TotpSecret []byte,
+		TotpSecret string,
 	) error
 }
 
@@ -141,7 +141,7 @@ func (cmd *registerUserCommand) ExecuteServer(session *rpc.RpcSession) error {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	err = cmd.acceptUser(cert, cmd.EncryptedKey, cmd.ClientHashingParams, &serverHashingParams, double_hash, []byte(cmd.TotpSecret))
+	err = cmd.acceptUser(cert, cmd.EncryptedKey, cmd.ClientHashingParams, &serverHashingParams, double_hash, cmd.TotpSecret)
 	if err != nil {
 		session.WriteResponseHeader(rpc.SessionResponseHeader{
 			Code: 500,

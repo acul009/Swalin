@@ -42,7 +42,7 @@ func newLocalCertificateVerifier(root *pki.Certificate, userStore *userStore, de
 
 	intermediates := x509.NewCertPool()
 
-	err := userStore.forEach(func(user *user) error {
+	err := userStore.forEach(func(user *system.User) error {
 		intermediates.AddCert(user.Certificate.ToX509())
 		return nil
 	})
