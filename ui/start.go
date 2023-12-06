@@ -22,6 +22,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/data/validation"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -59,11 +60,45 @@ func chooseProfile(w fyne.Window) {
 	})
 	selectButton.Disable()
 
+	deleteButton := widget.NewButton("Delete", func() {
+		dialog.NewConfirm(
+			"Confirm Deletion",
+			fmt.Sprintf("Are you sure you want to delete the following profile?\n%s", profileSelect.Selected),
+			func(b bool) {
+				if b {
+					profile := profileSelect.Selected
+					profileSelect.Selected = ""
+
+					err := config.DeleteProfile(profile, "client")
+					if err != nil {
+						log.Printf("error deleting profile %s: %w", profile, err)
+					}
+
+					newProfiles := make([]string, 0, len(profiles)-1)
+
+					for _, p := range profiles {
+						if p != profile {
+							newProfiles = append(newProfiles, p)
+						}
+					}
+
+					profileSelect.SetOptions(newProfiles)
+					profileSelect.OnChanged("")
+					profileSelect.Refresh()
+				}
+			},
+			w,
+		).Show()
+	})
+	deleteButton.Disable()
+
 	profileSelect.OnChanged = func(s string) {
 		if s == "" {
 			selectButton.Disable()
+			deleteButton.Disable()
 		} else {
 			selectButton.Enable()
+			deleteButton.Enable()
 		}
 	}
 
@@ -75,6 +110,7 @@ func chooseProfile(w fyne.Window) {
 		widget.NewLabel("Choose profile"),
 		profileSelect,
 		selectButton,
+		deleteButton,
 		layout.NewSpacer(),
 		newButton,
 	))
@@ -182,23 +218,33 @@ func setupLoginForm(w fyne.Window, addr string, conn *rpc.RpcConnection) {
 
 			profilename := fmt.Sprintf("%s@%s", username, addr)
 
+			log.Printf("login request approved, setting up profile %s", profilename)
+
 			profile, err := config.OpenProfile(profilename, "client")
 			if err != nil {
 				return fmt.Errorf("failed to open profile: %w", err)
 			}
+
+			log.Printf("profile %s opened", profilename)
 
 			err = client.SetupClient(profile, epii.Root, epii.Upstream, epii.Credentials, []byte(password), addr)
 			if err != nil {
 				return fmt.Errorf("failed to setup client profile: %w", err)
 			}
 
+			log.Printf("client setup complete for profile %s", profile.Name())
+
 			return nil
 		})
 
-		err := rpc.Login(conn, executor.Login)
-		if err != nil {
-			panic(err)
-		}
+		go func() {
+			err := rpc.Login(conn, executor.Login)
+			if err != nil {
+				panic(err)
+			}
+
+			log.Printf("login finished, continuing...")
+		}()
 	}
 
 	w.SetContent(

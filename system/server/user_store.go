@@ -136,7 +136,7 @@ func (u *userStore) getUserByName(username string) (*system.User, error) {
 			return fmt.Errorf("user not found, index seems to be corrupted")
 		}
 
-		raw := make([]byte, len(userData))
+		raw = make([]byte, len(userData))
 		copy(raw, userData)
 		return nil
 	})

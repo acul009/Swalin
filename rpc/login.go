@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/rahn-it/svalin/pki"
 )
@@ -33,6 +34,8 @@ func Login(conn *RpcConnection, loginHandler func(*RpcSession) error) error {
 	if err != nil {
 		return fmt.Errorf("error exchanging keys: %w", err)
 	}
+
+	log.Printf("key exchange successful, handing to login handler")
 
 	err = loginHandler(session)
 	if err != nil {
@@ -76,11 +79,15 @@ func (s *RpcServer) acceptLoginRequest(conn *RpcConnection) error {
 	}
 
 	err = s.loginHandler(session)
-	session.Close()
 	if err != nil {
 		conn.Close(500, "error during login")
 		return fmt.Errorf("error during login: %w", err)
 	}
+
+	//allow data to be sent
+	time.Sleep(5 * time.Second)
+
+	session.Close()
 
 	conn.Close(200, "done")
 

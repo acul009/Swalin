@@ -13,6 +13,8 @@ type DB struct {
 
 func Open(path string) (*DB, error) {
 
+	// log.Printf("trying to open db at %s", path)
+
 	b, err := bolt.Open(path, 0600, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open db: %w", err)
@@ -50,6 +52,10 @@ func Open(path string) (*DB, error) {
 	}, nil
 }
 
+func (d *DB) Close() error {
+	return d.db.Close()
+}
+
 func (d *DB) ContextList() ([][]byte, error) {
 	list := make([][]byte, 0)
 	err := d.db.View(func(tx *bolt.Tx) error {
@@ -83,4 +89,21 @@ func (d *DB) Context(context []byte) Scope {
 		context: context,
 		path:    [][]byte{},
 	}
+}
+
+func (d *DB) DeleteContext(context []byte) error {
+	err := d.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(context)
+		if b == nil {
+			return nil
+		}
+
+		return tx.DeleteBucket(context)
+	})
+
+	if err != nil {
+		return fmt.Errorf("error deleting context bucket: %w", err)
+	}
+
+	return nil
 }

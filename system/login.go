@@ -204,10 +204,12 @@ func (e *loginExecutor) Login(session *rpc.RpcSession) error {
 		return fmt.Errorf("error reading login response: %w", err)
 	}
 
-	privateKey, err := pki.PrivateKeyFromBinary(success.EncryptedPrivateKey, e.password)
+	privateKey, err := pki.PrivateKeyFromPem(success.EncryptedPrivateKey, e.password)
 	if err != nil {
 		return fmt.Errorf("error decrypting private key: %w", err)
 	}
+
+	log.Printf("Private key received and decrypted")
 
 	credentials := pki.CredentialsFromCertAndKey(success.Cert, privateKey)
 
