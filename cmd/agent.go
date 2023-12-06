@@ -6,8 +6,8 @@ package cmd
 import (
 	"log"
 
-	"github.com/rahn-it/svalin/agent"
 	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/system/agent"
 
 	"github.com/spf13/cobra"
 )

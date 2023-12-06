@@ -14,7 +14,7 @@ import (
 
 	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/rpc"
-	"github.com/rahn-it/svalin/server"
+	"github.com/rahn-it/svalin/system/server"
 
 	"github.com/spf13/cobra"
 )
