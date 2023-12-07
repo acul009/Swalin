@@ -4,14 +4,14 @@ An Open-Source RMM-Software focused on ease of use and security.
 
 ## :warning: **WARNING** :warning:
 
-- This code is not yet fit for production!!!
-- The cryptographic implementation did not get any proper review.
-- The system might still be quite unstable
-- Besides the cryptography there is no proper logging or defense mechanism yet.
+This code is not yet fit for production!!!
+- The cryptographic implementation did not get any proper review
+- The system is still unstable
+- There is no proper logging or defense mechanism yet
 
 ## Goals
 
-The system should be usable by IT-Admins which arent all that familiar with linux or things like SSH.
+The system should be usable by IT-Admins with minimal Linux experience.
 
 Hardening is a bit of an antipattern - everything should be as secure as possible by default
 
@@ -21,13 +21,15 @@ Working with Svalin should be painless, fast and easy.
 
 These goals are not reached yet, but are intended to guide the development to eventually reach them.
 
+- Server installation should require a minimum of command line interaction
 - Setup and integration of new agents should be dead simple
 - The system should be secure, even if the server is taken over.
 
 ## Project Name
 
 The name "Svalin" comes from nordic mythology. It's the name of a powerfull Shield which holds back the heat of the sun.
-It is mounted on the charriot of the goddess Sol and keeps the Head at bay.
+
+It is mounted on the charriot of the goddess Sol and keeps the Heat at bay.
 
 Just like it's powerfull name-giver, this software should shield you from the everyday heat you might experience.
 It should protect you from cyber-attacks and aid you in supporting your colleagues and customers. 
