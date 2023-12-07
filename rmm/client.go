@@ -13,7 +13,7 @@ import (
 
 type Client struct {
 	ep            *rpc.RpcEndpoint
-	tunnelHandler *tunnelHandler
+	tunnelHandler *TunnelHandler
 	devices       util.UpdateableMap[string, *Device]
 }
 
@@ -21,7 +21,7 @@ func ClientConnect(ctx context.Context, credentials *pki.PermanentCredentials) (
 	return nil, errors.New("deprecated")
 }
 
-func (c *Client) Tunnels() *tunnelHandler {
+func (c *Client) Tunnels() *TunnelHandler {
 	return c.tunnelHandler
 }
 

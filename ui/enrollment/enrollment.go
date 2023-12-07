@@ -20,7 +20,7 @@ package enrollment
 // type enrollmentView struct {
 // 	widget.BaseWidget
 // 	main        *mainview.MainView
-// 	cli         *rmm.Client
+// 	cli         *client.Client
 // 	credentials *pki.PermanentCredentials
 // 	enrollments util.ObservableMap[string, rpc.Enrollment]
 // 	needsUpdate bool
@@ -28,7 +28,7 @@ package enrollment
 // 	visible     bool
 // }
 
-// func NewEnrollmentView(main *mainview.MainView, cli *rmm.Client, credentials *pki.PermanentCredentials) *enrollmentView {
+// func NewEnrollmentView(main *mainview.MainView, cli *client.Client, credentials *pki.PermanentCredentials) *enrollmentView {
 
 // 	e := &enrollmentView{
 // 		main:        main,

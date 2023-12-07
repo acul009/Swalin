@@ -2,10 +2,12 @@ package managment
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/rahn-it/svalin/rmm"
+	"github.com/rahn-it/svalin/system/client"
 	"github.com/rahn-it/svalin/ui/components"
 	"github.com/rahn-it/svalin/util"
-	"log"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -14,7 +16,7 @@ import (
 
 type processList struct {
 	widget.BaseWidget
-	cli    *rmm.Client
+	cli    *client.Client
 	device *rmm.Device
 
 	list    *components.Table[int32, *rmm.ProcessInfo]

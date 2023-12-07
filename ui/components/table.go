@@ -13,7 +13,7 @@ import (
 
 type Table[T comparable, U any] struct {
 	widget.BaseWidget
-	m             util.UpdateableMap[T, U]
+	m             util.ObservableMap[T, U]
 	cols          []col[U]
 	displayHeader bool
 }
@@ -55,7 +55,7 @@ func (c *tableColumn[U, V]) getName() string {
 	return c.name
 }
 
-func NewTable[T comparable, U any](m util.UpdateableMap[T, U], cols ...col[U]) *Table[T, U] {
+func NewTable[T comparable, U any](m util.ObservableMap[T, U], cols ...col[U]) *Table[T, U] {
 	t := &Table[T, U]{
 		m:    m,
 		cols: cols,

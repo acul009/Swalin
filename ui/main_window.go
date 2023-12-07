@@ -1,9 +1,7 @@
 package ui
 
 import (
-	"context"
-	"github.com/rahn-it/svalin/pki"
-	"github.com/rahn-it/svalin/rmm"
+	"github.com/rahn-it/svalin/system/client"
 	managment "github.com/rahn-it/svalin/ui/device_managment"
 	"github.com/rahn-it/svalin/ui/mainview.go"
 	"github.com/rahn-it/svalin/ui/tunnels"
@@ -11,17 +9,12 @@ import (
 	"fyne.io/fyne/v2"
 )
 
-func startMainMenu(window fyne.Window, credentials *pki.PermanentCredentials) {
+func startMainMenu(window fyne.Window, client *client.Client) {
 	m := mainview.NewMainView()
 
-	cli, err := rmm.ClientConnect(context.Background(), credentials)
-	if err != nil {
-		panic(err)
-	}
+	manageView := managment.NewDeviceManagementView(m, client)
 
-	manageView := managment.NewDeviceManagementView(m, cli)
-
-	tunnelView := tunnels.NewOpenTunnelsView(cli)
+	tunnelView := tunnels.NewOpenTunnelsView(client)
 
 	// enrollView := enrollment.NewEnrollmentView(m, cli, credentials)
 

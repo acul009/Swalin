@@ -27,6 +27,23 @@ type upstreamVerifier struct {
 	revocationStore *RevocationStore
 }
 
+func NewUpstreamVerifier(upstream *pki.Certificate, root *pki.Certificate, revocationStore *RevocationStore) *upstreamVerifier {
+
+	rootPool := x509.NewCertPool()
+	rootPool.AddCert(root.ToX509())
+
+	return &upstreamVerifier{
+		upstream:        upstream,
+		root:            root,
+		rootPool:        rootPool,
+		revocationStore: revocationStore,
+	}
+}
+
+func (v *upstreamVerifier) SetEndPoint(ep *rpc.RpcEndpoint) {
+	v.ep = ep
+}
+
 func (v *upstreamVerifier) Verify(cert *pki.Certificate) ([]*pki.Certificate, error) {
 	chain, err := v.VerifyPublicKey(cert.PublicKey())
 	if err != nil {

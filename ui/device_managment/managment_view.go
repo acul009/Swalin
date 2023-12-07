@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/rahn-it/svalin/rmm"
+	"github.com/rahn-it/svalin/system/client"
 	"github.com/rahn-it/svalin/ui/components"
 	"github.com/rahn-it/svalin/ui/mainview.go"
 	"github.com/rahn-it/svalin/util"
@@ -20,10 +21,10 @@ type deviceManagementView struct {
 	widget.BaseWidget
 	running util.AsyncAction
 	main    *mainview.MainView
-	cli     *rmm.Client
+	cli     *client.Client
 }
 
-func NewDeviceManagementView(main *mainview.MainView, cli *rmm.Client) *deviceManagementView {
+func NewDeviceManagementView(main *mainview.MainView, cli *client.Client) *deviceManagementView {
 
 	m := &deviceManagementView{
 		main: main,

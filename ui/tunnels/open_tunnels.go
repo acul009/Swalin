@@ -2,7 +2,9 @@ package tunnels
 
 import (
 	"fmt"
+
 	"github.com/rahn-it/svalin/rmm"
+	"github.com/rahn-it/svalin/system/client"
 	"github.com/rahn-it/svalin/ui/components"
 
 	"fyne.io/fyne/v2"
@@ -13,10 +15,10 @@ import (
 
 type openTunnelsView struct {
 	widget.BaseWidget
-	cli *rmm.Client
+	cli *client.Client
 }
 
-func NewOpenTunnelsView(cli *rmm.Client) *openTunnelsView {
+func NewOpenTunnelsView(cli *client.Client) *openTunnelsView {
 	o := &openTunnelsView{
 		cli: cli,
 	}
@@ -36,7 +38,7 @@ func (o *openTunnelsView) Name() string {
 
 func (o *openTunnelsView) CreateRenderer() fyne.WidgetRenderer {
 
-	tcpMap := o.cli.Tunnels().TcpTunnels
+	tcpMap := o.cli.Tunnels().TcpTunnels()
 
 	tcpTable := components.NewTable(tcpMap,
 		components.NamedColumn(

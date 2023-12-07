@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -56,7 +57,7 @@ func chooseProfile(w fyne.Window) {
 	profileSelect := widget.NewSelect(profiles, nil)
 
 	selectButton := widget.NewButton("Select", func() {
-
+		unlock(w, profileSelect.Selected)
 	})
 	selectButton.Disable()
 
@@ -116,25 +117,34 @@ func chooseProfile(w fyne.Window) {
 	))
 }
 
-func unlock(w fyne.Window) {
-	infoLabel := widget.NewLabel("Please login")
-
-	availableUsers := []string{
-		"admin",
-	}
-
-	userSelect := widget.NewSelect(availableUsers, nil)
-	userSelect.Selected = availableUsers[0]
+func unlock(w fyne.Window, profileName string) {
+	infoLabel := widget.NewLabel("Please enter password for " + profileName)
 
 	passwordField := widget.NewPasswordEntry()
 
 	form := widget.NewForm(
-		widget.NewFormItem("User", userSelect),
 		widget.NewFormItem("Password", passwordField),
 	)
 	form.SubmitText = "Login"
 
 	submitFunc := func() {
+		profile, err := config.OpenProfile(profileName, "client")
+		if err != nil {
+			log.Printf("error opening profile %s: %w", profileName, err)
+		}
+
+		client, passwordCorrect, err := openClient(profile, []byte(passwordField.Text))
+		if err != nil {
+			log.Printf("error opening client: %w", err)
+			return
+		}
+
+		if !passwordCorrect {
+			dialog.NewError(errors.New("incorrect password!"), w).Show()
+			return
+		}
+
+		startMainMenu(w, client)
 	}
 
 	form.OnSubmit = submitFunc
@@ -214,13 +224,16 @@ func setupLoginForm(w fyne.Window, addr string, conn *rpc.RpcConnection) {
 		username := userInput.Text
 		password := passwordInput.Text
 		totpCode := totpInput.Text
+		var profile *config.Profile
+
 		executor := system.NewLoginExecutor(username, []byte(password), totpCode, func(epii *rpc.EndPointInitInfo) error {
 
 			profilename := fmt.Sprintf("%s@%s", username, addr)
 
 			log.Printf("login request approved, setting up profile %s", profilename)
+			var err error
 
-			profile, err := config.OpenProfile(profilename, "client")
+			profile, err = config.OpenProfile(profilename, "client")
 			if err != nil {
 				return fmt.Errorf("failed to open profile: %w", err)
 			}
@@ -244,6 +257,14 @@ func setupLoginForm(w fyne.Window, addr string, conn *rpc.RpcConnection) {
 			}
 
 			log.Printf("login finished, continuing...")
+
+			client, _, err := openClient(profile, []byte(password))
+			if err != nil {
+				err := fmt.Errorf("failed to open client: %w", err)
+				panic(err)
+			}
+
+			startMainMenu(w, client)
 		}()
 	}
 
@@ -355,6 +376,14 @@ func setupServerForm(w fyne.Window, addr string, conn *rpc.RpcConnection) {
 
 			log.Printf("Successfully registered user %s on server %s", username, serverName)
 
+			client, _, err := openClient(profile, []byte(password))
+			if err != nil {
+				err := fmt.Errorf("failed to open client: %w", err)
+				panic(err)
+			}
+
+			startMainMenu(w, client)
+
 		}()
 	}
 
@@ -444,4 +473,14 @@ func askForNewTotp(accountName string, targetCanvas fyne.Canvas) (code string, s
 	popup.Hide()
 
 	return
+}
+
+func openClient(profile *config.Profile, password []byte) (*client.Client, bool, error) {
+
+	client, err := client.OpenClient(profile, password)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to open client: %w", err)
+	}
+
+	return client, true, nil
 }

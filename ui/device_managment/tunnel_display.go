@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/rahn-it/svalin/rmm"
+	"github.com/rahn-it/svalin/system/client"
 	"github.com/rahn-it/svalin/ui/components"
 	"github.com/rahn-it/svalin/util"
 
@@ -17,7 +18,7 @@ var _ fyne.Widget = (*tunnelDisplay)(nil)
 
 type tunnelDisplay struct {
 	widget.BaseWidget
-	cli        *rmm.Client
+	cli        *client.Client
 	device     *rmm.Device
 	config     util.Observable[*rmm.TunnelConfig]
 	tcpList    *fyne.Container
@@ -25,7 +26,7 @@ type tunnelDisplay struct {
 	tcpTunnels util.UpdateableMap[string, *rmm.TcpTunnel]
 }
 
-func newTunnelDisplay(cli *rmm.Client, device *rmm.Device) *tunnelDisplay {
+func newTunnelDisplay(cli *client.Client, device *rmm.Device) *tunnelDisplay {
 	d := &tunnelDisplay{
 		cli:    cli,
 		device: device,
@@ -125,7 +126,7 @@ func (t *tunnelDisplay) CreateRenderer() fyne.WidgetRenderer {
 		widget: t,
 		scrollContainer: container.NewVScroll(
 			container.NewVBox(
-				components.NewTable(t.tcpTunnels,
+				components.NewTable(util.ObservableMap[string, *rmm.TcpTunnel](t.tcpTunnels),
 					components.NamedColumn(
 						"Name",
 						func() *widget.Label {

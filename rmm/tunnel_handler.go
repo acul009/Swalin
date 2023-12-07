@@ -3,28 +3,33 @@ package rmm
 import (
 	"context"
 	"fmt"
-	"github.com/rahn-it/svalin/pki"
-	"github.com/rahn-it/svalin/rpc"
-	"github.com/rahn-it/svalin/util"
 	"log"
 	"net"
 	"sync"
+
+	"github.com/rahn-it/svalin/pki"
+	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/util"
 )
 
-type tunnelHandler struct {
+type TunnelHandler struct {
 	dispatch rpc.Dispatcher
 
-	TcpTunnels util.UpdateableMap[*tcpTunnelConnectionDetails, *ActiveTcpTunnel]
+	tcpTunnels util.UpdateableMap[*tcpTunnelConnectionDetails, *ActiveTcpTunnel]
 }
 
-func newTunnelHandler(dispatcher rpc.Dispatcher) *tunnelHandler {
-	return &tunnelHandler{
+func NewTunnelHandler(dispatcher rpc.Dispatcher) *TunnelHandler {
+	return &TunnelHandler{
 		dispatch:   dispatcher,
-		TcpTunnels: util.NewObservableMap[*tcpTunnelConnectionDetails, *ActiveTcpTunnel](),
+		tcpTunnels: util.NewObservableMap[*tcpTunnelConnectionDetails, *ActiveTcpTunnel](),
 	}
 }
 
-func (th *tunnelHandler) OpenTcpTunnel(device *pki.Certificate, tunnel *TcpTunnel) error {
+func (th *TunnelHandler) TcpTunnels() util.ObservableMap[*tcpTunnelConnectionDetails, *ActiveTcpTunnel] {
+	return th.tcpTunnels
+}
+
+func (th *TunnelHandler) OpenTcpTunnel(device *pki.Certificate, tunnel *TcpTunnel) error {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", tunnel.ListenPort))
 	if err != nil {
 		return fmt.Errorf("error listening on port %d: %w", tunnel.ListenPort, err)
@@ -42,10 +47,10 @@ func (th *tunnelHandler) OpenTcpTunnel(device *pki.Certificate, tunnel *TcpTunne
 	}
 
 	t.onClose = func() {
-		th.TcpTunnels.Delete(&t.tcpTunnelConnectionDetails)
+		th.tcpTunnels.Delete(&t.tcpTunnelConnectionDetails)
 	}
 
-	th.TcpTunnels.Set(&t.tcpTunnelConnectionDetails, t)
+	th.tcpTunnels.Set(&t.tcpTunnelConnectionDetails, t)
 
 	return nil
 }

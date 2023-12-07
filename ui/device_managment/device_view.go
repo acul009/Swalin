@@ -2,6 +2,7 @@ package managment
 
 import (
 	"github.com/rahn-it/svalin/rmm"
+	"github.com/rahn-it/svalin/system/client"
 	"github.com/rahn-it/svalin/ui/mainview.go"
 
 	"fyne.io/fyne/v2"
@@ -12,12 +13,12 @@ import (
 type deviceView struct {
 	widget.BaseWidget
 	main   *mainview.MainView
-	cli    *rmm.Client
+	cli    *client.Client
 	device *rmm.Device
 	tabs   *container.AppTabs
 }
 
-func newDeviceView(cli *rmm.Client, main *mainview.MainView, device *rmm.Device) *deviceView {
+func newDeviceView(cli *client.Client, main *mainview.MainView, device *rmm.Device) *deviceView {
 	d := &deviceView{
 		cli:    cli,
 		main:   main,
