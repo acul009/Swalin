@@ -6,13 +6,14 @@ import (
 	"log"
 	"sync"
 
+	"github.com/rahn-it/svalin/rpc"
 	"github.com/rahn-it/svalin/system"
 	"github.com/rahn-it/svalin/util"
 )
 
 type Device struct {
 	*system.DeviceInfo
-	c            *Client
+	Dispatch     rpc.Dispatcher
 	mutex        sync.Mutex
 	processes    util.UpdateableMap[int32, *ProcessInfo]
 	tunnelConfig util.Observable[*TunnelConfig]
@@ -31,7 +32,7 @@ func (d *Device) Processes() util.UpdateableMap[int32, *ProcessInfo] {
 		d.processes = util.NewSyncedMap[int32, *ProcessInfo](
 			func(m util.UpdateableMap[int32, *ProcessInfo]) {
 				cmd := NewMonitorProcessesCommand(m)
-				running, err := d.c.dispatch().SendCommandTo(context.Background(), d.Certificate, cmd)
+				running, err := d.Dispatch.SendCommandTo(context.Background(), d.Certificate, cmd)
 				if err != nil {
 					log.Printf("error subscribing to processes: %v", err)
 					return
@@ -52,7 +53,7 @@ func (d *Device) Processes() util.UpdateableMap[int32, *ProcessInfo] {
 func (d *Device) KillProcess(pid int32) error {
 	cmd := NewKillProcessCommand(pid)
 
-	err := d.c.dispatch().SendSyncCommandTo(context.Background(), d.Certificate, cmd)
+	err := d.Dispatch.SendSyncCommandTo(context.Background(), d.Certificate, cmd)
 	if err != nil {
 		return fmt.Errorf("error killing process: %w", err)
 	}
@@ -68,7 +69,7 @@ func (d *Device) TunnelConfig() util.Observable[*TunnelConfig] {
 		d.tunnelConfig = util.NewSyncedObservable[*TunnelConfig](
 			func(uo util.UpdateableObservable[*TunnelConfig]) {
 				cmd := NewGetConfigCommand[*TunnelConfig](d.Certificate, uo)
-				running, err := d.c.dispatch().SendCommand(context.Background(), cmd)
+				running, err := d.Dispatch.SendCommand(context.Background(), cmd)
 				if err != nil {
 					log.Printf("error subscribing to tunnel config: %v", err)
 					return

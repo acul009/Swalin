@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/pki"
@@ -16,6 +17,7 @@ type Client struct {
 	profile      *config.Profile
 	clientConfig *clientConfig
 	ep           *rpc.RpcEndpoint
+	devices      *util.SyncedMap[string, *rmm.Device]
 }
 
 func OpenClient(profile *config.Profile, password []byte) (*Client, error) {
@@ -38,9 +40,58 @@ func OpenClient(profile *config.Profile, password []byte) (*Client, error) {
 	}
 	verifier.SetEndPoint(ep)
 
+	var dRunning util.AsyncAction
+
+	devicesInfo := util.NewSyncedMap[string, *system.DeviceInfo](
+		func(m util.UpdateableMap[string, *system.DeviceInfo]) {
+			cmd := rmm.NewGetDevicesCommand(m)
+			running, err := ep.SendCommand(context.Background(), cmd)
+			if err != nil {
+				log.Printf("Error subscribing to devices: %v", err)
+				return
+			}
+			dRunning = running
+		},
+		func(_ util.UpdateableMap[string, *system.DeviceInfo]) {
+			err := dRunning.Close()
+			if err != nil {
+				log.Printf("Error unsubscribing from devices: %v", err)
+			}
+		},
+	)
+
+	var unsub func()
+
+	devices := util.NewSyncedMap[string, *rmm.Device](
+		func(m util.UpdateableMap[string, *rmm.Device]) {
+			unsub = devicesInfo.Subscribe(
+				func(s string, di *system.DeviceInfo) {
+					m.Update(s, func(d *rmm.Device, found bool) (*rmm.Device, bool) {
+						if !found {
+							d = &rmm.Device{
+								Dispatch: ep,
+							}
+						}
+
+						d.DeviceInfo = di
+						return d, true
+					})
+				},
+				func(s string, di *system.DeviceInfo) {
+					m.Delete(s)
+				},
+			)
+		},
+		func(m util.UpdateableMap[string, *rmm.Device]) {
+			unsub()
+		},
+	)
+
 	client := &Client{
 		profile:      profile,
 		clientConfig: clientConfig,
+		ep:           ep,
+		devices:      devices,
 	}
 
 	return client, nil
@@ -63,7 +114,7 @@ func SetupClient(
 }
 
 func (c *Client) Devices() util.ObservableMap[string, *rmm.Device] {
-	panic("not implemented")
+	return c.devices
 }
 
 func (c *Client) Tunnels() *rmm.TunnelHandler {
