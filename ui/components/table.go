@@ -1,7 +1,6 @@
 package components
 
 import (
-	"log"
 	"sync"
 
 	"github.com/rahn-it/svalin/util"
@@ -84,6 +83,7 @@ func (t *Table[T, U]) CreateRenderer() fyne.WidgetRenderer {
 
 	tr.unsubscribe = t.m.Subscribe(
 		func(key T, value U) {
+			// log.Printf("updating row for %v", key)
 			tr.mutex.Lock()
 			rowIndex, ok := tr.rowMap[key]
 			if !ok {
@@ -97,7 +97,7 @@ func (t *Table[T, U]) CreateRenderer() fyne.WidgetRenderer {
 				tr.rowMap[key] = rowIndex
 				tr.cells = append(tr.cells, row...)
 
-				log.Printf("adding row for %v", key)
+				// log.Printf("adding row for %v", key)
 			}
 
 			for _, cell := range tr.cells[rowIndex : rowIndex+len(t.cols)] {
@@ -111,7 +111,7 @@ func (t *Table[T, U]) CreateRenderer() fyne.WidgetRenderer {
 			}
 		},
 		func(t T, _ U) {
-			log.Printf("deleting row for %v", t)
+			// log.Printf("deleting row for %v", t)
 			tr.mutex.Lock()
 			defer tr.mutex.Unlock()
 			rowIndex, ok := tr.rowMap[t]

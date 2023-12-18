@@ -18,6 +18,7 @@ type Client struct {
 	clientConfig *clientConfig
 	ep           *rpc.RpcEndpoint
 	devices      *util.SyncedMap[string, *rmm.Device]
+	enrollments  *util.SyncedMap[string, *rpc.Enrollment]
 }
 
 func OpenClient(profile *config.Profile, password []byte) (*Client, error) {
@@ -87,11 +88,34 @@ func OpenClient(profile *config.Profile, password []byte) (*Client, error) {
 		},
 	)
 
+	var eRunning util.AsyncAction
+
+	enrollments := util.NewSyncedMap[string, *rpc.Enrollment](
+		func(m util.UpdateableMap[string, *rpc.Enrollment]) {
+			cmd := system.NewGetPendingEnrollmentsCommand(m)
+
+			running, err := ep.SendCommand(context.Background(), cmd)
+			if err != nil {
+				log.Printf("Error subscribing to enrollments: %v", err)
+				return
+			}
+
+			eRunning = running
+		},
+		func(m util.UpdateableMap[string, *rpc.Enrollment]) {
+			err := eRunning.Close()
+			if err != nil {
+				log.Printf("Error unsubscribing from enrollments: %v", err)
+			}
+		},
+	)
+
 	client := &Client{
 		profile:      profile,
 		clientConfig: clientConfig,
 		ep:           ep,
 		devices:      devices,
+		enrollments:  enrollments,
 	}
 
 	return client, nil
@@ -119,4 +143,8 @@ func (c *Client) Devices() util.ObservableMap[string, *rmm.Device] {
 
 func (c *Client) Tunnels() *rmm.TunnelHandler {
 	panic("not implemented")
+}
+
+func (c *Client) Enrollments() util.ObservableMap[string, *rpc.Enrollment] {
+	return c.enrollments
 }

@@ -3,6 +3,7 @@ package ui
 import (
 	"github.com/rahn-it/svalin/system/client"
 	managment "github.com/rahn-it/svalin/ui/device_managment"
+	"github.com/rahn-it/svalin/ui/enrollment"
 	"github.com/rahn-it/svalin/ui/mainview.go"
 	"github.com/rahn-it/svalin/ui/tunnels"
 
@@ -16,11 +17,11 @@ func startMainMenu(window fyne.Window, client *client.Client) {
 
 	tunnelView := tunnels.NewOpenTunnelsView(client)
 
-	// enrollView := enrollment.NewEnrollmentView(m, cli, credentials)
+	enrollView := enrollment.NewEnrollmentList(m, client)
 
 	m.Display(window, []mainview.MenuView{
 		manageView,
 		tunnelView,
-		// enrollView,
+		enrollView,
 	})
 }

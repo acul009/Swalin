@@ -80,6 +80,8 @@ func Open(profile *config.Profile) (*Server, error) {
 		return nil, fmt.Errorf("error creating rpc server: %w", err)
 	}
 
+	cmds.Add(system.CreateGetEnrollmentsCommandHandler(rpcS.Enrollments()))
+
 	// rpcS.Connections().Subscribe(
 	// 	func(_ uuid.UUID, rc *rpc.RpcConnection) {
 	// 		key := rc.Partner().PublicKey().Base64Encode()

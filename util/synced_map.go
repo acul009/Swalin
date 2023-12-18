@@ -36,6 +36,7 @@ func NewSyncedMap[K comparable, V any](register func(m UpdateableMap[K, V]), unr
 			}
 		} else {
 			if sm.registered {
+				log.Printf("unregistering synced map")
 				sm.unregister(m)
 				sm.registered = false
 			}

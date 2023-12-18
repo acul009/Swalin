@@ -29,7 +29,7 @@ type enrollmentManager struct {
 type enrollmentConnection struct {
 	connection *RpcConnection
 	session    *RpcSession
-	enrollment Enrollment
+	enrollment *Enrollment
 	mutex      sync.Mutex
 }
 
@@ -63,6 +63,7 @@ func (m *enrollmentManager) cleanup() {
 	})
 
 	for _, key := range timeout {
+		log.Printf("enrollment timed out: %s", key)
 		m.waitingEnrollments.Delete(key)
 	}
 }
@@ -98,7 +99,7 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 			connection: conn,
 			session:    session,
 			mutex:      sync.Mutex{},
-			enrollment: Enrollment{
+			enrollment: &Enrollment{
 				PublicKey:   session.partnerKey,
 				Addr:        conn.connection.RemoteAddr().String(),
 				RequestTime: time.Now(),
@@ -146,15 +147,24 @@ func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
 	return nil
 }
 
-func (m *enrollmentManager) subscribe(onSet func(string, Enrollment), onRemove func(string)) func() {
+func (m *enrollmentManager) Subscribe(onSet func(string, *Enrollment), onRemove func(string, *Enrollment)) func() {
 	return m.waitingEnrollments.Subscribe(
 		func(key string, conn *enrollmentConnection) {
+			log.Printf("enrollment in progress: %s", key)
 			onSet(key, conn.enrollment)
 		},
-		func(key string, _ *enrollmentConnection) {
-			onRemove(key)
+		func(key string, conn *enrollmentConnection) {
+			log.Printf("enrollment completed: %s", key)
+			onRemove(key, conn.enrollment)
 		},
 	)
+}
+
+func (m *enrollmentManager) ForEach(fn func(string, *Enrollment) error) error {
+	m.cleanup()
+	return m.waitingEnrollments.ForEach(func(key string, conn *enrollmentConnection) error {
+		return fn(key, conn.enrollment)
+	})
 }
 
 type enrollmentResponse struct {

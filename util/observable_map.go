@@ -69,7 +69,7 @@ func (m *genericObservableMap[K, T]) Set(key K, value T) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.m[key] = value
-	m.observerHandler.NotifyDelete(key, value)
+	m.observerHandler.NotifyUpdate(key, value)
 }
 
 func (m *genericObservableMap[K, T]) Update(key K, updateFunc func(value T, found bool) (T, bool)) {

@@ -2,7 +2,9 @@ package rmm
 
 import (
 	"fmt"
+
 	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/system"
 	"github.com/rahn-it/svalin/util"
 )
 
@@ -11,12 +13,12 @@ func MonitorProcessesCommandHandler() rpc.RpcCommand {
 }
 
 type monitorProcessesCommand struct {
-	*SyncDownCommand[int32, *ProcessInfo]
+	*system.SyncDownCommand[int32, *ProcessInfo]
 }
 
 func NewMonitorProcessesCommand(targetMap util.UpdateableMap[int32, *ProcessInfo]) *monitorProcessesCommand {
 	return &monitorProcessesCommand{
-		SyncDownCommand: NewSyncDownCommand[int32, *ProcessInfo](targetMap),
+		SyncDownCommand: system.NewSyncDownCommand[int32, *ProcessInfo](targetMap),
 	}
 }
 

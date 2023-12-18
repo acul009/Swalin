@@ -30,6 +30,14 @@ to quickly create a Cobra application.`,
 			panic(err)
 		}
 
+		config := profile.Config()
+		config.BindFlags(cmd.Flags())
+
+		err = agent.Init(profile)
+		if err != nil {
+			panic(err)
+		}
+
 		agent, err := agent.Connect(profile)
 		if err != nil {
 			panic(err)
@@ -44,6 +52,8 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(agentCmd)
+
+	agentCmd.PersistentFlags().StringP("agent.address", "a", "", "example-rmm.com:1234")
 
 	// Here you will define your flags and configuration settings.
 
