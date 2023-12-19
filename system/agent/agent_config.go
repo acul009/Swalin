@@ -91,7 +91,7 @@ func (conf *agentConfig) loadCredentials() error {
 
 func (conf *agentConfig) loadServerAddr() error {
 	return conf.scope.View(func(b db.Bucket) error {
-		addr := b.Get([]byte("server-addr"))
+		addr := b.Get([]byte("serverAddr"))
 		if addr == nil {
 			return errors.New("server address not found")
 		}

@@ -1,23 +1,53 @@
 package agent
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"log"
 
 	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/system"
 )
 
 type Agent struct {
+	ep           *rpc.RpcEndpoint
+	profile      *config.Profile
+	agent_config *agentConfig
+	commands     *rpc.CommandCollection
 }
 
 func Connect(profile *config.Profile) (*Agent, error) {
-	return nil, errors.New("not implemented")
+	scope := profile.Scope()
+
+	config, err := openClientConfig(scope.Scope("agent"))
+	if err != nil {
+		return nil, fmt.Errorf("error opening client config: %w", err)
+	}
+
+	verifier := system.NewUpstreamVerifier(config.Upstream(), config.Root(), nil)
+
+	ep, err := rpc.ConnectToServer(context.Background(), config.ServerAddr(), config.Credentials(), config.Upstream(), verifier)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to server: %w", err)
+	}
+
+	verifier.SetEndPoint(ep)
+
+	commands := rpc.NewCommandCollection()
+
+	a := &Agent{
+		ep:           ep,
+		profile:      profile,
+		agent_config: config,
+		commands:     commands,
+	}
+
+	return a, nil
 }
 
 func (a *Agent) Run() error {
-	return errors.New("not implemented")
+	return a.ep.ServeRpc(a.commands)
 }
 
 func Init(profile *config.Profile) error {
@@ -44,10 +74,10 @@ func Init(profile *config.Profile) error {
 
 	log.Printf("Received certificate from server")
 
-	err = initAgentConfig(scope, addr, initInfo)
+	err = initAgentConfig(scope.Scope("agent"), addr, initInfo)
 	if err != nil {
 		return fmt.Errorf("error initializing agent config: %w", err)
 	}
 
-	return errors.New("not implemented")
+	return nil
 }

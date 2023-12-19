@@ -59,7 +59,7 @@ func NewMainView() *MainView {
 		backButton:    backButton,
 	}
 
-	backButton.OnTapped = m.popView
+	backButton.OnTapped = m.PopView
 	backButton.Disable()
 
 	return m
@@ -76,7 +76,7 @@ func (m *MainView) PushView(v fyne.CanvasObject) {
 	m.refreshBackButton()
 }
 
-func (m *MainView) popView() {
+func (m *MainView) PopView() {
 	m.viewStack.Pop()
 	m.refreshBackButton()
 }

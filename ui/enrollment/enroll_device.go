@@ -38,6 +38,7 @@ func (edv *enrollDeviceView) CreateRenderer() fyne.WidgetRenderer {
 		if err != nil {
 			log.Printf("Error enrolling device: %v", err)
 		}
+		edv.main.PopView()
 	})
 
 	return &enrollDeviceViewRenderer{
