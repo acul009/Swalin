@@ -60,8 +60,10 @@ func (m *enrollmentManager) cleanup() {
 	defer m.mutex.Unlock()
 	timeout := make([]string, 0)
 	m.waitingEnrollments.ForEach(func(key string, econn *enrollmentConnection) error {
-		if econn.mutex.TryLock() && time.Since(econn.enrollment.RequestTime) > maxEnrollmentTime {
-			timeout = append(timeout, key)
+		if econn.mutex.TryLock() {
+			if time.Since(econn.enrollment.RequestTime) > maxEnrollmentTime {
+				timeout = append(timeout, key)
+			}
 			econn.mutex.Unlock()
 		}
 		return nil
@@ -94,6 +96,7 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 	encodedKey := session.partnerKey.Base64Encode()
 
 	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	_, ok := m.waitingEnrollments.Get(encodedKey)
 	if ok {
 		return fmt.Errorf("enrollment already in progress")
@@ -111,7 +114,6 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 			},
 		},
 	)
-	m.mutex.Unlock()
 
 	log.Printf("enrollment started for %s", encodedKey)
 
@@ -130,8 +132,12 @@ func (m *enrollmentManager) AcceptEnrollment(cert *pki.Certificate) error {
 		return fmt.Errorf("enrollment not in progress")
 	}
 
+	log.Printf("trying to aquire lock")
+
 	econn.mutex.Lock()
 	defer econn.mutex.Unlock()
+
+	log.Printf("enrollment lock aquired")
 
 	m.waitingEnrollments.Delete(encodedKey)
 
@@ -146,6 +152,8 @@ func (m *enrollmentManager) AcceptEnrollment(cert *pki.Certificate) error {
 		econn.connection.Close(500, "error writing response")
 		return fmt.Errorf("error writing response: %w", err)
 	}
+
+	time.Sleep(5 * time.Second)
 
 	econn.session.Close()
 

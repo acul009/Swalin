@@ -2,6 +2,7 @@ package system
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/rpc"
@@ -49,5 +50,6 @@ func (c *enrollDeviceCommand) ExecuteServer(session *rpc.RpcSession) error {
 }
 
 func (c *enrollDeviceCommand) ExecuteClient(session *rpc.RpcSession) error {
+	log.Printf("sending enrollment successful")
 	return nil
 }

@@ -42,6 +42,8 @@ func Init(profile *config.Profile) error {
 		return fmt.Errorf("error enrolling with server: %w", err)
 	}
 
+	log.Printf("Received certificate from server")
+
 	err = initAgentConfig(scope, addr, initInfo)
 	if err != nil {
 		return fmt.Errorf("error initializing agent config: %w", err)
