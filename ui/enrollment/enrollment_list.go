@@ -49,6 +49,20 @@ func (e *enrollmentList) CreateRenderer() fyne.WidgetRenderer {
 				label.SetText(en.Addr)
 			},
 		),
+		components.Column(
+			func() *widget.Button {
+				return widget.NewButton("Select", func() {
+
+				})
+			},
+			func(en *rpc.Enrollment, button *widget.Button) {
+
+				button.OnTapped = func() {
+					view := NewEnrollDeviceView(e.main, e.cli, en)
+					e.main.PushView(view)
+				}
+			},
+		),
 	)
 
 	return &enrollmentListRenderer{

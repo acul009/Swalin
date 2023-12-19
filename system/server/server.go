@@ -66,7 +66,6 @@ func Open(profile *config.Profile) (*Server, error) {
 
 	cmds := rpc.NewCommandCollection(
 		rpc.PingHandler,
-		rpc.EnrollAgentHandler,
 		// rmm.CreateGetDevicesCommandHandler(devices),
 		rpc.ForwardCommandHandler,
 		system.CreateUpstreamVerificationCommandHandler(verifier),
@@ -81,6 +80,8 @@ func Open(profile *config.Profile) (*Server, error) {
 	}
 
 	cmds.Add(system.CreateGetEnrollmentsCommandHandler(rpcS.Enrollments()))
+
+	cmds.Add(system.CreateEnrollDeviceCommandHandler(rpcS.Enrollments()))
 
 	// rpcS.Connections().Subscribe(
 	// 	func(_ uuid.UUID, rc *rpc.RpcConnection) {

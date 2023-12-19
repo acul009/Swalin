@@ -148,3 +148,18 @@ func (c *Client) Tunnels() *rmm.TunnelHandler {
 func (c *Client) Enrollments() util.ObservableMap[string, *rpc.Enrollment] {
 	return c.enrollments
 }
+
+func (c *Client) EnrollDevice(pub *pki.PublicKey, name string) error {
+	cert, err := pki.CreateAgentCert(name, pub, c.clientConfig.Credentials())
+	if err != nil {
+		return fmt.Errorf("failed to create agent certificate: %w", err)
+	}
+
+	cmd := system.NewEnrollDeviceCommand(cert)
+	err = c.ep.SendSyncCommand(context.Background(), cmd)
+	if err != nil {
+		return fmt.Errorf("failed to enroll device: %w", err)
+	}
+
+	return nil
+}

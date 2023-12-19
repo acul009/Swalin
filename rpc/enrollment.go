@@ -13,6 +13,11 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
+type EnrollmentManager interface {
+	util.ObservableMap[string, *Enrollment]
+	AcceptEnrollment(cert *pki.Certificate) error
+}
+
 type EndPointInitInfo struct {
 	Root        *pki.Certificate
 	Upstream    *pki.Certificate
@@ -113,7 +118,7 @@ func (m *enrollmentManager) startEnrollment(conn *RpcConnection) error {
 	return nil
 }
 
-func (m *enrollmentManager) acceptEnrollment(cert *pki.Certificate) error {
+func (m *enrollmentManager) AcceptEnrollment(cert *pki.Certificate) error {
 	m.cleanup()
 	encodedKey := cert.PublicKey().Base64Encode()
 
