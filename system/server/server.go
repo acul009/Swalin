@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/rpc"
 	"github.com/rahn-it/svalin/system"
@@ -83,6 +84,18 @@ func Open(profile *config.Profile) (*Server, error) {
 
 	cmds.Add(system.CreateEnrollDeviceCommandHandler(rpcS.Enrollments(), chainVerifier, deviceStore.AddDevice))
 
+	devices := newDeviceList(deviceStore)
+	rpcS.Connections().Subscribe(
+		func(u uuid.UUID, rc *rpc.RpcConnection) {
+			devices.setOnlineStatus(rc.Partner().PublicKey().Base64Encode(), true)
+		},
+		func(u uuid.UUID, rc *rpc.RpcConnection) {
+			devices.setOnlineStatus(rc.Partner().PublicKey().Base64Encode(), false)
+		},
+	)
+
+	cmds.Add(system.CreateGetDevicesCommandHandler(devices))
+
 	// rpcS.Connections().Subscribe(
 	// 	func(_ uuid.UUID, rc *rpc.RpcConnection) {
 	// 		key := rc.Partner().PublicKey().Base64Encode()
@@ -101,8 +114,8 @@ func Open(profile *config.Profile) (*Server, error) {
 		deviceStore:     deviceStore,
 		revocationStore: revocationStore,
 		verifier:        verifier,
-		// devices:         devices,
-		serverConfig: serverConfig,
+		devices:         devices,
+		serverConfig:    serverConfig,
 		// configManager:   ConfigManager,
 	}
 

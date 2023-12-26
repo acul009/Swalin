@@ -1,6 +1,8 @@
 package server
 
 import (
+	"log"
+
 	"github.com/rahn-it/svalin/pki"
 	"github.com/rahn-it/svalin/system"
 	"github.com/rahn-it/svalin/util"
@@ -51,10 +53,24 @@ func (d *DeviceList) Subscribe(onUpdate func(string, *system.DeviceInfo), onRemo
 	return d.observerHandler.Subscribe(onUpdate, onRemove)
 }
 
-func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
-	// TODO
+func (d *DeviceList) setOnlineStatus(key string, online bool) {
+	pubKey, err := pki.PublicKeyFromBase64(key)
+	if err != nil {
+		log.Printf("Error parsing public key: %v", err)
+		return
+	}
 
-	key := cert.PublicKey().Base64Encode()
+	cert, err := d.deviceStore.GetDevice(pubKey)
+	if err != nil {
+		log.Printf("Error getting device: %v", err)
+		return
+	}
+
+	if online {
+		d.online[key] = true
+	} else {
+		delete(d.online, key)
+	}
 
 	di := &system.DeviceInfo{
 		Certificate: cert,
@@ -64,14 +80,4 @@ func (d *DeviceList) AddDeviceToDB(cert *pki.Certificate) error {
 	}
 
 	d.observerHandler.NotifyUpdate(key, di)
-
-	return nil
-}
-
-func (d *DeviceList) setOnlineStatus(key string, online bool) {
-	if online {
-		d.online[key] = true
-	} else {
-		delete(d.online, key)
-	}
 }

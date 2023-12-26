@@ -65,6 +65,15 @@ func PublicKeyFromPem(certPEM []byte) (*PublicKey, error) {
 	return PublicKeyFromBinary(block.Bytes)
 }
 
+func PublicKeyFromBase64(base64String string) (*PublicKey, error) {
+	bytes, err := base64.StdEncoding.DecodeString(base64String)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64 string: %w", err)
+	}
+
+	return PublicKeyFromBinary(bytes)
+}
+
 func (pub *PublicKey) Base64Encode() string {
 	bytes := pub.BinaryEncode()
 	return base64.StdEncoding.EncodeToString(bytes)

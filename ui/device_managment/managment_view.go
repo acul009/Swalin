@@ -73,6 +73,7 @@ func (m *deviceManagementView) CreateRenderer() fyne.WidgetRenderer {
 				return widget.NewIcon(offlineIcon)
 			},
 			func(device *rmm.Device, icon *widget.Icon) {
+				log.Printf("Updating icon for device %v", device)
 				if device.DeviceInfo.LiveInfo.Online {
 					icon.SetResource(onlineIcon)
 				} else {

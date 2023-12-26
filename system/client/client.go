@@ -45,7 +45,7 @@ func OpenClient(profile *config.Profile, password []byte) (*Client, error) {
 
 	devicesInfo := util.NewSyncedMap[string, *system.DeviceInfo](
 		func(m util.UpdateableMap[string, *system.DeviceInfo]) {
-			cmd := rmm.NewGetDevicesCommand(m)
+			cmd := system.NewGetDevicesCommand(m)
 			running, err := ep.SendCommand(context.Background(), cmd)
 			if err != nil {
 				log.Printf("Error subscribing to devices: %v", err)
