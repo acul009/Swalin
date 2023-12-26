@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rahn-it/svalin/config"
+	"github.com/rahn-it/svalin/rmm"
 	"github.com/rahn-it/svalin/rpc"
 	"github.com/rahn-it/svalin/system"
 )
@@ -35,7 +36,13 @@ func Connect(profile *config.Profile) (*Agent, error) {
 
 	verifier.SetEndPoint(ep)
 
-	commands := rpc.NewCommandCollection()
+	commands := rpc.NewCommandCollection(
+		rmm.MonitorSystemCommandHandler,
+		rmm.MonitorProcessesCommandHandler,
+		rmm.MonitorServicesCommandHandler,
+		rmm.KillProcessCommandHandler,
+		rmm.RemoteShellCommandHandler,
+	)
 
 	a := &Agent{
 		ep:           ep,
@@ -48,7 +55,9 @@ func Connect(profile *config.Profile) (*Agent, error) {
 }
 
 func (a *Agent) Run() error {
-	return a.ep.ServeRpc(a.commands)
+	return a.ep.ServeRpc(rpc.NewCommandCollection(
+		rpc.CreateE2eDecryptCommandHandler(a.commands),
+	))
 }
 
 func Init(profile *config.Profile) error {

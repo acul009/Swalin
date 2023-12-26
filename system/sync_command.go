@@ -34,7 +34,7 @@ func (s *SyncDownCommand[K, T]) ExecuteClient(session *rpc.RpcSession) error {
 			return fmt.Errorf("error reading message: %w", err)
 		}
 
-		fmt.Printf("received update: %+v\n", update)
+		// fmt.Printf("received update: %+v\n", update)
 
 		if update.Delete {
 			s.targetMap.Delete(update.Key)

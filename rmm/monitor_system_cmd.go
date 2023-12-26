@@ -2,10 +2,11 @@ package rmm
 
 import (
 	"fmt"
-	"github.com/rahn-it/svalin/rpc"
-	"github.com/rahn-it/svalin/util"
 	"log"
 	"time"
+
+	"github.com/rahn-it/svalin/rpc"
+	"github.com/rahn-it/svalin/util"
 )
 
 const reportingInterval = 1 * time.Second
@@ -15,13 +16,13 @@ func MonitorSystemCommandHandler() rpc.RpcCommand {
 }
 
 type monitorSystemCommand struct {
-	static util.UpdateableObservable[*StaticStats]
+	static *StaticStats
 	active util.UpdateableObservable[*ActiveStats]
 }
 
-func NewMonitorSystemCommand(staticOb util.UpdateableObservable[*StaticStats], activeOb util.UpdateableObservable[*ActiveStats]) *monitorSystemCommand {
+func NewMonitorSystemCommand(static *StaticStats, activeOb util.UpdateableObservable[*ActiveStats]) *monitorSystemCommand {
 	return &monitorSystemCommand{
-		static: staticOb,
+		static: static,
 		active: activeOb,
 	}
 }
@@ -72,15 +73,10 @@ func (cmd *monitorSystemCommand) ExecuteServer(session *rpc.RpcSession) error {
 func (cmd *monitorSystemCommand) ExecuteClient(session *rpc.RpcSession) error {
 	log.Printf("Monitoring remote system...")
 
-	static := &StaticStats{}
-	err := rpc.ReadMessage[*StaticStats](session, static)
+	err := rpc.ReadMessage[*StaticStats](session, cmd.static)
 	if err != nil {
 		return fmt.Errorf("error reading static stats: %w", err)
 	}
-
-	cmd.static.Update(func(_ *StaticStats) *StaticStats {
-		return static
-	})
 
 	active := &ActiveStats{}
 

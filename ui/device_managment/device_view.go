@@ -28,6 +28,7 @@ func newDeviceView(cli *client.Client, main *mainview.MainView, device *rmm.Devi
 	d.ExtendBaseWidget(d)
 
 	d.tabs = container.NewAppTabs(
+		container.NewTabItem("Basic Info", newDeviceBasicInfo(d.device)),
 		container.NewTabItem("Processes", newProcessList(d.device)),
 		container.NewTabItem("Tunnels", newTunnelDisplay(cli, d.device)),
 	)
