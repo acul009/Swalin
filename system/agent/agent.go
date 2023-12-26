@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/rahn-it/svalin/config"
 	"github.com/rahn-it/svalin/rpc"
@@ -78,6 +79,8 @@ func Init(profile *config.Profile) error {
 	if err != nil {
 		return fmt.Errorf("error initializing agent config: %w", err)
 	}
+
+	time.Sleep(5 * time.Second)
 
 	return nil
 }

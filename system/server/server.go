@@ -40,7 +40,7 @@ func Open(profile *config.Profile) (*Server, error) {
 		return nil, fmt.Errorf("error opening user store: %w", err)
 	}
 
-	userVerifier, error := newNewUserVerifier(serverConfig.Root())
+	chainVerifier, error := newChainVerifier(serverConfig.Root())
 	if error != nil {
 		return nil, fmt.Errorf("error creating new user verifier: %w", error)
 	}
@@ -69,7 +69,7 @@ func Open(profile *config.Profile) (*Server, error) {
 		// rmm.CreateGetDevicesCommandHandler(devices),
 		rpc.ForwardCommandHandler,
 		system.CreateUpstreamVerificationCommandHandler(verifier),
-		system.CreateRegisterUserCommandHandler(userVerifier, userStore.newUser),
+		system.CreateRegisterUserCommandHandler(chainVerifier, userStore.newUser),
 	)
 
 	listenAddr := config.String("server.address")
@@ -81,7 +81,7 @@ func Open(profile *config.Profile) (*Server, error) {
 
 	cmds.Add(system.CreateGetEnrollmentsCommandHandler(rpcS.Enrollments()))
 
-	cmds.Add(system.CreateEnrollDeviceCommandHandler(rpcS.Enrollments()))
+	cmds.Add(system.CreateEnrollDeviceCommandHandler(rpcS.Enrollments(), chainVerifier, deviceStore.AddDevice))
 
 	// rpcS.Connections().Subscribe(
 	// 	func(_ uuid.UUID, rc *rpc.RpcConnection) {

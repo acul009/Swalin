@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/rahn-it/svalin/db"
@@ -57,6 +58,17 @@ func (s *deviceStore) GetDevice(key *pki.PublicKey) (*pki.Certificate, error) {
 	}
 
 	return cert, nil
+}
+
+func (s *deviceStore) AddDevice(cert *pki.Certificate) error {
+	byteKey := []byte(cert.PublicKey().Base64Encode())
+	return s.scope.Update(func(b db.Bucket) error {
+		// check if the certificate already exists
+		if b.Get(byteKey) != nil {
+			return errors.New("certificate already exists")
+		}
+		return b.Put(byteKey, cert.PemEncode())
+	})
 }
 
 func (s *deviceStore) ForEach(fn func(key string, value *pki.Certificate) error) error {
