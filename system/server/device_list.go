@@ -66,6 +66,10 @@ func (d *DeviceList) setOnlineStatus(key string, online bool) {
 		return
 	}
 
+	if cert == nil {
+		return
+	}
+
 	if online {
 		d.online[key] = true
 	} else {
