@@ -27,7 +27,7 @@
 
 
 
-        shellHook = "codium;exit;";
+        shellHook = "zsh;exit;";
       };
     };
 }
