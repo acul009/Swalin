@@ -87,10 +87,16 @@ func Open(profile *config.Profile) (*Server, error) {
 	devices := newDeviceList(deviceStore)
 	rpcS.Connections().Subscribe(
 		func(u uuid.UUID, rc *rpc.RpcConnection) {
-			devices.setOnlineStatus(rc.Partner().PublicKey().Base64Encode(), true)
+			partner := rc.Partner()
+			if partner != nil {
+				devices.setOnlineStatus(partner.PublicKey().Base64Encode(), true)
+			}
 		},
 		func(u uuid.UUID, rc *rpc.RpcConnection) {
-			devices.setOnlineStatus(rc.Partner().PublicKey().Base64Encode(), false)
+			partner := rc.Partner()
+			if partner != nil {
+				devices.setOnlineStatus(partner.PublicKey().Base64Encode(), false)
+			}
 		},
 	)
 
