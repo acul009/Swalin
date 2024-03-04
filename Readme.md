@@ -2,12 +2,15 @@
 
 An Open-Source RMM-Software focused on ease of use and security.
 
+This Repository contains a prototype. I'm currently working on a proper implementation using rust.
+
 ## :warning: **WARNING** :warning:
 
-This code is not yet fit for production!!!
+This code is not fit for production!!!
 - The cryptographic implementation did not get any proper review
 - The system is still unstable
 - There is no proper logging or defense mechanism yet
+- The permission systen is not available or functional at the moment
 
 ## Goals
 
