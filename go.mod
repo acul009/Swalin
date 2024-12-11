@@ -18,9 +18,9 @@ require (
 	github.com/fyne-io/terminal v0.0.0-20231218140004-dace67838bef
 	github.com/spf13/cast v1.6.0
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/crypto v0.17.0
+	golang.org/x/crypto v0.31.0
 	golang.org/x/exp v0.0.0-20231226003508-02704c960a9b
-	golang.org/x/term v0.15.0
+	golang.org/x/term v0.27.0
 )
 
 require (
@@ -61,11 +61,11 @@ require (
 	go.uber.org/mock v0.3.0 // indirect
 	golang.org/x/image v0.11.0 // indirect
 	golang.org/x/mobile v0.0.0-20230531173138-3c911d8e3eda // indirect
-	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/tools v0.16.0 // indirect
+	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/js/dom v0.0.0-20210725211120-f030747120f2 // indirect
 )
